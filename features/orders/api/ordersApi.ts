@@ -1,4 +1,4 @@
-import type { CreateOrderInput, Order, UpdateOrderInput } from "@needleye/shared";
+import type { CreateOrderInput, Order, UpdateOrderInput } from "../../../lib/shared/domain";
 import { apiFetch, apiUpload } from "../../../lib/api/client";
 
 export interface OrderListFilters {

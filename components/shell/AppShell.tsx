@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Profile } from "@needleye/shared";
+import type { Profile } from "../../lib/shared/domain";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell({ profile, children }: { profile: Profile; children: React.ReactNode }) {

@@ -10,12 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@needleye/shared": "git+https://github.com/YOUR_GITHUB_USERNAME/needleye-shared.git",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.45.4",
     "next": "16.2.10",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

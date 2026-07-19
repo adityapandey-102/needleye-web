@@ -1,5 +1,4 @@
-import type { Capability, Role } from "@needleye/shared";
-import { hasCapability } from "@needleye/shared";
+import { hasCapability, type Capability, type Role } from "../../lib/shared/domain";
 
 interface NavItem {
   label: string;

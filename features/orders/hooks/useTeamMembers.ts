@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Role } from "@needleye/shared";
+import type { Role } from "../../../lib/shared/domain";
 import { apiFetch } from "../../../lib/api/client";
 
 interface TeamMember {

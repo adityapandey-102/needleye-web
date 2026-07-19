@@ -1,4 +1,4 @@
-import { getCapabilityScope } from "@needleye/shared";
+import { getCapabilityScope } from "../../../../lib/shared/domain";
 import { apiFetchServer } from "../../../../lib/api/server";
 import { OrderDetailView } from "../../../../features/orders/components/OrderDetailView";
 

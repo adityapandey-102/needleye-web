@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { Profile } from "@needleye/shared";
-import { ROLE_LABELS } from "@needleye/shared";
+import { ROLE_LABELS, type Profile } from "../../lib/shared/domain";
 import { visibleNavSections } from "./nav-config";
 import { createClient } from "../../lib/supabase/client";
 

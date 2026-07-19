@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { hasCapability } from "@needleye/shared";
+import { hasCapability } from "../../../../lib/shared/domain";
 import { apiFetchServer } from "../../../../lib/api/server";
 import { OrderForm } from "../../../../features/orders/components/OrderForm";
 

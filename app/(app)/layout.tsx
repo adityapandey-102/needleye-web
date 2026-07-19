@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import type { Profile } from "@needleye/shared";
+import type { Profile } from "../../lib/shared/domain";
 import { apiFetchServer } from "../../lib/api/server";
 import { AppShell } from "../../components/shell/AppShell";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ROLE_LABELS, ROLES, type Role } from "@needleye/shared";
+import { ROLE_LABELS, ROLES, type Role } from "../../../lib/shared/domain";
 import { apiFetch } from "../../../lib/api/client";
 import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";

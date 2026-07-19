@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { hasCapability } from "@needleye/shared";
+import { hasCapability } from "../../../lib/shared/domain";
 import { apiFetchServer } from "../../../lib/api/server";
 import { Button } from "../../../components/ui/Button";
 import { OrdersListClient } from "../../../features/orders/components/OrdersListClient";
