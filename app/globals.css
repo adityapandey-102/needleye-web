@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens ported from prototype/styles.css :root block.
+ * Luxury burgundy / rose / soft-beige boutique palette.
+ */
+:root {
+  --color-primary: #7a1733;
+  --color-primary-light: #d9a5b3;
+  --color-primary-dark: #5b1026;
+  --color-primary-bg: #f7f2ee;
+
+  --color-accent: #d9a5b3;
+  --color-accent-light: #e8c4cd;
+  --color-accent-bg: #f7f2ee;
+
+  --color-app-bg: #fcfaf8;
+  --color-card: #ffffff;
+  --color-border: #eae4df;
+  --color-border-light: #f2ece7;
+
+  --color-text-primary: #1f1f1f;
+  --color-text-secondary: #5f5752;
+  --color-text-muted: #988d86;
+
+  --color-success: #10b981;
+  --color-success-bg: #d1fae5;
+  --color-warning: #f59e0b;
+  --color-warning-bg: #fef3c7;
+  --color-warning-text: #92400e;
+  --color-error: #ef4444;
+  --color-error-bg: #fee2e2;
+  --color-danger-strong: #7f1d1d;
+  --color-info: #3b82f6;
+  --color-info-bg: #dbeafe;
+  --color-gray-pill-bg: #f1f5f9;
+
+  --color-sidebar: #2b101a;
+
+  --radius-app: 12px;
+  --radius-app-sm: 8px;
+  --radius-app-lg: 16px;
+
+  --shadow-app: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-app-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+  --shadow-app-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-primary-bg: var(--color-primary-bg);
+
+  --color-accent: var(--color-accent);
+  --color-accent-light: var(--color-accent-light);
+  --color-accent-bg: var(--color-accent-bg);
+
+  --color-app-bg: var(--color-app-bg);
+  --color-card: var(--color-card);
+  --color-border: var(--color-border);
+  --color-border-light: var(--color-border-light);
+
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-success: var(--color-success);
+  --color-success-bg: var(--color-success-bg);
+  --color-warning: var(--color-warning);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-warning-text: var(--color-warning-text);
+  --color-error: var(--color-error);
+  --color-error-bg: var(--color-error-bg);
+  --color-danger-strong: var(--color-danger-strong);
+  --color-info: var(--color-info);
+  --color-info-bg: var(--color-info-bg);
+  --color-gray-pill-bg: var(--color-gray-pill-bg);
+
+  --color-sidebar: var(--color-sidebar);
+
+  --radius-app: var(--radius-app);
+  --radius-app-sm: var(--radius-app-sm);
+  --radius-app-lg: var(--radius-app-lg);
+
+  --shadow-app: var(--shadow-app);
+  --shadow-app-md: var(--shadow-app-md);
+  --shadow-app-lg: var(--shadow-app-lg);
+
+  --font-serif: var(--font-playfair), "Playfair Display", serif;
+  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background: var(--color-app-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
