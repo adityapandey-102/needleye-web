@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { getCapabilityScope } from "../../../../../lib/shared/domain";
+import { getCapabilityScope } from "../../../../../lib/domain";
 import { apiFetchServer } from "../../../../../lib/api/server";
-import { OrderForm } from "../../../../../features/orders/components/OrderForm";
+import { OrderForm } from "../../../../../modules/orders/components/OrderForm";
 
 export default async function EditOrderPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await params;

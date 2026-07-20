@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { hasCapability } from "../../../lib/shared/domain";
+import { hasCapability } from "../../../lib/domain";
 import { apiFetchServer } from "../../../lib/api/server";
 import { Button } from "../../../components/ui/Button";
-import { OrdersListClient } from "../../../features/orders/components/OrdersListClient";
+import { OrdersListClient } from "../../../modules/orders/components/OrdersListClient";
 
 export default async function OrdersPage() {
   const { profile } = await apiFetchServer("/auth/me");

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { hasCapability } from "../../../../lib/shared/domain";
+import { hasCapability } from "../../../../lib/domain";
 import { apiFetchServer } from "../../../../lib/api/server";
-import { OrderForm } from "../../../../features/orders/components/OrderForm";
+import { OrderForm } from "../../../../modules/orders/components/OrderForm";
 
 export default async function NewOrderPage() {
   const { profile } = await apiFetchServer("/auth/me");

@@ -12,9 +12,9 @@ only talk over HTTP**, each versioned and deployed on its own schedule.
 
 ## Stack
 
-- Next.js 16 (App Router), TypeScript, Tailwind CSS v4
+- Next.js 16 (App Router), TypeScript, Tailwind CSS v4 -- organized as a **Modular Monolith**: one deployable app, internally partitioned into modules (`modules/*`) with a consistent internal shape
 - Supabase Auth (`@supabase/ssr`) for login/session directly against Supabase -- not proxied through the API
-- `lib/shared/domain.ts` -- this repo's **own** copy of the RBAC capability matrix, order-status vocabulary, and zod validation. `needleye-api` keeps an equivalent copy of its own; neither imports from the other or from a shared package. See "No shared package, on purpose" below.
+- `lib/domain/` -- this repo's **own** copy of the RBAC capability matrix, order-status vocabulary, and zod validation. `needleye-api` keeps an equivalent copy of its own; neither imports from the other or from a shared package. See "No shared package, on purpose" below.
 - All other data (orders, users, images) goes through [needleye-api](https://github.com/REPLACE_ME/needleye-api) over HTTP
 
 ## Prerequisites
@@ -42,42 +42,61 @@ the invite-only model). Everyone else is invited from `/admin/users`.
 
 ## Architecture
 
+A **Modular Monolith**: one Next.js app, internally split into
+business-capability modules under `modules/`, each with the same internal
+shape (`components/`, and where it talks to the API, its own `api/`
+module) -- no module is treated as "too small to bother" with that
+consistency.
+
 ```
-app/                       # routing only -- thin pages that compose feature components
+app/                       # routing only -- thin pages that compose module components, no business logic
   (auth)/                    # login, register (bootstrap), reset/update password -- no sidebar
   (app)/                      # everything behind auth -- sidebar shell (layout.tsx), orders, admin
   auth/callback/route.ts       # exchanges a Supabase email-link code for a session
   proxy.ts                       # Next.js 16's middleware.ts equivalent (renamed upstream) -- session refresh + route guarding
-features/
-  auth/components/            # LoginForm, RegisterForm, ResetPasswordForm, UpdatePasswordForm
+modules/
+  auth/
+    components/                 # LoginForm, RegisterForm, ResetPasswordForm, UpdatePasswordForm
+    api/authApi.ts                # every HTTP call the Auth module makes (bootstrap-status, bootstrap)
   orders/
     components/                 # OrderForm (create+edit), OrdersListClient, OrderDetailView, ImageUploadGrid
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
-    api/ordersApi.ts               # every HTTP call the Orders feature makes, in one place
-  admin-users/components/       # UserManagementClient (owner_manager only)
-components/                  # cross-feature only: ui/ primitives (Button, Card, Field, ...), shell/ (Sidebar, AppShell, nav config)
+    api/ordersApi.ts               # every HTTP call the Orders module makes
+  admin-users/
+    components/                 # UserManagementClient (owner_manager only)
+    api/usersApi.ts                # every HTTP call the Admin Users module makes
+components/                  # cross-MODULE only: ui/ primitives (Button, Card, Field, ...), shell/ (Sidebar, AppShell, nav config)
 lib/
-  shared/                      # this repo's OWN copy of RBAC/order-status/validation -- see below, not a package
-    domain.ts                    # barrel export of everything below
+  domain/                      # this repo's OWN copy of RBAC/order-status/validation -- see below, not a package
+    index.ts                     # barrel export of everything below
     constants/, types/, utils/, validation/
   supabase/                    # browser/server Supabase clients + the proxy.ts session-refresh helper
-  api/                          # generic apiFetch/apiUpload wrappers (attach the Supabase access token); features/*/api/ build on these
+  api/                          # generic apiFetch/apiUpload wrappers (attach the Supabase access token) -- modules/*/api/ build on these, components never call these directly
 ```
 
 `app/` stays thin on purpose -- a page's job is data-fetching (Server
 Components calling the API) plus capability checks (redirects), and it
-renders a component from `features/`. Business logic and API calls for a
-feature live inside that feature's folder, not scattered across pages.
+renders a component from `modules/`. Business logic and API calls for a
+module live inside that module's folder, not scattered across pages.
+
+**Every module that talks to the backend has its own `api/*.ts` file**
+(`ordersApi`, `authApi`, `usersApi`) wrapping the generic `lib/api/client.ts`
+fetch helpers into named, typed methods. Components never call `apiFetch`
+directly -- this is the frontend's equivalent of the backend's repository
+layer: the one place HTTP calls for a given module are made, consistently
+applied even to the smaller modules (Auth has exactly two calls; it still
+gets its own `api/` file rather than inlining them, because consistency
+across the codebase matters more than trimming one small file).
 
 ### No shared package, on purpose
 
 `needleye-web` and `needleye-api` are separate repos with separate CI/CD and
 separate deploys, and **nothing is imported across them** -- the only
 connection is HTTP calls against the API's documented endpoints. That means
-`lib/shared/domain.ts` (RBAC matrix, order-status vocabulary, validation
-schemas, formatting utils) is **this repo's own copy** of rules that also
-exist, independently, in `needleye-api`. Neither repo depends on the other,
-and there is no third "shared" repo either.
+`lib/domain/` (RBAC matrix, order-status vocabulary, validation schemas,
+formatting utils) is **this repo's own copy** of rules that also exist,
+independently, in `needleye-api`'s `src/domain/`. Neither repo depends on
+the other, and there is no third "shared" repo or package either.
 
 **The real tradeoff:** if the RBAC rules or order-status vocabulary change,
 both copies need updating by hand -- there's no compiler to catch drift
@@ -87,7 +106,7 @@ practice, at which point the fix is a documented API contract, not a shared
 code package.
 
 **RBAC in the UI:** nav items and form fields are gated via
-`lib/shared/domain.ts`'s capability matrix (`hasCapability`/`getCapabilityScope`)
+`lib/domain`'s capability matrix (`hasCapability`/`getCapabilityScope`)
 mirroring the same rules the API enforces -- this is UI convenience, not the
 security boundary; the API is what actually rejects unauthorized writes.
 

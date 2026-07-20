@@ -1,4 +1,4 @@
-import type { CreateOrderInput, Order, UpdateOrderInput } from "../../../lib/shared/domain";
+import type { CreateOrderInput, Order, UpdateOrderInput } from "../../../lib/domain";
 import { apiFetch, apiUpload } from "../../../lib/api/client";
 
 export interface OrderListFilters {

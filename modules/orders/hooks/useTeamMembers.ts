@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Role } from "../../../lib/shared/domain";
+import type { Role } from "../../../lib/domain";
 import { apiFetch } from "../../../lib/api/client";
 
 interface TeamMember {

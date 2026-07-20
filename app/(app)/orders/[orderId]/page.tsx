@@ -1,6 +1,6 @@
-import { getCapabilityScope } from "../../../../lib/shared/domain";
+import { getCapabilityScope } from "../../../../lib/domain";
 import { apiFetchServer } from "../../../../lib/api/server";
-import { OrderDetailView } from "../../../../features/orders/components/OrderDetailView";
+import { OrderDetailView } from "../../../../modules/orders/components/OrderDetailView";
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await params;

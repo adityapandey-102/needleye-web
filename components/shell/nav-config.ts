@@ -1,4 +1,4 @@
-import { hasCapability, type Capability, type Role } from "../../lib/shared/domain";
+import { hasCapability, type Capability, type Role } from "../../lib/domain";
 
 interface NavItem {
   label: string;

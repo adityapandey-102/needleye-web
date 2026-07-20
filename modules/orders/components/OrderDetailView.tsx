@@ -7,7 +7,7 @@ import {
   PAYMENT_STATUSES,
   PRODUCT_CATEGORIES,
   type Order,
-} from "../../../lib/shared/domain";
+} from "../../../lib/domain";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { StatusPill } from "../../../components/ui/StatusPill";

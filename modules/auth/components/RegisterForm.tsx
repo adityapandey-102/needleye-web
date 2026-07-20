@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
-import { apiFetch } from "../../../lib/api/client";
+import { authApi } from "../api/authApi";
 import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
 
@@ -18,7 +18,8 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    apiFetch("/auth/bootstrap-status")
+    authApi
+      .bootstrapStatus()
       .then((data) => setOwnerExists(Boolean(data.ownerExists)))
       .catch(() => setOwnerExists(true))
       .finally(() => setChecking(false));
@@ -30,10 +31,7 @@ export function RegisterForm() {
     setLoading(true);
 
     try {
-      await apiFetch("/auth/bootstrap", {
-        method: "POST",
-        body: JSON.stringify({ email, password, fullName }),
-      });
+      await authApi.bootstrap({ email, password, fullName });
 
       const supabase = createClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });

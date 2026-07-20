@@ -9,7 +9,7 @@ import {
   hasCapability,
   type Order,
   type Role,
-} from "../../../lib/shared/domain";
+} from "../../../lib/domain";
 import { useTeamMembers } from "../hooks/useTeamMembers";
 import { ordersApi } from "../api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";

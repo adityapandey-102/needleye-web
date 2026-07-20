@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ROLE_LABELS, type Profile } from "../../lib/shared/domain";
+import { ROLE_LABELS, type Profile } from "../../lib/domain";
 import { visibleNavSections } from "./nav-config";
 import { createClient } from "../../lib/supabase/client";
 

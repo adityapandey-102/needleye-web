@@ -1,22 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ROLE_LABELS, ROLES, type Role } from "../../../lib/shared/domain";
-import { apiFetch } from "../../../lib/api/client";
+import { ROLE_LABELS, ROLES, type Role } from "../../../lib/domain";
+import { usersApi, type StaffUser } from "../api/usersApi";
 import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
 
-interface UserRow {
-  id: string;
-  fullName: string;
-  email: string;
-  role: Role;
-  active: boolean;
-  createdAt: string;
-}
-
 export default function UserManagementClient() {
-  const [users, setUsers] = useState<UserRow[]>([]);
+  const [users, setUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,9 +18,9 @@ export default function UserManagementClient() {
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
-async function fetchUsers(): Promise<{ users: UserRow[] } | { error: string }> {
+async function fetchUsers(): Promise<{ users: StaffUser[] } | { error: string }> {
     try {
-      const data = await apiFetch("/users");
+      const data = await usersApi.list();
       return { users: data.users };
     } catch (err) {
       return { error: err instanceof Error ? err.message : "Failed to load users" };
@@ -73,10 +64,7 @@ async function fetchUsers(): Promise<{ users: UserRow[] } | { error: string }> {
     setInviteError(null);
     setInviting(true);
     try {
-      await apiFetch("/users/invite", {
-        method: "POST",
-        body: JSON.stringify({ fullName, email, role }),
-      });
+      await usersApi.invite({ fullName, email, role });
       setFullName("");
       setEmail("");
       setRole("designer");
@@ -90,13 +78,13 @@ async function fetchUsers(): Promise<{ users: UserRow[] } | { error: string }> {
   }
 
   async function handleRoleChange(id: string, nextRole: Role) {
-    await apiFetch(`/users/${id}`, { method: "PATCH", body: JSON.stringify({ role: nextRole }) });
+    await usersApi.updateRole(id, nextRole);
     await loadUsers();
   }
 
   async function handleDeactivate(id: string) {
     if (!confirm("Deactivate this account? They will immediately lose access.")) return;
-    await apiFetch(`/users/${id}/deactivate`, { method: "POST" });
+    await usersApi.deactivate(id);
     await loadUsers();
   }
 
