@@ -11,6 +11,11 @@ import {
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { StatusPill } from "../../../components/ui/StatusPill";
+import { OrderQrCode } from "./OrderQrCode";
+import { PaymentLedger } from "./PaymentLedger";
+import { OrderTimeline } from "./OrderTimeline";
+import { OrderStatusControl } from "./OrderStatusControl";
+import { PrintOrderButton } from "./PrintOrderButton";
 
 function yesNo(value: boolean) {
   return value ? "Yes" : "No";
@@ -20,10 +25,16 @@ export function OrderDetailView({
   order,
   canEdit,
   canSeePayment,
+  canManagePayments,
+  canChangeDesignStage,
+  canChangeProductionStage,
 }: {
   order: Order;
   canEdit: boolean;
   canSeePayment: boolean;
+  canManagePayments: boolean;
+  canChangeDesignStage: boolean;
+  canChangeProductionStage: boolean;
 }) {
   const category = PRODUCT_CATEGORIES.find((c) => c.value === order.productCategory);
   const payment = PAYMENT_STATUSES.find((p) => p.value === order.paymentStatus);
@@ -40,10 +51,11 @@ export function OrderDetailView({
             {order.orderNumber} · {order.billNumber}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 print:hidden">
           <Link href="/orders">
             <Button variant="outline">All Orders</Button>
           </Link>
+          <PrintOrderButton />
           {canEdit && (
             <Link href={`/orders/${order.id}/edit`}>
               <Button>Edit Order</Button>
@@ -106,21 +118,51 @@ export function OrderDetailView({
             <CardBody className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-muted">Status</span>
-                <StatusPill label={granularLabel(order.productionStatus)} />
+                {canChangeDesignStage || canChangeProductionStage ? (
+                  <>
+                    <span className="print:hidden">
+                      <OrderStatusControl
+                        orderId={order.id}
+                        currentStatus={order.productionStatus}
+                        canChangeDesignStage={canChangeDesignStage}
+                        canChangeProductionStage={canChangeProductionStage}
+                      />
+                    </span>
+                    <span className="hidden print:inline">
+                      <StatusPill label={granularLabel(order.productionStatus)} />
+                    </span>
+                  </>
+                ) : (
+                  <StatusPill label={granularLabel(order.productionStatus)} />
+                )}
               </div>
               {canSeePayment ? (
                 <>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-muted">Payment</span>
-                    <StatusPill label={payment?.label ?? order.paymentStatus} tone={order.paymentStatus === "fully_paid" ? "green" : "amber"} />
+                    <StatusPill label={payment?.label ?? order.paymentStatus ?? ""} tone={order.paymentStatus === "fully_paid" ? "green" : "amber"} />
                   </div>
-                  <InfoRow label="Total" value={formatCurrency(order.totalAmount)} />
-                  <InfoRow label="Outstanding" value={formatCurrency(order.outstanding)} />
-                  <p className="text-[11px] text-text-muted">Payment ledger (multiple entries) lands in Phase 3.</p>
+                  <InfoRow label="Total" value={formatCurrency(order.totalAmount ?? 0)} />
+                  <InfoRow label="Outstanding" value={formatCurrency(order.outstanding ?? 0)} />
                 </>
               ) : (
                 <p className="text-xs text-text-muted">Payment details are not visible for your role.</p>
               )}
+            </CardBody>
+          </Card>
+
+          {canSeePayment && <PaymentLedger orderId={order.id} canManage={canManagePayments} />}
+
+          {/* key={order.updatedAt} forces a remount (and a fresh fetch) whenever the
+              order changes -- the orders_set_updated_at DB trigger touches this on
+              every status transition, so router.refresh() after a status change
+              actually shows the new history entry instead of a stale mount-time fetch. */}
+          <OrderTimeline orderId={order.id} key={order.updatedAt} />
+
+          <Card>
+            <CardHeader icon="📱" iconTone="purple" title="Order QR" subtitle="Quick access for the team" />
+            <CardBody>
+              <OrderQrCode url={`${process.env.NEXT_PUBLIC_WEB_APP_URL}/orders/${order.id}`} />
             </CardBody>
           </Card>
 

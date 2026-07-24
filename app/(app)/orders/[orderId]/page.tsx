@@ -10,6 +10,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
   ]);
 
   const isAssignedDesigner = profile.role === "designer" && order.designerId === profile.id;
+  const isAssignedMasterTailor = profile.role === "master_tailor" && order.masterTailorId === profile.id;
   const contentScope = getCapabilityScope(profile.role, "orders:edit:customer_product_fields");
   const pricingScope = getCapabilityScope(profile.role, "orders:edit:pricing_assignment");
   const canEdit =
@@ -19,6 +20,22 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
     (pricingScope === "assigned" && isAssignedDesigner);
 
   const canSeePayment = getCapabilityScope(profile.role, "payments:read") !== false;
+  const paymentsManageScope = getCapabilityScope(profile.role, "payments:manage");
+  const canManagePayments = paymentsManageScope === true || (paymentsManageScope === "assigned" && isAssignedDesigner);
 
-  return <OrderDetailView order={order} canEdit={canEdit} canSeePayment={canSeePayment} />;
+  const designStageScope = getCapabilityScope(profile.role, "orders:status:design_stages");
+  const productionStageScope = getCapabilityScope(profile.role, "orders:status:production_stages");
+  const canChangeDesignStage = designStageScope === true || (designStageScope === "assigned" && isAssignedDesigner);
+  const canChangeProductionStage = productionStageScope === true || (productionStageScope === "assigned" && isAssignedMasterTailor);
+
+  return (
+    <OrderDetailView
+      order={order}
+      canEdit={canEdit}
+      canSeePayment={canSeePayment}
+      canManagePayments={canManagePayments}
+      canChangeDesignStage={canChangeDesignStage}
+      canChangeProductionStage={canChangeProductionStage}
+    />
+  );
 }

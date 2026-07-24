@@ -27,11 +27,9 @@ jobs:
 
       - name: Build
         env:
-          # Build-time placeholders -- Vercel (or wherever this deploys)
-          # supplies the real values as project env vars. Present here only
+          # Build-time placeholder -- Vercel (or wherever this deploys)
+          # supplies the real value as a project env var. Present here only
           # so `next build`'s static analysis/prerendering doesn't fail.
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
           NEXT_PUBLIC_API_BASE_URL: https://placeholder.example.com/api/v1
         run: npm run build
 

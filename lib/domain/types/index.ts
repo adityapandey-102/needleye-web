@@ -40,8 +40,8 @@ export interface Payment {
   amount: number;
   method: PaymentMethod;
   paidAt: string;
-  recordedBy: string;
-  recordedByName?: string | null;
+  recordedBy: string | null;
+  recordedByName?: string;
   notes: string | null;
   createdAt: string;
 }
@@ -63,10 +63,11 @@ export interface Order {
   handWork: boolean;
   machineWork: boolean;
   purchaseRequired: boolean;
-  paymentStatus: PaymentStatus;
-  totalAmount: number;
-  amountPaid: number;
-  outstanding: number;
+  /** Absent when the API strips it server-side for a role without payments:read (master_tailor) -- not just hidden in the UI. */
+  paymentStatus?: PaymentStatus;
+  totalAmount?: number;
+  amountPaid?: number;
+  outstanding?: number;
   productionStatus: GranularStatus;
   designerInstructions: string | null;
   specialNotes: string | null;
@@ -81,9 +82,10 @@ export interface OrderStats {
   total: number;
   active: number;
   completed: number;
-  pendingPayments: number;
-  collectedRevenue: number;
-  outstandingRevenue: number;
+  /** Absent entirely (not zero) when the API strips it server-side for a role without payments:read (master_tailor). */
+  pendingPayments?: number;
+  collectedRevenue?: number;
+  outstandingRevenue?: number;
 }
 
 export interface TimelineSummary {

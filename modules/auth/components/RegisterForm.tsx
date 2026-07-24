@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "../../../lib/supabase/client";
 import { authApi } from "../api/authApi";
 import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
@@ -32,10 +31,7 @@ export function RegisterForm() {
 
     try {
       await authApi.bootstrap({ email, password, fullName });
-
-      const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) throw signInError;
+      await authApi.login({ email, password });
 
       router.push("/orders");
       router.refresh();

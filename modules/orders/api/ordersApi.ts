@@ -1,4 +1,4 @@
-import type { CreateOrderInput, Order, UpdateOrderInput } from "../../../lib/domain";
+import type { CreateOrderInput, GranularStatus, Order, OrderStats, OrderStatusHistoryEntry, UpdateOrderInput } from "../../../lib/domain";
 import { apiFetch, apiUpload } from "../../../lib/api/client";
 
 export interface OrderListFilters {
@@ -25,6 +25,18 @@ export const ordersApi = {
 
   update(orderId: string, input: Partial<UpdateOrderInput>): Promise<{ order: Order }> {
     return apiFetch(`/orders/${orderId}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  updateStatus(orderId: string, status: GranularStatus): Promise<{ order: Order }> {
+    return apiFetch(`/orders/${orderId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+  },
+
+  history(orderId: string): Promise<{ history: OrderStatusHistoryEntry[] }> {
+    return apiFetch(`/orders/${orderId}/history`);
+  },
+
+  stats(): Promise<OrderStats> {
+    return apiFetch("/orders/stats");
   },
 
   uploadImage(orderId: string, slot: number, file: File): Promise<{ storagePath: string; url: string }> {

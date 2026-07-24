@@ -8,9 +8,11 @@ export interface StaffUser {
   role: Role;
   active: boolean;
   createdAt: string;
+  lastLoginAt: string | null;
+  hasQrLogin: boolean;
 }
 
-export interface InviteUserPayload {
+export interface CreateUserPayload {
   fullName: string;
   email: string;
   role: Role;
@@ -22,8 +24,19 @@ export const usersApi = {
     return apiFetch("/users");
   },
 
-  invite(payload: InviteUserPayload): Promise<{ userId?: string }> {
-    return apiFetch("/users/invite", { method: "POST", body: JSON.stringify(payload) });
+  /** Creates the account directly with a generated password -- no invite email. The password is returned once. */
+  create(payload: CreateUserPayload): Promise<{ userId: string; password: string }> {
+    return apiFetch("/users", { method: "POST", body: JSON.stringify(payload) });
+  },
+
+  /** Regenerates the account's password. Returned once -- the caller must communicate it to the account holder directly. */
+  generatePassword(id: string): Promise<{ password: string }> {
+    return apiFetch(`/users/${id}/generate-password`, { method: "POST" });
+  },
+
+  /** Master Tailor only. Regenerating invalidates any previously-issued QR immediately. Returned once. */
+  generateQrToken(id: string): Promise<{ token: string; loginUrl: string }> {
+    return apiFetch(`/users/${id}/qr-token`, { method: "POST" });
   },
 
   updateRole(id: string, role: Role): Promise<null> {

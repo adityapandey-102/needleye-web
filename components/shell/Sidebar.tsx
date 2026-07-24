@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ROLE_LABELS, type Profile } from "../../lib/domain";
 import { visibleNavSections } from "./nav-config";
-import { createClient } from "../../lib/supabase/client";
+import { authApi } from "../../modules/auth/api/authApi";
 
 function initials(name: string) {
   return name
@@ -30,8 +30,7 @@ export function Sidebar({
   const sections = visibleNavSections(profile.role);
 
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await authApi.logout();
     router.push("/login");
     router.refresh();
   }
@@ -42,7 +41,7 @@ export function Sidebar({
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} aria-hidden="true" />
       )}
       <aside
-        className={`fixed top-0 left-0 z-50 flex h-screen w-[260px] flex-col bg-sidebar transition-transform lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-screen w-[260px] flex-col bg-sidebar transition-transform lg:translate-x-0 print:hidden ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

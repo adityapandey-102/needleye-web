@@ -3,6 +3,7 @@ import { hasCapability } from "../../../lib/domain";
 import { apiFetchServer } from "../../../lib/api/server";
 import { Button } from "../../../components/ui/Button";
 import { OrdersListClient } from "../../../modules/orders/components/OrdersListClient";
+import { OrderStatCards } from "../../../modules/orders/components/OrderStatCards";
 
 export default async function OrdersPage() {
   const { profile } = await apiFetchServer("/auth/me");
@@ -12,9 +13,7 @@ export default async function OrdersPage() {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-serif text-xl font-bold text-text-primary">Orders</h1>
-          <p className="text-sm text-text-muted">
-            Stat cards and the production Kanban board land in Phases 4 &amp; 5.
-          </p>
+          <p className="text-sm text-text-muted">An at-a-glance view of every order in your scope.</p>
         </div>
         {hasCapability(profile.role, "orders:create") && (
           <Link href="/orders/new">
@@ -22,7 +21,8 @@ export default async function OrdersPage() {
           </Link>
         )}
       </div>
-      <OrdersListClient role={profile.role} />
+      <OrderStatCards />
+      <OrdersListClient role={profile.role} userId={profile.id} />
     </div>
   );
 }

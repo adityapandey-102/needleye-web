@@ -21,6 +21,7 @@ import { Select, Textarea } from "../../../components/ui/Select";
 import { RadioGroup } from "../../../components/ui/RadioGroup";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { ImageUploadGrid, type ImageSlotState } from "./ImageUploadGrid";
+import { useToast } from "../../../components/ui/Toast";
 
 type FormState = {
   customerName: string;
@@ -82,7 +83,7 @@ function formFromOrder(order: Order): FormState {
     handWork: order.handWork,
     machineWork: order.machineWork,
     purchaseRequired: order.purchaseRequired,
-    paymentStatus: order.paymentStatus,
+    paymentStatus: order.paymentStatus ?? "",
     totalAmount: String(order.totalAmount ?? ""),
     productionStatus: order.productionStatus,
     designerInstructions: order.designerInstructions ?? "",
@@ -108,6 +109,7 @@ export function OrderForm({
   currentUserRole,
 }: OrderFormProps) {
   const router = useRouter();
+  const { showToast } = useToast();
   const { members: designers } = useTeamMembers("designer");
   const { members: masters } = useTeamMembers("master_tailor");
 
@@ -234,10 +236,13 @@ export function OrderForm({
           .map(([slot, file]) => ordersApi.uploadImage(created.id, Number(slot), file as File));
         await Promise.all(uploads);
 
+        showToast("Order created successfully.", "success");
         router.push(`/orders/${created.id}`);
         router.refresh();
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Failed to create order");
+        const message = err instanceof Error ? err.message : "Failed to create order";
+        setSubmitError(message);
+        showToast(message, "error");
       } finally {
         setSubmitting(false);
       }
@@ -275,10 +280,13 @@ export function OrderForm({
     setSubmitting(true);
     try {
       await ordersApi.update(order.id, editable);
+      showToast("Order updated successfully.", "success");
       router.push(`/orders/${order.id}`);
       router.refresh();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to save changes");
+      const message = err instanceof Error ? err.message : "Failed to save changes";
+      setSubmitError(message);
+      showToast(message, "error");
     } finally {
       setSubmitting(false);
     }

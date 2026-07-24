@@ -17,11 +17,15 @@ import { Input } from "../../../components/ui/Field";
 import { Select } from "../../../components/ui/Select";
 import { Button } from "../../../components/ui/Button";
 import { StatusPill } from "../../../components/ui/StatusPill";
+import { KanbanBoard } from "./KanbanBoard";
 
-export function OrdersListClient({ role }: { role: Role }) {
+type ViewMode = "table" | "kanban";
+
+export function OrdersListClient({ role, userId }: { role: Role; userId: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<ViewMode>("table");
 
   const [search, setSearch] = useState("");
   const [designerId, setDesignerId] = useState("");
@@ -88,6 +92,24 @@ export function OrdersListClient({ role }: { role: Role }) {
         </CardBody>
       </Card>
 
+      <div className="mb-3 flex justify-end gap-2">
+        <Button variant={view === "table" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => setView("table")}>
+          📋 Table
+        </Button>
+        <Button variant={view === "kanban" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => setView("kanban")}>
+          🗂️ Kanban
+        </Button>
+      </div>
+
+      {view === "kanban" ? (
+        loading ? (
+          <div className="p-6 text-sm text-text-muted">Loading…</div>
+        ) : error ? (
+          <div className="p-6 text-sm text-error">{error}</div>
+        ) : (
+          <KanbanBoard orders={orders} role={role} userId={userId} />
+        )
+      ) : (
       <Card>
         <CardHeader icon="📋" iconTone="blue" title="All Orders" subtitle="Open any order for full details" />
         <div className="overflow-x-auto">
@@ -130,7 +152,7 @@ export function OrdersListClient({ role }: { role: Role }) {
                       </td>
                       {canSeePayment && (
                         <td className="px-4 py-2.5">
-                          <StatusPill label={order.paymentStatus.replace("_", " ")} tone={order.paymentStatus === "fully_paid" ? "green" : "amber"} />
+                          <StatusPill label={(order.paymentStatus ?? "").replace("_", " ")} tone={order.paymentStatus === "fully_paid" ? "green" : "amber"} />
                         </td>
                       )}
                       <td className="px-4 py-2.5">
@@ -148,6 +170,7 @@ export function OrdersListClient({ role }: { role: Role }) {
           )}
         </div>
       </Card>
+      )}
     </div>
   );
 }
