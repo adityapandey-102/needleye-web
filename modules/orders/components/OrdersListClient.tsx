@@ -21,8 +21,14 @@ import { KanbanBoard } from "./KanbanBoard";
 
 type ViewMode = "table" | "kanban";
 
+/** Table page size, and the (bounded) number of cards the Kanban board pulls in one go. */
+const PAGE_SIZE = 20;
+const KANBAN_LIMIT = 100;
+
 export function OrdersListClient({ role, userId }: { role: Role; userId: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("table");
@@ -35,16 +41,46 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
   const { members: masters } = useTeamMembers("master_tailor");
   const canSeePayment = hasCapability(role, "payments:read");
 
+  // Any filter or view change goes through these so it also resets to the
+  // first page -- otherwise a filter that narrows the result set could leave
+  // you stranded on a now-empty page. (Resetting here in the event handler,
+  // not in an effect, keeps the page/filter update in a single render.)
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(0);
+  }
+  function changeDesigner(value: string) {
+    setDesignerId(value);
+    setPage(0);
+  }
+  function changeMaster(value: string) {
+    setMasterTailorId(value);
+    setPage(0);
+  }
+  function changeView(next: ViewMode) {
+    setView(next);
+    setPage(0);
+  }
+
   useEffect(() => {
     let cancelled = false;
 
     const timeout = setTimeout(() => {
       setLoading(true);
+      // Table pages through the results; Kanban needs the whole board at once,
+      // so it pulls a single bounded page (the server caps limit at 100 too).
+      const pagination = view === "table" ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE } : { limit: KANBAN_LIMIT, offset: 0 };
       ordersApi
-        .list({ search: search.trim() || undefined, designerId: designerId || undefined, masterTailorId: masterTailorId || undefined })
+        .list({
+          search: search.trim() || undefined,
+          designerId: designerId || undefined,
+          masterTailorId: masterTailorId || undefined,
+          ...pagination,
+        })
         .then((data) => {
           if (!cancelled) {
             setOrders(data.orders);
+            setTotal(data.total);
             setError(null);
           }
         })
@@ -60,7 +96,11 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [search, designerId, masterTailorId]);
+  }, [search, designerId, masterTailorId, view, page]);
+
+  const pageStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
+  const pageEnd = Math.min((page + 1) * PAGE_SIZE, total);
+  const hasNextPage = pageEnd < total;
 
   return (
     <div>
@@ -71,9 +111,9 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
             className="min-w-[220px] flex-1"
             placeholder="Search customer, bill number, or order ID"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => changeSearch(e.target.value)}
           />
-          <Select className="w-auto" value={designerId} onChange={(e) => setDesignerId(e.target.value)}>
+          <Select className="w-auto" value={designerId} onChange={(e) => changeDesigner(e.target.value)}>
             <option value="">All Designers</option>
             {designers.map((d) => (
               <option key={d.id} value={d.id}>
@@ -81,7 +121,7 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
               </option>
             ))}
           </Select>
-          <Select className="w-auto" value={masterTailorId} onChange={(e) => setMasterTailorId(e.target.value)}>
+          <Select className="w-auto" value={masterTailorId} onChange={(e) => changeMaster(e.target.value)}>
             <option value="">All Masters</option>
             {masters.map((m) => (
               <option key={m.id} value={m.id}>
@@ -93,10 +133,10 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
       </Card>
 
       <div className="mb-3 flex justify-end gap-2">
-        <Button variant={view === "table" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => setView("table")}>
+        <Button variant={view === "table" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => changeView("table")}>
           📋 Table
         </Button>
-        <Button variant={view === "kanban" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => setView("kanban")}>
+        <Button variant={view === "kanban" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => changeView("kanban")}>
           🗂️ Kanban
         </Button>
       </div>
@@ -107,7 +147,15 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
         ) : error ? (
           <div className="p-6 text-sm text-error">{error}</div>
         ) : (
-          <KanbanBoard orders={orders} role={role} userId={userId} />
+          <>
+            {total > KANBAN_LIMIT && (
+              <div className="mb-3 rounded-app-sm border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Showing the {KANBAN_LIMIT} most recent orders on the board (of {total}). Use Table view with search/filters to
+                find older orders.
+              </div>
+            )}
+            <KanbanBoard orders={orders} role={role} userId={userId} />
+          </>
         )
       ) : (
       <Card>
@@ -169,6 +217,31 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
             </table>
           )}
         </div>
+        {!loading && !error && total > 0 && (
+          <div className="flex items-center justify-between gap-3 border-t border-border-light px-4 py-3 text-xs text-text-muted">
+            <span>
+              Showing {pageStart}–{pageEnd} of {total}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="px-3 py-1.5 text-xs"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(p - 1, 0))}
+              >
+                ← Prev
+              </Button>
+              <Button
+                variant="outline"
+                className="px-3 py-1.5 text-xs"
+                disabled={!hasNextPage}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next →
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
       )}
     </div>

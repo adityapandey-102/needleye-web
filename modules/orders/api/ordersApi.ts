@@ -6,16 +6,28 @@ export interface OrderListFilters {
   designerId?: string;
   masterTailorId?: string;
   status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** The paginated envelope GET /orders returns -- `total` is the full count matching the filters, for the pager. */
+export interface OrderListResult {
+  orders: Order[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 /** All HTTP calls the Orders feature makes, in one place -- components never call apiFetch directly. */
 export const ordersApi = {
-  list(filters: OrderListFilters = {}): Promise<{ orders: Order[] }> {
+  list(filters: OrderListFilters = {}): Promise<OrderListResult> {
     const query = new URLSearchParams();
     if (filters.search) query.set("search", filters.search);
     if (filters.designerId) query.set("designerId", filters.designerId);
     if (filters.masterTailorId) query.set("masterTailorId", filters.masterTailorId);
     if (filters.status) query.set("status", filters.status);
+    if (filters.limit !== undefined) query.set("limit", String(filters.limit));
+    if (filters.offset !== undefined) query.set("offset", String(filters.offset));
     return apiFetch(`/orders?${query.toString()}`);
   },
 

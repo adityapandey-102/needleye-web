@@ -42,6 +42,22 @@ First-time setup: visit `/register` to create the first Owner/Manager
 account (self-disabling once one exists). Everyone else is created directly
 from `/admin/users` (no email invite -- see "Account creation" below).
 
+## Testing
+
+Testing Pyramid (see `CLAUDE.md`): unit tests on `lib/domain/`'s business
+logic are the priority, E2E only for critical workflows.
+
+- **`npm run test:unit`** (Vitest, `lib/**/*.test.ts`, colocated with the
+  code under test) -- the capability matrix, the client-side order-status
+  permission mirror, currency/date/timeline utilities, and the zod
+  validation schemas (order/payment/user). Runs in CI on every push/PR.
+- **`npm run test:e2e`** (Playwright, `e2e/`) -- login, create order (incl.
+  image upload), search orders, update order, record payment, run against
+  the real needleye-api + local Supabase stack, no mocking. Not wired into
+  CI (it needs a live backend + database, a heavier dependency than this
+  repo's own CI job should take on) -- run it locally before a release. See
+  `e2e/README.md`.
+
 ## Architecture
 
 A **Modular Monolith**: one Next.js app, internally split into
@@ -63,7 +79,7 @@ modules/
   orders/
     components/                 # OrderForm (create+edit), OrdersListClient, OrderDetailView, ImageUploadGrid, OrderQrCode, PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
-    api/ordersApi.ts               # every HTTP call the Orders module makes
+    api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset })
   payments/
     api/paymentsApi.ts             # every HTTP call the Payments module makes -- mirrors needleye-api's own Payments module
   admin-users/
@@ -219,4 +235,4 @@ is bypassing needleye-api and should go through it instead.
 Independent from needleye-api -- deploy to Vercel (or any Next.js host),
 pointed at a hosted Supabase project and the deployed needleye-api URL via
 the same env vars used locally. `.github/workflows/ci.yml` runs
-typecheck + lint + build on every push/PR.
+lint + typecheck + unit tests + build on every push/PR.
