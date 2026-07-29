@@ -1,5 +1,4 @@
 import { apiFetch } from "../../../lib/api/client";
-import { setSession, clearSession } from "../../../lib/session/client";
 import type { Profile } from "../../../lib/domain";
 
 export interface BootstrapPayload {
@@ -8,19 +7,31 @@ export interface BootstrapPayload {
   fullName: string;
 }
 
-interface AuthSessionResponse {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  profile: Profile;
+/**
+ * POST to a same-origin `/api/session/*` route handler. These routes own the
+ * session cookies (the refresh token is httpOnly, so only server code can set
+ * it) and proxy to needleye-api server-side. They return just the profile --
+ * tokens never come back in the response body.
+ */
+async function postSession<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`/api/session/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? `Request failed: ${response.status}`);
+  }
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
 }
 
 /**
- * All HTTP calls the Auth module makes against needleye-api, in one place --
- * components never call apiFetch or Supabase directly. login/logout are the
- * only calls here with a side effect beyond the request itself: they own
- * writing/clearing the session cookies (lib/session/client) that every other
- * API call reads.
+ * All auth HTTP the Auth module makes. Reads (bootstrap-status, password
+ * reset/update) still go straight to needleye-api via apiFetch; anything that
+ * mints or clears a session goes through the same-origin session routes so
+ * the httpOnly refresh cookie is set server-side.
  */
 export const authApi = {
   bootstrapStatus(): Promise<{ ownerExists: boolean }> {
@@ -31,46 +42,35 @@ export const authApi = {
     return apiFetch("/auth/bootstrap", { method: "POST", body: JSON.stringify(payload) });
   },
 
-  async login(payload: { email: string; password: string }): Promise<AuthSessionResponse> {
-    const session: AuthSessionResponse = await apiFetch("/auth/login", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    setSession({ accessToken: session.accessToken, refreshToken: session.refreshToken });
-    return session;
+  login(payload: { email: string; password: string }): Promise<{ profile: Profile }> {
+    return postSession("login", payload);
   },
 
-  async logout(): Promise<void> {
-    // Best-effort revoke server-side -- the local session is cleared regardless of the outcome.
-    await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
-    clearSession();
+  logout(): Promise<void> {
+    // Best-effort revoke + cookie clear, server-side.
+    return postSession<void>("logout").catch(() => undefined);
   },
 
   requestPasswordReset(payload: { email: string }): Promise<void> {
     return apiFetch("/auth/password-reset-request", { method: "POST", body: JSON.stringify(payload) });
   },
 
-  /** Only used by the /auth/callback page, for a project configured for PKCE (a `?code=` link) rather than the implicit flow. */
-  async exchangeCode(payload: { code: string }): Promise<AuthSessionResponse> {
-    const session: AuthSessionResponse = await apiFetch("/auth/exchange-code", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    setSession({ accessToken: session.accessToken, refreshToken: session.refreshToken });
-    return session;
+  /** Only used by the /auth/callback page, for a project configured for PKCE (a `?code=` link). */
+  exchangeCode(payload: { code: string }): Promise<{ profile: Profile }> {
+    return postSession("exchange-code", payload);
   },
 
   updatePassword(payload: { newPassword: string }): Promise<void> {
     return apiFetch("/auth/password-update", { method: "POST", body: JSON.stringify(payload) });
   },
 
-  /** Master Tailor QR login -- the token comes from the ?token= query param on the scanned QR's URL. */
-  async qrLogin(payload: { token: string }): Promise<AuthSessionResponse> {
-    const session: AuthSessionResponse = await apiFetch("/auth/qr-login", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    setSession({ accessToken: session.accessToken, refreshToken: session.refreshToken });
-    return session;
+  /** Master Tailor QR login -- token from the ?token= query param on the scanned QR's URL. */
+  qrLogin(payload: { token: string }): Promise<{ profile: Profile }> {
+    return postSession("qr-login", payload);
+  },
+
+  /** Stores a session obtained client-side (implicit email-link flow). See app/api/session/establish. */
+  establish(payload: { accessToken: string; refreshToken: string }): Promise<void> {
+    return postSession<void>("establish", payload);
   },
 };

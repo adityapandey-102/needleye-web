@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authApi } from "../../../modules/auth/api/authApi";
-import { setSession } from "../../../lib/session/client";
 
 /**
  * Lands here from a password-reset or invite email link. This local Supabase
@@ -34,7 +33,9 @@ function AuthCallbackContent() {
       const refreshToken = hashParams.get("refresh_token");
 
       if (accessToken && refreshToken) {
-        setSession({ accessToken, refreshToken });
+        // Hand the fragment tokens to the server so the refresh token is
+        // stored httpOnly (JS can't set an httpOnly cookie itself).
+        await authApi.establish({ accessToken, refreshToken });
         router.replace(next);
         return;
       }

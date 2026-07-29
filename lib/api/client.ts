@@ -1,30 +1,25 @@
-import { getAccessToken, getRefreshToken, setSession, clearSession } from "../session/client";
+import { getAccessToken } from "../session/client";
 import { isExpired } from "../session/jwt";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
-/** Refreshes against needleye-api (never Supabase) if the current access token is missing or expired. */
+/**
+ * Ensures a usable access token. When the current one is missing/expired, the
+ * refresh goes through the same-origin `/api/session/refresh` route -- which
+ * reads the httpOnly refresh cookie server-side and rotates both cookies --
+ * rather than the browser holding a refresh token itself. The new access
+ * cookie is set by that route's response; we also use the returned token
+ * directly to avoid a cookie-read race.
+ */
 async function ensureFreshAccessToken(): Promise<string | null> {
   const token = getAccessToken();
   if (token && !isExpired(token)) return token;
 
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
+  const response = await fetch("/api/session/refresh", { method: "POST" });
+  if (!response.ok) return null;
 
-  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  });
-
-  if (!response.ok) {
-    clearSession();
-    return null;
-  }
-
-  const data = await response.json();
-  setSession({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-  return data.accessToken;
+  const data = (await response.json().catch(() => ({}))) as { accessToken?: string };
+  return data.accessToken ?? getAccessToken();
 }
 
 /** Browser-side fetch wrapper for the Express API -- attaches the current session's access token. */

@@ -90,15 +90,23 @@ async function refreshSession(refreshToken: string): Promise<Tokens | null> {
 function applyTokens(response: NextResponse, tokens: Tokens | null) {
   if (!tokens) return response;
 
+  const secure = process.env.NODE_ENV === "production";
+  // Access token stays readable by browser JS (Bearer header on direct API
+  // calls); refresh token is httpOnly so JS can never read it. Mirrors the
+  // cookie flags in lib/session/server.ts.
   response.cookies.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, {
     path: "/",
     maxAge: COOKIE_MAX_AGE_ACCESS,
+    httpOnly: false,
     sameSite: "lax",
+    secure,
   });
   response.cookies.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
     path: "/",
     maxAge: COOKIE_MAX_AGE_REFRESH,
+    httpOnly: true,
     sameSite: "lax",
+    secure,
   });
   return response;
 }

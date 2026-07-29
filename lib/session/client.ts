@@ -1,42 +1,16 @@
 "use client";
 
-import {
-  ACCESS_TOKEN_COOKIE,
-  REFRESH_TOKEN_COOKIE,
-  COOKIE_MAX_AGE_ACCESS,
-  COOKIE_MAX_AGE_REFRESH,
-} from "./constants";
+import { ACCESS_TOKEN_COOKIE } from "./constants";
 
-/** Browser-side session cookie access, backed by document.cookie. */
-
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]!) : null;
-}
-
-function writeCookie(name: string, value: string, maxAgeSeconds: number) {
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`;
-}
-
-function deleteCookie(name: string) {
-  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
-}
-
+/**
+ * Browser-side session access. Only the access token is readable here -- it's
+ * a non-httpOnly cookie so lib/api/client can attach it to direct API calls.
+ * The refresh token is an httpOnly cookie the browser JS cannot read or
+ * write; every operation that establishes, rotates, or clears a session goes
+ * through the same-origin `/api/session/*` route handlers instead (see
+ * modules/auth/api/authApi and lib/api/client's refresh path).
+ */
 export function getAccessToken(): string | null {
-  return readCookie(ACCESS_TOKEN_COOKIE);
-}
-
-export function getRefreshToken(): string | null {
-  return readCookie(REFRESH_TOKEN_COOKIE);
-}
-
-export function setSession(tokens: { accessToken: string; refreshToken: string }): void {
-  writeCookie(ACCESS_TOKEN_COOKIE, tokens.accessToken, COOKIE_MAX_AGE_ACCESS);
-  writeCookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, COOKIE_MAX_AGE_REFRESH);
-}
-
-export function clearSession(): void {
-  deleteCookie(ACCESS_TOKEN_COOKIE);
-  deleteCookie(REFRESH_TOKEN_COOKIE);
+  const match = document.cookie.match(new RegExp(`(?:^|; )${ACCESS_TOKEN_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]!) : null;
 }

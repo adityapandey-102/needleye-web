@@ -72,6 +72,8 @@ export interface Order {
   designerInstructions: string | null;
   specialNotes: string | null;
   images: OrderImage[];
+  /** Optimistic-lock version -- echoed back when editing so a concurrent edit is rejected (ORDER_MODIFIED) instead of clobbered. */
+  version: number;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;

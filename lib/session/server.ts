@@ -20,18 +20,27 @@ export async function getRefreshToken(): Promise<string | null> {
 
 export async function setSession(tokens: { accessToken: string; refreshToken: string }): Promise<void> {
   const store = await cookies();
+  const secure = process.env.NODE_ENV === "production";
   try {
+    // Access token: readable by browser JS (httpOnly: false) so lib/api/client
+    // can attach it as a Bearer header on direct calls to needleye-api.
     store.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, {
       path: "/",
       maxAge: COOKIE_MAX_AGE_ACCESS,
+      httpOnly: false,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure,
     });
+    // Refresh token: httpOnly -- browser JS can never read it, so an XSS can't
+    // steal the long-lived token. Only server code (these session route
+    // handlers and the proxy) ever sees it; it's used solely to mint fresh
+    // access tokens.
     store.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
       path: "/",
       maxAge: COOKIE_MAX_AGE_REFRESH,
+      httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure,
     });
   } catch {
     // Called from a plain Server Component -- cookies() is read-only there.

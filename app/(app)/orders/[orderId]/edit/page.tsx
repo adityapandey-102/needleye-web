@@ -1,13 +1,17 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getCapabilityScope } from "../../../../../lib/domain";
-import { apiFetchServer } from "../../../../../lib/api/server";
+import { apiFetchServer, ApiError } from "../../../../../lib/api/server";
 import { OrderForm } from "../../../../../modules/orders/components/OrderForm";
 
 export default async function EditOrderPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await params;
   const [{ profile }, { order }] = await Promise.all([
     apiFetchServer("/auth/me"),
-    apiFetchServer(`/orders/${orderId}`),
+    // 404 = missing or out of row scope -> clean not-found, not a crash.
+    apiFetchServer(`/orders/${orderId}`).catch((err: unknown) => {
+      if (err instanceof ApiError && err.status === 404) notFound();
+      throw err;
+    }),
   ]);
 
   const isAssignedDesigner = profile.role === "designer" && order.designerId === profile.id;

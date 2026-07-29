@@ -277,6 +277,11 @@ export function OrderForm({
       });
     }
 
+    // Optimistic-lock token: the version this order was loaded with. If someone
+    // else saved a change in the meantime, the API rejects this with a clear
+    // "changed by someone else" message instead of silently overwriting them.
+    editable.version = order.version;
+
     setSubmitting(true);
     try {
       await ordersApi.update(order.id, editable);

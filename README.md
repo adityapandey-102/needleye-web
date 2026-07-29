@@ -91,11 +91,14 @@ lib/
     index.ts                     # barrel export of everything below
     constants/, types/, utils/, validation/
   session/                     # this app's OWN session handling -- cookies holding needleye-api-issued tokens, NOT Supabase's session mechanism
-    constants.ts                  # cookie names/max-age
+    constants.ts                  # cookie names/max-age (ne_at readable, ne_rt httpOnly)
     jwt.ts                          # local (unverified) expiry check, decoded from the access token itself
-    client.ts, server.ts             # browser (document.cookie) vs Server Component/Route Handler (next/headers) cookie access
+    client.ts                       # browser: read the access token only (ne_rt is httpOnly, unreadable by JS)
+    server.ts                       # Server Component/Route Handler: read tokens + SET cookies (refresh httpOnly) via next/headers
+    api-proxy.ts                     # server->needleye-api /auth/* helper used by the session route handlers (forwards client IP)
     proxy.ts                          # the session-refresh logic proxy.ts (root) delegates to
-  api/                          # generic apiFetch/apiUpload wrappers (attach the session's access token, silently refresh via needleye-api if expired) -- modules/*/api/ build on these, components never call these directly
+  api/                          # generic apiFetch/apiUpload wrappers (attach the access token, refresh via /api/session/refresh if expired) -- modules/*/api/ build on these, components never call these directly
+app/api/session/                # Route Handlers that own the session cookies: login, qr-login, exchange-code, refresh, logout, establish (the only code that can set the httpOnly refresh cookie)
 ```
 
 `app/` stays thin on purpose -- a page's job is data-fetching (Server
@@ -114,38 +117,42 @@ across the codebase matters more than trimming one small file).
 
 ### Authentication
 
-Every auth operation is a call to needleye-api, never to Supabase:
+Every auth operation is a call to needleye-api, never to Supabase. Two
+cookies hold the session: **`ne_at`** (access token) is a normal cookie the
+browser reads to attach `Authorization: Bearer <token>` on its direct API
+calls; **`ne_rt`** (refresh token) is **httpOnly** -- browser JS can neither
+read nor write it, so an XSS can't steal the long-lived refresh token. Only
+server code ever sees it.
 
-- **Login/logout** (`modules/auth/api/authApi.ts`) call `POST /auth/login` /
-  `POST /auth/logout` and, as a side effect, write/clear two plain (not
-  httpOnly) cookies -- `ne_at` (access token) and `ne_rt` (refresh token).
-  They're plain rather than httpOnly because the browser needs to read them
-  to attach `Authorization: Bearer <token>` on its own API calls, the same
-  way Supabase's own browser client's cookies were never httpOnly either --
-  this is not a regression in the security posture, just a different issuer
-  for the same kind of token.
-- **`lib/api/client.ts`/`lib/api/server.ts`** read the access token from
-  those cookies and attach it as a bearer header; if it's missing or
-  (locally, per `lib/session/jwt.ts`) expired, they call
-  `POST /auth/refresh` first and update the cookies before the real request.
-- **`proxy.ts`** (root) does the same refresh-and-check on every request at
-  the edge, so a Server Component never even sees a stale cookie, and
-  redirects to `/login` if there's no valid session and the route requires
-  one.
-- **`app/auth/callback/page.tsx`** is where a password-reset email link
-  lands (there's no invite email -- see "Account creation" below). This
-  project's Supabase config uses the *implicit* flow, so GoTrue puts the
-  tokens directly in the URL fragment (`#access_token=...&refresh_token=...`)
-  -- a fragment never reaches a server, so this has to be a client page, not
-  a Route Handler. It reads the fragment and calls `setSession` directly. It
-  also handles a `?code=` query param (PKCE) via `POST /auth/exchange-code`,
-  in case the Supabase project is ever reconfigured to use that flow instead.
-- **`app/(auth)/qr-login/page.tsx`** is where scanning a Master Tailor's QR
-  lands (`?token=` in the URL). It calls `authApi.qrLogin`, which behaves
-  exactly like `login` -- writes the session cookies as a side effect, then
-  redirects to `/orders`. Deliberately reachable even with an existing
-  session already present (see `lib/session/proxy.ts`'s comment) -- scanning
-  a QR is an explicit intent to switch identity (e.g. a shared shop tablet).
+Because JS can't set an httpOnly cookie, **everything that mints, rotates, or
+clears a session goes through same-origin Next.js Route Handlers under
+`app/api/session/*`**, which run server-side, call needleye-api, and set the
+cookies (`lib/session/server.ts` -- access non-httpOnly, refresh httpOnly):
+
+- **Login / QR login / code exchange** -- `authApi.login`/`qrLogin`/`exchangeCode`
+  POST to `/api/session/{login,qr-login,exchange-code}`. Those handlers proxy
+  to needleye-api's `/auth/*` server-side (forwarding the client IP as
+  `X-Forwarded-For` so the API's per-IP auth rate limit still keys on the real
+  user), set both cookies, and return just the profile -- **tokens never come
+  back to the browser in a response body**.
+- **Logout** -- `authApi.logout` → `/api/session/logout` revokes server-side and clears both cookies.
+- **Refresh** -- `lib/api/client.ts` (browser), on a stale/missing access
+  token, POSTs to `/api/session/refresh`, which reads the httpOnly `ne_rt`
+  server-side, rotates both cookies, and returns the new access token.
+  `lib/api/server.ts` (Server Components) and **`proxy.ts`** (root, at the
+  edge) can read `ne_rt` directly server-side and refresh the same way;
+  `proxy.ts` also redirects to `/login` when there's no valid session.
+- **`app/auth/callback/page.tsx`** -- where a password-reset email link lands.
+  This project's Supabase config uses the *implicit* flow, so GoTrue puts the
+  tokens in the URL fragment (`#access_token=...&refresh_token=...`), which
+  only browser JS can read. The page reads them and immediately hands them to
+  `/api/session/establish` (`authApi.establish`) so the refresh token is
+  stored httpOnly rather than in a JS-readable cookie. A `?code=` PKCE param
+  is handled via `/api/session/exchange-code`.
+
+Note: the proxy's route matcher excludes `/api/*` -- the session route
+handlers own the cookies themselves and must not be intercepted/redirected as
+if they were protected pages.
 
 This API is stateless on its own side (see needleye-api's README) -- all of
 the above session-cookie machinery is this app's concern, not something the

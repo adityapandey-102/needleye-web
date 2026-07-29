@@ -1,12 +1,20 @@
+import { notFound } from "next/navigation";
 import { getCapabilityScope } from "../../../../lib/domain";
-import { apiFetchServer } from "../../../../lib/api/server";
+import { apiFetchServer, ApiError } from "../../../../lib/api/server";
 import { OrderDetailView } from "../../../../modules/orders/components/OrderDetailView";
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await params;
   const [{ profile }, { order }] = await Promise.all([
     apiFetchServer("/auth/me"),
-    apiFetchServer(`/orders/${orderId}`),
+    // A 404 here means the order doesn't exist OR is outside the caller's row
+    // scope (e.g. a Master Tailor opening an order assigned to someone else) --
+    // the API returns 404, not 403, so existence isn't confirmed. Show the
+    // clean not-found page instead of letting the Server Component crash.
+    apiFetchServer(`/orders/${orderId}`).catch((err: unknown) => {
+      if (err instanceof ApiError && err.status === 404) notFound();
+      throw err;
+    }),
   ]);
 
   const isAssignedDesigner = profile.role === "designer" && order.designerId === profile.id;

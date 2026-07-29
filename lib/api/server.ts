@@ -3,6 +3,20 @@ import { isExpired } from "../session/jwt";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
+/**
+ * Thrown by apiFetchServer on a non-2xx response, carrying the HTTP `status`
+ * so a Server Component can react (e.g. a 404 -> Next's `notFound()` for a
+ * clean "not found / no access" page, rather than the whole page crashing).
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 /** Refreshes against needleye-api (never Supabase) if the current access token is missing or expired. */
 async function ensureFreshAccessToken(): Promise<string | null> {
   const token = await getAccessToken();
@@ -40,7 +54,7 @@ export async function apiFetchServer(path: string, init: RequestInit = {}) {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(body.error ?? `Request failed: ${response.status}`);
+    throw new ApiError(body.error ?? `Request failed: ${response.status}`, response.status);
   }
 
   if (response.status === 204) return null;

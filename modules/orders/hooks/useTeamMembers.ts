@@ -14,6 +14,7 @@ interface TeamMember {
 export function useTeamMembers(role: Extract<Role, "designer" | "master_tailor">) {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -22,7 +23,18 @@ export function useTeamMembers(role: Extract<Role, "designer" | "master_tailor">
       setLoading(true);
       try {
         const data = await apiFetch(`/team-members?role=${role}`);
-        if (!cancelled) setMembers(data.members);
+        if (!cancelled) {
+          setMembers(data.members);
+          setError(null);
+        }
+      } catch (err) {
+        // Must catch here: a network blip (API redeploy, mobile Wi-Fi drop)
+        // otherwise escapes this async effect as an unhandled rejection.
+        // Degrade to an empty list + an error the caller can surface.
+        if (!cancelled) {
+          setMembers([]);
+          setError(err instanceof Error ? err.message : "Failed to load team members");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -33,5 +45,5 @@ export function useTeamMembers(role: Extract<Role, "designer" | "master_tailor">
     };
   }, [role]);
 
-  return { members, loading };
+  return { members, loading, error };
 }
