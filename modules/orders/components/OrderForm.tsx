@@ -4,16 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createOrderSchema,
+  formatCurrency,
   GRANULAR_STATUSES,
   granularLabel,
-  PAYMENT_STATUSES,
+  PAYMENT_METHODS,
   PRODUCT_CATEGORIES,
   type CreateOrderInput,
   type Order,
+  type PaymentMethod,
   type Role,
 } from "../../../lib/domain";
 import { useTeamMembers } from "../hooks/useTeamMembers";
 import { ordersApi } from "../api/ordersApi";
+import { paymentsApi } from "../../payments/api/paymentsApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
@@ -36,11 +39,14 @@ type FormState = {
   handWork: boolean;
   machineWork: boolean;
   purchaseRequired: boolean;
-  paymentStatus: string;
   totalAmount: string;
+  nextPaymentDate: string;
   productionStatus: string;
   designerInstructions: string;
   specialNotes: string;
+  /** Optional advance collected at booking (create only) -- recorded as the first ledger entry. */
+  advanceAmount: string;
+  advanceMethod: PaymentMethod;
 };
 
 function todayISO() {
@@ -61,11 +67,13 @@ function emptyForm(): FormState {
     handWork: false,
     machineWork: false,
     purchaseRequired: false,
-    paymentStatus: "",
     totalAmount: "",
+    nextPaymentDate: "",
     productionStatus: "",
     designerInstructions: "",
     specialNotes: "",
+    advanceAmount: "",
+    advanceMethod: PAYMENT_METHODS[0]!.value,
   };
 }
 
@@ -83,11 +91,14 @@ function formFromOrder(order: Order): FormState {
     handWork: order.handWork,
     machineWork: order.machineWork,
     purchaseRequired: order.purchaseRequired,
-    paymentStatus: order.paymentStatus ?? "",
     totalAmount: String(order.totalAmount ?? ""),
+    nextPaymentDate: order.nextPaymentDate ?? "",
     productionStatus: order.productionStatus,
     designerInstructions: order.designerInstructions ?? "",
     specialNotes: order.specialNotes ?? "",
+    // Advance is a create-only field; on edit, payments are managed via the ledger.
+    advanceAmount: "",
+    advanceMethod: PAYMENT_METHODS[0]!.value,
   };
 }
 
@@ -202,8 +213,8 @@ export function OrderForm({
       handWork: form.handWork,
       machineWork: form.machineWork,
       purchaseRequired: form.purchaseRequired,
-      paymentStatus: (form.paymentStatus || undefined) as CreateOrderInput["paymentStatus"] | undefined,
       totalAmount: form.totalAmount === "" ? 0 : Number(form.totalAmount),
+      nextPaymentDate: form.nextPaymentDate || null,
       productionStatus: (form.productionStatus || undefined) as CreateOrderInput["productionStatus"] | undefined,
       designerInstructions: form.designerInstructions || undefined,
       specialNotes: form.specialNotes || undefined,
@@ -226,10 +237,29 @@ export function OrderForm({
         setErrors(fieldErrors);
         return;
       }
+      // Validate an optional advance against the order total before creating,
+      // so the derived status ends up right and the API's overpayment guard
+      // isn't hit after the order already exists.
+      const advance = form.advanceAmount === "" ? 0 : Number(form.advanceAmount);
+      const total = form.totalAmount === "" ? 0 : Number(form.totalAmount);
+      if (advance > 0 && (!Number.isFinite(advance) || advance > total)) {
+        setErrors({ advanceAmount: `Advance can't exceed the total (${formatCurrency(total)}).` });
+        return;
+      }
       setErrors({});
       setSubmitting(true);
       try {
         const { order: created } = await ordersApi.create(parsed.data);
+
+        // Record the advance as the first ledger entry -- this recomputes and
+        // syncs the order's derived payment status + next-payment schedule.
+        if (advance > 0) {
+          await paymentsApi.add(created.id, {
+            amount: advance,
+            method: form.advanceMethod,
+            nextPaymentDate: advance < total ? form.nextPaymentDate || null : null,
+          });
+        }
 
         const uploads = (Object.entries(stagedFiles) as [string, File | undefined][])
           .filter(([, file]) => file)
@@ -264,7 +294,7 @@ export function OrderForm({
         handWork: form.handWork,
         machineWork: form.machineWork,
         purchaseRequired: form.purchaseRequired,
-        paymentStatus: form.paymentStatus,
+        nextPaymentDate: form.nextPaymentDate || null,
         designerInstructions: form.designerInstructions,
         specialNotes: form.specialNotes,
       });
@@ -505,20 +535,8 @@ export function OrderForm({
         </Card>
 
         <Card>
-          <CardHeader icon="💳" iconTone="green" title="Payment Status" />
+          <CardHeader icon="💳" iconTone="green" title="Payment" subtitle={mode === "create" ? "Total, advance & schedule" : "Total & schedule"} />
           <CardBody className="flex flex-col gap-3.5">
-            <div>
-              <FieldLabel required>Payment Status</FieldLabel>
-              <RadioGroup
-                name="paymentStatus"
-                column
-                disabled={!canEditContentFields}
-                value={form.paymentStatus}
-                onChange={(v) => set("paymentStatus", v)}
-                options={PAYMENT_STATUSES.map((p) => ({ value: p.value, label: p.label }))}
-              />
-              <FieldError>{errors.paymentStatus}</FieldError>
-            </div>
             <div>
               <FieldLabel>Total Amount (₹)</FieldLabel>
               <Input
@@ -532,6 +550,59 @@ export function OrderForm({
               {!canEditPricingFields && (
                 <p className="mt-1 text-[11px] text-text-muted">Only Owner/Manager can change pricing.</p>
               )}
+              {mode === "edit" && (
+                <p className="mt-1 text-[11px] text-text-muted">
+                  Payment status is derived from the ledger. Record payments on the order&rsquo;s Payment Ledger.
+                </p>
+              )}
+            </div>
+
+            {/* Optional advance collected at booking -- recorded as the first
+                ledger entry, which derives the payment status. Create only. */}
+            {mode === "create" && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <FieldLabel>Advance Paid (₹)</FieldLabel>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.advanceAmount}
+                      onChange={(e) => set("advanceAmount", e.target.value)}
+                      placeholder="Optional"
+                    />
+                    <FieldError>{errors.advanceAmount}</FieldError>
+                  </div>
+                  <div>
+                    <FieldLabel>Advance Method</FieldLabel>
+                    <Select
+                      disabled={form.advanceAmount === ""}
+                      value={form.advanceMethod}
+                      onChange={(e) => set("advanceMethod", e.target.value as PaymentMethod)}
+                    >
+                      {PAYMENT_METHODS.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-[11px] text-text-muted">
+                  Leave the advance blank for an unpaid order. Enter the full total to mark it fully paid.
+                </p>
+              </>
+            )}
+
+            <div>
+              <FieldLabel>Next Payment Date</FieldLabel>
+              <Input
+                type="date"
+                disabled={!canEditContentFields}
+                value={form.nextPaymentDate}
+                onChange={(e) => set("nextPaymentDate", e.target.value)}
+              />
+              <p className="mt-1 text-[11px] text-text-muted">When the next payment is expected (for due tracking). Optional.</p>
             </div>
           </CardBody>
         </Card>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   formatDateOnly,
   getTimelineSummary,
@@ -25,13 +26,36 @@ type ViewMode = "table" | "kanban";
 const PAGE_SIZE = 20;
 const KANBAN_LIMIT = 100;
 
-export function OrdersListClient({ role, userId }: { role: Role; userId: string }) {
+/** Human labels for the dashboard buckets a summary card can deep-link into (?bucket=). */
+const BUCKET_LABELS: Record<string, string> = {
+  active: "Active orders (not yet delivered)",
+  production: "In production (cutting → QC)",
+  completed: "Completed (ready / delivered)",
+  ready: "Ready for delivery",
+  delivered: "Delivered",
+  pending_payment: "Pending payments",
+  overdue: "Overdue (past due date)",
+  urgent: "Urgent (due within 3 days)",
+  this_month: "Booked this month",
+};
+
+export function OrdersListClient({
+  role,
+  userId,
+  initialBucket,
+}: {
+  role: Role;
+  userId: string;
+  initialBucket?: string;
+}) {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("table");
+  const [bucket, setBucket] = useState(initialBucket ?? "");
 
   const [search, setSearch] = useState("");
   const [designerId, setDesignerId] = useState("");
@@ -61,6 +85,12 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
     setView(next);
     setPage(0);
   }
+  function clearBucket() {
+    setBucket("");
+    setPage(0);
+    // Drop the ?bucket= param so a refresh/back-nav doesn't re-apply it.
+    router.replace("/orders");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +105,7 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
           search: search.trim() || undefined,
           designerId: designerId || undefined,
           masterTailorId: masterTailorId || undefined,
+          bucket: bucket || undefined,
           ...pagination,
         })
         .then((data) => {
@@ -96,7 +127,7 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [search, designerId, masterTailorId, view, page]);
+  }, [search, designerId, masterTailorId, bucket, view, page]);
 
   const pageStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
   const pageEnd = Math.min((page + 1) * PAGE_SIZE, total);
@@ -131,6 +162,17 @@ export function OrdersListClient({ role, userId }: { role: Role; userId: string 
           </Select>
         </CardBody>
       </Card>
+
+      {bucket && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-app-sm border border-primary/30 bg-primary-bg/50 px-3 py-2 text-xs text-text-secondary">
+          <span>
+            Filtered by <span className="font-semibold text-text-primary">{BUCKET_LABELS[bucket] ?? bucket}</span>
+          </span>
+          <button onClick={clearBucket} className="font-medium text-primary underline">
+            Clear filter
+          </button>
+        </div>
+      )}
 
       <div className="mb-3 flex justify-end gap-2">
         <Button variant={view === "table" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => changeView("table")}>

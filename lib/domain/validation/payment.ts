@@ -6,6 +6,9 @@ export const createPaymentSchema = z.object({
   method: z.enum(PAYMENT_METHOD_VALUES),
   paidAt: z.string().min(1).optional(),
   notes: z.string().trim().max(500).optional(),
+  // When an outstanding balance remains, the date the next payment is expected
+  // (reschedules the order's due tracking); null clears it, omitted leaves it.
+  nextPaymentDate: z.string().min(1).nullable().optional(),
 });
 
 export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;

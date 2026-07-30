@@ -13,6 +13,7 @@ import { Button } from "../../../components/ui/Button";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { OrderQrCode } from "./OrderQrCode";
 import { PaymentLedger } from "./PaymentLedger";
+import { ImageGallery } from "./ImageGallery";
 import { OrderTimeline } from "./OrderTimeline";
 import { OrderStatusControl } from "./OrderStatusControl";
 import { PrintOrderButton } from "./PrintOrderButton";
@@ -56,6 +57,9 @@ export function OrderDetailView({
             <Button variant="outline">All Orders</Button>
           </Link>
           <PrintOrderButton />
+          <Link href={`/orders/${order.id}/label`}>
+            <Button variant="outline">🏷️ Print Label</Button>
+          </Link>
           {canEdit && (
             <Link href={`/orders/${order.id}/edit`}>
               <Button>Edit Order</Button>
@@ -151,7 +155,15 @@ export function OrderDetailView({
             </CardBody>
           </Card>
 
-          {canSeePayment && <PaymentLedger orderId={order.id} canManage={canManagePayments} />}
+          {canSeePayment && (
+            <PaymentLedger
+              orderId={order.id}
+              canManage={canManagePayments}
+              orderTotal={order.totalAmount ?? 0}
+              paymentStatus={order.paymentStatus ?? null}
+              nextPaymentDate={order.nextPaymentDate}
+            />
+          )}
 
           {/* key={order.updatedAt} forces a remount (and a fresh fetch) whenever the
               order changes -- the orders_set_updated_at DB trigger touches this on
@@ -169,24 +181,7 @@ export function OrderDetailView({
           <Card>
             <CardHeader icon="🖼️" iconTone="pink" title="Image Gallery" subtitle="Uploaded reference images" />
             <CardBody>
-              {order.images.length === 0 ? (
-                <p className="text-xs text-text-muted">No reference images uploaded.</p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {order.images.map((img) => (
-                    <a
-                      key={img.id}
-                      href={img.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block aspect-square overflow-hidden rounded-app-sm border border-border"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- signed Supabase Storage URL */}
-                      <img src={img.url} alt={`Reference ${img.slot}`} className="h-full w-full object-cover" />
-                    </a>
-                  ))}
-                </div>
-              )}
+              <ImageGallery images={order.images} />
             </CardBody>
           </Card>
         </div>

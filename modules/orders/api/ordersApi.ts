@@ -1,4 +1,12 @@
-import type { CreateOrderInput, GranularStatus, Order, OrderStats, OrderStatusHistoryEntry, UpdateOrderInput } from "../../../lib/domain";
+import type {
+  CreateOrderInput,
+  GranularStatus,
+  Order,
+  OrderStats,
+  OrderStatusHistoryEntry,
+  RevenueReport,
+  UpdateOrderInput,
+} from "../../../lib/domain";
 import { apiFetch, apiUpload } from "../../../lib/api/client";
 
 export interface OrderListFilters {
@@ -6,6 +14,8 @@ export interface OrderListFilters {
   designerId?: string;
   masterTailorId?: string;
   status?: string;
+  /** Dashboard filter a summary card links to (active, production, completed, overdue, urgent, pending_payment, this_month, ...). */
+  bucket?: string;
   limit?: number;
   offset?: number;
 }
@@ -26,6 +36,7 @@ export const ordersApi = {
     if (filters.designerId) query.set("designerId", filters.designerId);
     if (filters.masterTailorId) query.set("masterTailorId", filters.masterTailorId);
     if (filters.status) query.set("status", filters.status);
+    if (filters.bucket) query.set("bucket", filters.bucket);
     if (filters.limit !== undefined) query.set("limit", String(filters.limit));
     if (filters.offset !== undefined) query.set("offset", String(filters.offset));
     return apiFetch(`/orders?${query.toString()}`);
@@ -49,6 +60,12 @@ export const ordersApi = {
 
   stats(): Promise<OrderStats> {
     return apiFetch("/orders/stats");
+  },
+
+  /** Monthly revenue report over an inclusive [from, to] window -- owner_manager / accountant only (reports:financial). */
+  revenue(from: string, to: string): Promise<RevenueReport> {
+    const query = new URLSearchParams({ from, to });
+    return apiFetch(`/orders/revenue?${query.toString()}`);
   },
 
   uploadImage(orderId: string, slot: number, file: File): Promise<{ storagePath: string; url: string }> {

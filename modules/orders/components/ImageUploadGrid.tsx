@@ -51,7 +51,7 @@ export function ImageUploadGrid({
             {state?.url ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element -- signed Supabase Storage URLs, not a static asset */}
-                <img src={state.url} alt={`Reference ${slot}`} className="h-full w-full object-cover" />
+                <img src={state.url} alt={`Reference ${slot}`} className="absolute inset-0 h-full w-full object-cover" />
                 {!disabled && (
                   <button
                     type="button"

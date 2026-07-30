@@ -5,8 +5,13 @@ import { Button } from "../../../components/ui/Button";
 import { OrdersListClient } from "../../../modules/orders/components/OrdersListClient";
 import { OrderStatCards } from "../../../modules/orders/components/OrderStatCards";
 
-export default async function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ bucket?: string }>;
+}) {
   const { profile } = await apiFetchServer("/auth/me");
+  const { bucket } = await searchParams;
 
   return (
     <div>
@@ -21,8 +26,8 @@ export default async function OrdersPage() {
           </Link>
         )}
       </div>
-      <OrderStatCards />
-      <OrdersListClient role={profile.role} userId={profile.id} />
+      <OrderStatCards role={profile.role} />
+      <OrdersListClient role={profile.role} userId={profile.id} initialBucket={bucket} />
     </div>
   );
 }

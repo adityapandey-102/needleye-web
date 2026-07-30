@@ -71,6 +71,8 @@ export interface Order {
   productionStatus: GranularStatus;
   designerInstructions: string | null;
   specialNotes: string | null;
+  /** Date the next payment is expected (payment-due tracking); null when unset or fully paid. */
+  nextPaymentDate: string | null;
   images: OrderImage[];
   /** Optimistic-lock version -- echoed back when editing so a concurrent edit is rejected (ORDER_MODIFIED) instead of clobbered. */
   version: number;
@@ -84,10 +86,29 @@ export interface OrderStats {
   total: number;
   active: number;
   completed: number;
+  thisMonth: number;
+  inProduction: number;
+  overdue: number;
+  urgent: number;
   /** Absent entirely (not zero) when the API strips it server-side for a role without payments:read (master_tailor). */
   pendingPayments?: number;
   collectedRevenue?: number;
   outstandingRevenue?: number;
+}
+
+/** One accounting period's collected revenue, from GET /orders/revenue. */
+export interface RevenuePeriod {
+  periodStart: string;
+  collected: number;
+  paymentCount: number;
+}
+
+export interface RevenueReport {
+  cycleStartDay: number;
+  /** Inclusive date window (YYYY-MM-DD) the periods cover, echoed from the request. */
+  from: string;
+  to: string;
+  periods: RevenuePeriod[];
 }
 
 export interface TimelineSummary {

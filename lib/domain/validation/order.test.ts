@@ -10,7 +10,6 @@ const validOrder = {
   masterTailorId: "22222222-2222-2222-2222-222222222222",
   productCategory: "saree",
   orderDetails: "Silk saree with custom blouse",
-  paymentStatus: "advance_paid",
   productionStatus: "design_pending",
 };
 
@@ -48,6 +47,16 @@ describe("createOrderSchema", () => {
       expect(result.data.purchaseRequired).toBe(false);
       expect(result.data.totalAmount).toBe(0);
     }
+  });
+
+  it("accepts a nextPaymentDate, or null/omitted (payment-due tracking)", () => {
+    expect(createOrderSchema.safeParse({ ...validOrder, nextPaymentDate: "2026-08-15" }).success).toBe(true);
+    expect(createOrderSchema.safeParse({ ...validOrder, nextPaymentDate: null }).success).toBe(true);
+    expect(createOrderSchema.safeParse(validOrder).success).toBe(true);
+  });
+
+  it("rejects an empty-string nextPaymentDate (use null to clear it)", () => {
+    expect(createOrderSchema.safeParse({ ...validOrder, nextPaymentDate: "" }).success).toBe(false);
   });
 });
 

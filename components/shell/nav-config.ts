@@ -33,7 +33,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Business",
     items: [
-      { label: "Payments", icon: "💰", comingSoon: true },
+      { label: "Revenue & Ledger", href: "/revenue", icon: "💰", requires: "reports:financial" },
       { label: "Purchases", icon: "🛒", comingSoon: true },
       { label: "Reports", icon: "📊", comingSoon: true },
       { label: "Team", icon: "👥", comingSoon: true },

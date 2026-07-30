@@ -77,14 +77,16 @@ modules/
     components/                 # LoginForm, RegisterForm, ResetPasswordForm, UpdatePasswordForm
     api/authApi.ts                # every HTTP call the Auth module makes -- login/logout/qrLogin also own writing/clearing the session cookies
   orders/
-    components/                 # OrderForm (create+edit), OrdersListClient, OrderDetailView, ImageUploadGrid, OrderQrCode, PaymentLedger
+    components/                 # OrderForm (create+edit, advance at booking), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (A4 print), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
-    api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset })
+    api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats() + revenue())
+  revenue/
+    components/RevenueClient.tsx   # owner_manager/accountant financial dashboard -- collected/outstanding + monthly accounting-cycle history (/revenue)
   payments/
     api/paymentsApi.ts             # every HTTP call the Payments module makes -- mirrors needleye-api's own Payments module
   admin-users/
-    components/                 # UserManagementClient (owner_manager only) -- create account, generate password/QR, role changes, deactivate
-    api/usersApi.ts                # every HTTP call the Admin Users module makes
+    components/                 # UserManagementClient (searchable/paginated directory) + UserDetailClient (per-user actions) + LoginQrCard (printable/downloadable Master-Tailor login-QR card) -- owner_manager only
+    api/usersApi.ts                # every HTTP call the Admin Users module makes (list paginated + get/reactivate)
 components/                  # cross-MODULE only: ui/ primitives (Button, Card, Field, ...), shell/ (Sidebar, AppShell, nav config)
 lib/
   domain/                      # this repo's OWN copy of RBAC/order-status/validation -- see below, not a package
@@ -159,25 +161,38 @@ the above session-cookie machinery is this app's concern, not something the
 API dictates or participates in beyond verifying whatever bearer token it's
 handed on each request.
 
-### Account creation, passwords, and QR login
+### User management (dashboard + per-user detail)
 
-`modules/admin-users/components/UserManagementClient.tsx` (Owner/Manager
-only, `/admin/users`) replaces what used to be an email-invite form:
+Owner/Manager only, `/admin/users`. `UserManagementClient.tsx` is a
+searchable, server-paginated staff directory (via `usersApi.list`'s
+`{ users, total, limit, offset }` envelope -- it never loads every account at
+once); each row links to `/admin/users/[userId]`, where all account actions
+now live (`UserDetailClient.tsx`):
 
-- **Create account**: name/email/role only -- no password field. `usersApi.create`
-  calls `POST /users`, which returns a server-generated password shown once
-  in a dismissible overlay (`RevealOverlay`). Neither this app nor
-  needleye-api can show it again afterward, only regenerate it.
-- **Generate/regenerate password**: a "Generate new password" action per
-  row, shown for `designer`/`master_tailor` accounts always, and for
-  `owner_manager`/`accountant` accounts only until they've logged in once
-  (`user.lastLoginAt`) -- matching the backend's `UsersService.generatePassword`
-  rule exactly (this UI condition is convenience; the API enforces it for real).
-- **QR login**: a "Generate/Regenerate QR login" action, `master_tailor`
-  rows only. Calls `usersApi.generateQrToken`, then renders the returned
-  `loginUrl` as a QR code (`qrcode.react`'s `QRCodeSVG`) in the same
-  one-time reveal overlay -- print or display it, since regenerating (or
+- **Create account** (on the directory): name/email/role only -- no password
+  field. `usersApi.create` calls `POST /users`, which returns a
+  server-generated password shown once in a dismissible overlay
+  (`CredentialRevealOverlay`). Neither this app nor needleye-api can show it
+  again afterward, only regenerate it.
+- **Generate/regenerate password**: shown for `designer`/`master_tailor`
+  accounts always, and for `owner_manager`/`accountant` accounts only until
+  they've logged in once (`user.lastLoginAt`) -- matching the backend's
+  `UsersService.generatePassword` rule (this UI condition is convenience; the
+  API enforces it for real).
+- **QR login card** (`master_tailor` only, `LoginQrCard.tsx`): the
+  "Generate/Regenerate QR login" action calls `usersApi.generateQrToken`, then
+  the one-time reveal overlay renders the returned `loginUrl` as an
+  **ID-card-style login card** (company branding, name, role, the login QR)
+  that can be **saved as a PNG or printed** -- both composed from the same
+  offscreen canvas. This is intentionally the *only* card export and it is
+  master-tailor-only: there is no separate staff-ID card, and the QR always
+  encodes the login URL, never a plain identifier. Regenerating (or
   deactivating the account) invalidates it immediately.
+- **Copy password**: the one-time password reveal has a Copy button
+  (`navigator.clipboard`) since it's shown only once.
+- **Activate/deactivate**: deactivation (`usersApi.deactivate`) is now
+  reversible from the same page via `usersApi.reactivate`; self-deactivation
+  is disabled in the UI and rejected by the API.
 
 ### Order QR
 
@@ -202,9 +217,64 @@ than being fed data from the server page. `canManage` is computed in
 + the assigned-designer check -- the same pattern already used for
 `canEdit`. Add/remove are real API calls (`paymentsApi.add`/`.remove`)
 against `needleye-api`'s ledger endpoints, which enforce the actual RBAC
-scoping and the `fully_paid`-must-reconcile-with-the-ledger rule -- this
-component's `canManage` prop only controls whether the add/remove controls
-render, not whether the write is allowed.
+scoping -- this component's `canManage` prop only controls whether the
+add/remove controls render, not whether the write is allowed.
+
+**Payment status is derived, never chosen.** The order form has no
+payment-status picker: `payment_status` is computed by the API from the
+ledger (unpaid → advance_paid → fully_paid), so it can't drift. Instead:
+- **Advance at booking** -- the create form has an optional "Advance Paid"
+  amount + method; on submit, the order is created and the advance is recorded
+  as the first ledger entry (`paymentsApi.add`), which derives the status.
+- **Rescheduling on record** -- when recording a payment that won't settle the
+  balance, `PaymentLedger` asks for the next payment date and passes it to the
+  API, which reschedules the order (fixing a stale "Due Today" after a same-day
+  payment) and `router.refresh()`es so the summary props update.
+- **Due tracking + overpayment guard** -- `lib/domain/utils/paymentDue.ts`
+  derives Upcoming / Due&nbsp;Today / Overdue (with a day count) from
+  `nextPaymentDate` + outstanding, and the record form blocks a payment
+  exceeding the outstanding balance before it reaches the API
+  (`PAYMENT_EXCEEDS_TOTAL` is the server backstop). `derivePaymentStatus`
+  mirrors the API's rule for immediate UI feedback.
+
+### Dashboard navigation & revenue reporting
+
+`OrderStatCards.tsx` (self-fetching, on `/orders`) renders the summary as
+clickable cards, each opening a **dedicated focused page** (not the full
+orders list): most link to `/orders/bucket/[bucket]` (`BucketOrdersClient`,
+just the filtered table + pagination, no dashboard stats), while the payment
+cards link to `/orders/pending-payments` (`PendingPaymentsClient`) -- a
+payment-focused table (total / paid / outstanding / next-payment / due status)
+with an **Overdue / Upcoming** filter backed by the API's
+`payment_overdue`/`payment_upcoming` buckets. Payment cards are absent for
+`master_tailor`, mirroring the API's field stripping.
+
+`/revenue` (`modules/revenue/RevenueClient.tsx`, owner_manager/accountant only,
+gated by `reports:financial`) is the financial dashboard: all-time
+collected/outstanding + a monthly accounting-cycle history over a
+**selectable year range** (From/To year). The accountant can **Export CSV**
+(opens in Excel; pure `revenueToCsv` in `lib/domain`) or **Export PDF** via a
+printable statement route (`/revenue/print`, `print:hidden` chrome so the print
+output is just the statement).
+
+### Print: order sheet & customer label
+
+Two print paths off an order's detail page: the existing full-order print
+(`window.print()` with app chrome `print:hidden`), and a new **A4 customer
+label** (`CustomerLabel.tsx`, `/orders/[orderId]/label`) -- a single sheet
+with a large scannable QR plus customer/phone/order-number/category/due-date/
+order-details, sized for a real package label. Both live on their own routes
+so printing emits just the intended sheet.
+
+### Confirmation dialogs & error handling
+
+Native `confirm()` is gone: `components/ui/ConfirmDialog.tsx` provides a
+styled, promise-returning `useConfirm()` used for every destructive action
+(payment delete, deactivate, password/QR regenerate). Every self-fetching
+surface renders explicit loading / empty / error states with a retry, and
+route-group error/not-found boundaries (`app/(app)/error.tsx`,
+`app/(app)/not-found.tsx`, plus the orders-specific ones) catch server-fetch
+failures so a downed API shows a recoverable fallback, never a blank screen.
 
 ### No shared package, on purpose
 

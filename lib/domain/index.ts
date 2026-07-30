@@ -18,6 +18,8 @@ export * from "./types";
 export * from "./utils/date";
 export * from "./utils/currency";
 export * from "./utils/timeline";
+export * from "./utils/paymentDue";
+export * from "./utils/revenue";
 export * from "./utils/orderStatusPermissions";
 export * from "./validation/order";
 export * from "./validation/payment";

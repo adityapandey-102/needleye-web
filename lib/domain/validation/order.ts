@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { GRANULAR_STATUS_VALUES } from "../constants/orderStatus";
-import { PRODUCT_CATEGORY_VALUES, PAYMENT_STATUS_VALUES } from "../constants/productCategories";
+import { PRODUCT_CATEGORY_VALUES } from "../constants/productCategories";
 
 /** Mirrors prototype's phoneNumber input filter + validateOrderForm() regex check. */
 const phoneSchema = z.string().regex(/^\d{10}$/, "Enter a valid 10-digit number");
@@ -11,6 +11,7 @@ export const createOrderSchema = z.object({
   billNumber: z.string().trim().min(1, "Please enter bill number"),
   bookingDate: z.string().min(1).optional(),
   dueDate: z.string().min(1, "Please select delivery due date"),
+  nextPaymentDate: z.string().min(1).nullable().optional(),
   designerId: z.string().uuid("Please select a designer"),
   masterTailorId: z.string().uuid("Please select a master"),
   productCategory: z.enum(PRODUCT_CATEGORY_VALUES, {
@@ -20,9 +21,8 @@ export const createOrderSchema = z.object({
   handWork: z.boolean().default(false),
   machineWork: z.boolean().default(false),
   purchaseRequired: z.boolean().default(false),
-  paymentStatus: z.enum(PAYMENT_STATUS_VALUES, {
-    errorMap: () => ({ message: "Please select payment status" }),
-  }),
+  // Payment status is DERIVED from the ledger by the API, never submitted. An
+  // advance is recorded separately via the payments endpoint after creation.
   totalAmount: z.coerce.number().min(0).default(0),
   productionStatus: z.enum(GRANULAR_STATUS_VALUES, {
     errorMap: () => ({ message: "Please select current status" }),
