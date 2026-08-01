@@ -11,6 +11,7 @@ import {
   type PaymentMethod,
 } from "../../../lib/domain";
 import { paymentsApi } from "../../payments/api/paymentsApi";
+import { ordersApi } from "../api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
@@ -45,6 +46,12 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
   const confirm = useConfirm();
   const router = useRouter();
   const [payments, setPayments] = useState<Payment[]>([]);
+  // The order's payment-relevant fields, fetched alongside the ledger so the
+  // total / status / due-date the summary reads are ALWAYS consistent with the
+  // payments -- never a stale server-component prop (which can lag after an
+  // order edit or another payment). The props seed the first paint only.
+  const [orderFields, setOrderFields] = useState({ totalAmount: orderTotal, paymentStatus, nextPaymentDate });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,11 +63,17 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  /** Re-fetch the ledger AND the order together, so every figure stays mutually consistent. */
   async function load() {
     setLoading(true);
     try {
-      const data = await paymentsApi.list(orderId);
-      setPayments(data.payments);
+      const [list, { order }] = await Promise.all([paymentsApi.list(orderId), ordersApi.get(orderId)]);
+      setPayments(list.payments);
+      setOrderFields({
+        totalAmount: order.totalAmount ?? 0,
+        paymentStatus: order.paymentStatus ?? null,
+        nextPaymentDate: order.nextPaymentDate,
+      });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load payments");
@@ -72,11 +85,15 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
   useEffect(() => {
     let cancelled = false;
 
-    paymentsApi
-      .list(orderId)
-      .then((data) => {
+    Promise.all([paymentsApi.list(orderId), ordersApi.get(orderId)])
+      .then(([list, { order }]) => {
         if (!cancelled) {
-          setPayments(data.payments);
+          setPayments(list.payments);
+          setOrderFields({
+            totalAmount: order.totalAmount ?? 0,
+            paymentStatus: order.paymentStatus ?? null,
+            nextPaymentDate: order.nextPaymentDate,
+          });
           setError(null);
         }
       })
@@ -93,7 +110,12 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
   }, [orderId]);
 
   const paid = payments.reduce((sum, p) => sum + p.amount, 0);
-  const due = getPaymentDue({ totalAmount: orderTotal, amountPaid: paid, paymentStatus, nextPaymentDate });
+  const due = getPaymentDue({
+    totalAmount: orderFields.totalAmount,
+    amountPaid: paid,
+    paymentStatus: orderFields.paymentStatus,
+    nextPaymentDate: orderFields.nextPaymentDate,
+  });
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -129,8 +151,9 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
       setFormOpen(false);
       showToast("Payment recorded.", "success");
       await load();
-      // The order's derived status + next-payment date changed server-side --
-      // refresh the server component so the summary props update too.
+      // load() already refreshed this card's own figures (it re-fetches the
+      // order); router.refresh() updates the REST of the detail page (the
+      // Production Details total/outstanding/status pill) from the server.
       router.refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to record payment";
@@ -182,7 +205,9 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
             <div className="text-[10px] uppercase tracking-wide opacity-80">Payment Status</div>
             <div className="text-sm font-semibold">{due.label}</div>
             <div className="text-[11px]">
-              {nextPaymentDate && due.status !== "paid" ? `${formatDateOnly(nextPaymentDate)} · ${due.daysLabel}` : due.daysLabel}
+              {orderFields.nextPaymentDate && due.status !== "paid"
+                ? `${formatDateOnly(orderFields.nextPaymentDate)} · ${due.daysLabel}`
+                : due.daysLabel}
             </div>
           </div>
         </div>

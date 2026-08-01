@@ -210,9 +210,14 @@ needleye-api's README).
 `modules/orders/components/PaymentLedger.tsx` (rendered by `OrderDetailView`
 only when `canSeePayment` is true -- absent entirely for `master_tailor`,
 same pattern as the payment summary above it) is self-fetching, like
-`OrdersListClient`/`UserManagementClient`: it takes just `orderId` and
-`canManage` as props and calls `paymentsApi.list` itself on mount, rather
-than being fed data from the server page. `canManage` is computed in
+`OrdersListClient`/`UserManagementClient`: on mount and after every
+add/remove it fetches the ledger AND the order together
+(`paymentsApi.list` + `ordersApi.get`), so the total / paid / outstanding /
+derived status it shows are always mutually consistent and fresh -- never a
+stale server-component prop (the order's `orderTotal`/`paymentStatus`/
+`nextPaymentDate` props only seed the first paint). This is what keeps the
+payment-status summary correct after an order edit + settling payment.
+`canManage` is computed in
 `app/(app)/orders/[orderId]/page.tsx` from the `payments:manage` capability
 + the assigned-designer check -- the same pattern already used for
 `canEdit`. Add/remove are real API calls (`paymentsApi.add`/`.remove`)
@@ -230,12 +235,15 @@ ledger (unpaid → advance_paid → fully_paid), so it can't drift. Instead:
   balance, `PaymentLedger` asks for the next payment date and passes it to the
   API, which reschedules the order (fixing a stale "Due Today" after a same-day
   payment) and `router.refresh()`es so the summary props update.
-- **Due tracking + overpayment guard** -- `lib/domain/utils/paymentDue.ts`
-  derives Upcoming / Due&nbsp;Today / Overdue (with a day count) from
-  `nextPaymentDate` + outstanding, and the record form blocks a payment
-  exceeding the outstanding balance before it reaches the API
-  (`PAYMENT_EXCEEDS_TOTAL` is the server backstop). `derivePaymentStatus`
-  mirrors the API's rule for immediate UI feedback.
+- **Due tracking + overpaid guard (both directions)** --
+  `lib/domain/utils/paymentDue.ts` derives Upcoming / Due&nbsp;Today / Overdue
+  (with a day count) from `nextPaymentDate` + outstanding. The record form
+  blocks a payment exceeding the outstanding balance, and the edit form blocks
+  lowering an order's total below what's already been collected -- so the
+  ledger can never exceed the total (no "overpaid" order, which keeps collected
+  revenue accurate). The API enforces both for real (`PAYMENT_EXCEEDS_TOTAL` /
+  `ORDER_TOTAL_BELOW_PAID`); `derivePaymentStatus` mirrors the status rule for
+  immediate UI feedback.
 
 ### Dashboard navigation & revenue reporting
 

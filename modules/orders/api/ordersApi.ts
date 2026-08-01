@@ -42,6 +42,11 @@ export const ordersApi = {
     return apiFetch(`/orders?${query.toString()}`);
   },
 
+  /** Fetch a single order (row-scoped by the API). Used by self-fetching components that need authoritative, always-fresh order fields. */
+  get(orderId: string): Promise<{ order: Order }> {
+    return apiFetch(`/orders/${orderId}`);
+  },
+
   create(input: CreateOrderInput): Promise<{ order: Order }> {
     return apiFetch("/orders", { method: "POST", body: JSON.stringify(input) });
   },

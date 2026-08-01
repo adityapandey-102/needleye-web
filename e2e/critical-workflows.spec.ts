@@ -49,7 +49,8 @@ test.describe.serial("critical workflows", () => {
     await page.getByPlaceholder("e.g. Priya Sharma").fill(customerName);
     await page.getByPlaceholder("e.g. 9876543210").fill("9123456780");
     await page.getByPlaceholder("e.g. BILL-2024-001").fill(billNumber);
-    await page.locator('input[type="date"]').last().fill("2026-12-01"); // Delivery Due Date
+    // Date inputs in DOM order: [0] Booking Date, [1] Delivery Due Date, [2] Next Payment Date.
+    await page.locator('input[type="date"]').nth(1).fill("2026-12-01"); // Delivery Due Date (required)
 
     await page.locator("select").filter({ has: page.locator('option[value=""]:text("Select Designer")') }).selectOption(designer.id);
     await page.locator("select").filter({ has: page.locator('option[value=""]:text("Select Master")') }).selectOption(masterTailor.id);
@@ -59,7 +60,10 @@ test.describe.serial("critical workflows", () => {
     await page.getByPlaceholder("Measurements, design references, fabric type, embellishments, color preferences...").fill(
       "Created by the Playwright critical-workflow suite.",
     );
-    await page.getByText("Advance Paid").click();
+    // A total is required before any payment can be recorded (the ledger's
+    // overpayment guard rejects paying against a ₹0 order). Payment status is
+    // now derived from the ledger -- there is no status radio to pick.
+    await page.getByPlaceholder("e.g. 25000").fill("25000");
 
     // First of the 4 upload slots -- a hidden <input type="file">, no click needed to reveal it.
     await page.locator('input[type="file"]').first().setInputFiles(SAMPLE_IMAGE);
@@ -101,9 +105,11 @@ test.describe.serial("critical workflows", () => {
     await page.getByRole("button", { name: "+ Record payment" }).click();
 
     const paymentForm = page.locator("form", { has: page.getByRole("button", { name: "Record payment" }) });
-    await paymentForm.locator('input[type="number"]').fill("500");
+    await paymentForm.locator('input[type="number"]').first().fill("500");
     await paymentForm.getByRole("button", { name: "Record payment" }).click();
 
-    await expect(page.getByText("₹500", { exact: true })).toBeVisible();
+    // The ledger card header uniquely reflects the recorded entry (count + total),
+    // avoiding the ambiguity of "₹500" also appearing in the Paid summary tile.
+    await expect(page.getByText("1 entry · ₹500 recorded")).toBeVisible();
   });
 });

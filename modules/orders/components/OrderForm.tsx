@@ -248,34 +248,54 @@ export function OrderForm({
       }
       setErrors({});
       setSubmitting(true);
+
+      // Step 1: create the order. A failure here means no order exists, so it's
+      // safe to keep the user on the form to retry.
+      let createdId: string;
       try {
         const { order: created } = await ordersApi.create(parsed.data);
-
-        // Record the advance as the first ledger entry -- this recomputes and
-        // syncs the order's derived payment status + next-payment schedule.
-        if (advance > 0) {
-          await paymentsApi.add(created.id, {
-            amount: advance,
-            method: form.advanceMethod,
-            nextPaymentDate: advance < total ? form.nextPaymentDate || null : null,
-          });
-        }
-
-        const uploads = (Object.entries(stagedFiles) as [string, File | undefined][])
-          .filter(([, file]) => file)
-          .map(([slot, file]) => ordersApi.uploadImage(created.id, Number(slot), file as File));
-        await Promise.all(uploads);
-
-        showToast("Order created successfully.", "success");
-        router.push(`/orders/${created.id}`);
-        router.refresh();
+        createdId = created.id;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to create order";
         setSubmitError(message);
         showToast(message, "error");
-      } finally {
         setSubmitting(false);
+        return;
       }
+
+      // Step 2: the order now EXISTS. The advance + image uploads are follow-up
+      // writes -- if any fails we must NOT strand the user on the create form
+      // (re-submitting would create a duplicate order). Navigate to the order
+      // regardless and surface a warning so they can finish it from there.
+      const warnings: string[] = [];
+      if (advance > 0) {
+        try {
+          await paymentsApi.add(createdId, {
+            amount: advance,
+            method: form.advanceMethod,
+            nextPaymentDate: advance < total ? form.nextPaymentDate || null : null,
+          });
+        } catch {
+          warnings.push("the advance payment wasn't recorded — add it from the payment ledger");
+        }
+      }
+
+      const uploads = (Object.entries(stagedFiles) as [string, File | undefined][]).filter(([, file]) => file);
+      const results = await Promise.allSettled(
+        uploads.map(([slot, file]) => ordersApi.uploadImage(createdId, Number(slot), file as File)),
+      );
+      if (results.some((r) => r.status === "rejected")) {
+        warnings.push("some reference images didn't upload — add them by editing the order");
+      }
+
+      if (warnings.length > 0) {
+        showToast(`Order created, but ${warnings.join("; ")}.`, "error");
+      } else {
+        showToast("Order created successfully.", "success");
+      }
+      router.push(`/orders/${createdId}`);
+      router.refresh();
+      setSubmitting(false);
       return;
     }
 
@@ -300,8 +320,17 @@ export function OrderForm({
       });
     }
     if (canEditPricingFields) {
+      const newTotal = form.totalAmount === "" ? 0 : Number(form.totalAmount);
+      // Mirror the API's invariant: the total can't drop below what's already
+      // been collected (that would make the order "overpaid"). Reduce the
+      // payment in the ledger first. The API enforces this for real.
+      const alreadyPaid = order.amountPaid ?? 0;
+      if (newTotal < alreadyPaid) {
+        setErrors({ totalAmount: `Total can't be below the ${formatCurrency(alreadyPaid)} already collected — reduce a payment in the ledger first.` });
+        return;
+      }
       Object.assign(editable, {
-        totalAmount: form.totalAmount === "" ? 0 : Number(form.totalAmount),
+        totalAmount: newTotal,
         designerId: form.designerId,
         masterTailorId: form.masterTailorId,
       });
@@ -547,6 +576,7 @@ export function OrderForm({
                 onChange={(e) => set("totalAmount", e.target.value)}
                 placeholder="e.g. 25000"
               />
+              <FieldError>{errors.totalAmount}</FieldError>
               {!canEditPricingFields && (
                 <p className="mt-1 text-[11px] text-text-muted">Only Owner/Manager can change pricing.</p>
               )}
