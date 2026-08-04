@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
 import { periodLabel, revenueToCsv, downloadCsv } from "../export";
+import { LedgerActivity } from "./LedgerActivity";
 
 /** Years offered in the range selector: the last 10 years through the current one. */
 function yearOptions(): number[] {
@@ -204,6 +205,9 @@ export function RevenueClient() {
           )}
         </CardBody>
       </Card>
+
+      {/* Payment audit trail — who recorded/edited/removed a payment, when, and what changed. */}
+      <LedgerActivity />
     </div>
   );
 }

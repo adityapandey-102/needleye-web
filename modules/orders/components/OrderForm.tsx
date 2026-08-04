@@ -24,6 +24,7 @@ import { Select, Textarea } from "../../../components/ui/Select";
 import { RadioGroup } from "../../../components/ui/RadioGroup";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { ImageUploadGrid, type ImageSlotState } from "./ImageUploadGrid";
+import { compressImage } from "../../../lib/images/compressImage";
 import { useToast } from "../../../components/ui/Toast";
 
 type FormState = {
@@ -164,7 +165,12 @@ export function OrderForm({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function handleImageSelect(slot: 1 | 2 | 3 | 4, file: File) {
+  async function handleImageSelect(slot: 1 | 2 | 3 | 4, original: File) {
+    // Downscale + JPEG re-encode on the device so the full-resolution phone
+    // photo never leaves the client (bandwidth + Storage cost). Falls back to
+    // the original on any failure -- see lib/images/compressImage.ts.
+    const file = await compressImage(original);
+
     if (mode === "create" || !order) {
       const previewUrl = URL.createObjectURL(file);
       setStagedFiles((s) => ({ ...s, [slot]: file }));

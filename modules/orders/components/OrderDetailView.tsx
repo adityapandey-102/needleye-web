@@ -7,6 +7,7 @@ import {
   PAYMENT_STATUSES,
   PRODUCT_CATEGORIES,
   type Order,
+  type Role,
 } from "../../../lib/domain";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
@@ -15,7 +16,9 @@ import { OrderQrCode } from "./OrderQrCode";
 import { PaymentLedger } from "./PaymentLedger";
 import { ImageGallery } from "./ImageGallery";
 import { OrderTimeline } from "./OrderTimeline";
+import { OrderStatusTracker } from "./OrderStatusTracker";
 import { OrderStatusControl } from "./OrderStatusControl";
+import { StatusAdvancePrompt } from "./StatusAdvancePrompt";
 import { PrintOrderButton } from "./PrintOrderButton";
 
 function yesNo(value: boolean) {
@@ -24,6 +27,8 @@ function yesNo(value: boolean) {
 
 export function OrderDetailView({
   order,
+  role,
+  viewOnly = false,
   canEdit,
   canSeePayment,
   canManagePayments,
@@ -31,6 +36,8 @@ export function OrderDetailView({
   canChangeProductionStage,
 }: {
   order: Order;
+  role: Role;
+  viewOnly?: boolean;
   canEdit: boolean;
   canSeePayment: boolean;
   canManagePayments: boolean;
@@ -43,6 +50,22 @@ export function OrderDetailView({
 
   return (
     <div className="mx-auto max-w-6xl">
+      {/* On open (esp. via QR), prompt the assigned designer/master to advance the stage. */}
+      <StatusAdvancePrompt
+        orderId={order.id}
+        currentStatus={order.productionStatus}
+        role={role}
+        canChangeDesignStage={canChangeDesignStage}
+        canChangeProductionStage={canChangeProductionStage}
+      />
+
+      {viewOnly && (
+        <div className="mb-4 flex items-center gap-2 rounded-app-sm border border-info-bg bg-info-bg/40 px-3 py-2 text-sm text-info print:hidden">
+          <span>👁️</span>
+          <span>View only — this order isn&rsquo;t assigned to you, so payments and status changes are hidden.</span>
+        </div>
+      )}
+
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-serif text-xl font-bold text-text-primary">
@@ -69,15 +92,18 @@ export function OrderDetailView({
       </div>
 
       <Card className="mb-4">
-        <CardHeader icon="📅" iconTone="amber" title="Order Timeline" subtitle="Booking, due date, and urgency" />
-        <CardBody className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <SummaryItem label="Booking Date" value={formatDateOnly(order.bookingDate)} />
-          <SummaryItem label="Delivery Due Date" value={formatDateOnly(order.dueDate)} />
-          <SummaryItem label="Days Remaining" value={timeline.daysRemainingLabel} />
-          <div>
-            <div className="text-xs text-text-muted">Timeline Status</div>
-            <div className="mt-1">
-              <StatusPill label={timeline.statusLabel} tone={timeline.tone} />
+        <CardHeader icon="📅" iconTone="amber" title="Order Timeline" subtitle="Production progress, booking, and due date" />
+        <CardBody className="flex flex-col gap-5">
+          <OrderStatusTracker status={order.productionStatus} />
+          <div className="grid grid-cols-2 gap-4 border-t border-border-light pt-4 sm:grid-cols-4">
+            <SummaryItem label="Booking Date" value={formatDateOnly(order.bookingDate)} />
+            <SummaryItem label="Delivery Due Date" value={formatDateOnly(order.dueDate)} />
+            <SummaryItem label="Days Remaining" value={timeline.daysRemainingLabel} />
+            <div>
+              <div className="text-xs text-text-muted">Timeline Status</div>
+              <div className="mt-1">
+                <StatusPill label={timeline.statusLabel} tone={timeline.tone} />
+              </div>
             </div>
           </div>
         </CardBody>
@@ -165,11 +191,12 @@ export function OrderDetailView({
             />
           )}
 
-          {/* key={order.updatedAt} forces a remount (and a fresh fetch) whenever the
-              order changes -- the orders_set_updated_at DB trigger touches this on
-              every status transition, so router.refresh() after a status change
-              actually shows the new history entry instead of a stale mount-time fetch. */}
-          <OrderTimeline orderId={order.id} key={order.updatedAt} />
+          {/* The detailed status-history feed is row-scoped server-side (and
+              names who changed what), so it's hidden for a view-only outsider --
+              the visual OrderStatusTracker above already shows the current stage.
+              key={order.updatedAt} forces a fresh fetch after a status change
+              (the orders_set_updated_at trigger bumps it), avoiding a stale list. */}
+          {!viewOnly && <OrderTimeline orderId={order.id} key={order.updatedAt} />}
 
           <Card>
             <CardHeader icon="📱" iconTone="purple" title="Order QR" subtitle="Quick access for the team" />

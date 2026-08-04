@@ -79,9 +79,10 @@ modules/
   orders/
     components/                 # OrderForm (create+edit, advance at booking), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (A4 print), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
-    api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats() + revenue())
+    api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
-    components/RevenueClient.tsx   # owner_manager/accountant financial dashboard -- collected/outstanding + monthly accounting-cycle history (/revenue)
+    components/RevenueClient.tsx   # owner_manager/accountant financial dashboard -- collected/outstanding + monthly accounting-cycle history + LedgerActivity audit trail (/revenue)
+  orders/components/StaffReportClient.tsx + WeeklyThroughputChart.tsx  # owner-only staff weekly report (/orders/staff-report): lazy drill-down role -> person -> that person's report + SVG throughput chart
   payments/
     api/paymentsApi.ts             # every HTTP call the Payments module makes -- mirrors needleye-api's own Payments module
   admin-users/
@@ -265,14 +266,48 @@ collected/outstanding + a monthly accounting-cycle history over a
 printable statement route (`/revenue/print`, `print:hidden` chrome so the print
 output is just the statement).
 
+Below the history, **Ledger Activity** (`LedgerActivity.tsx`) is the payment
+audit trail: who recorded, edited, or removed a payment, when, on which order,
+and what changed (a before→after for edits, a signed amount for a
+record/removal). Cascading **year → month → week** filters narrow the window
+and the table pages through the matches (newest first), backed by
+`GET /orders/ledger-events`. Same `reports:financial` gate as the rest of the
+page.
+
 ### Print: order sheet & customer label
 
 Two print paths off an order's detail page: the existing full-order print
 (`window.print()` with app chrome `print:hidden`), and a new **A4 customer
 label** (`CustomerLabel.tsx`, `/orders/[orderId]/label`) -- a single sheet
-with a large scannable QR plus customer/phone/order-number/category/due-date/
-order-details, sized for a real package label. Both live on their own routes
-so printing emits just the intended sheet.
+with a large scannable QR plus customer/order-number/category/due-date/
+order-details plus the assigned **designer and master tailor** names (the
+customer's phone is deliberately omitted from the package label), sized for a
+real package label. Both live on their own routes so printing emits just the
+intended sheet.
+
+### Reference images: client-side compression
+
+Reference photos are downscaled and re-encoded to JPEG **on the device before
+upload** (`lib/images/compressImage.ts`, applied at the single selection choke
+point in `OrderForm.handleImageSelect`, so it covers both the create-time
+staged uploads and edit-time immediate uploads). Boutique staff shoot
+fabric/designs on phones (several MB each) but the app only ever shows small
+reference thumbnails, so the full-resolution original never needs to leave the
+client -- this is the main lever on bandwidth and the API's Supabase
+Storage/egress budget. It's WhatsApp-style: longest edge capped at 1600px,
+quality 0.8, and it degrades safely (a non-raster/undecodable/already-smaller
+file is uploaded unchanged).
+
+### View-only orders
+
+An order's detail page opened by someone it isn't assigned to (any
+authenticated user, e.g. via its QR code) renders in **view-only** mode: a
+banner explains the state, the payment ledger and the status-history feed are
+hidden, and status controls are read-only -- the visual status tracker is the
+only progress indicator. `OrderDetailView` takes a `viewOnly` prop the page
+computes from the caller's role/assignment; the API is the real enforcer
+(`GET /orders/:id` strips payments and writes still 403 -- see needleye-api's
+README).
 
 ### Confirmation dialogs & error handling
 

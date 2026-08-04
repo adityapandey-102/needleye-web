@@ -27,7 +27,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
     (contentScope === "assigned" && isAssignedDesigner) ||
     (pricingScope === "assigned" && isAssignedDesigner);
 
-  const canSeePayment = getCapabilityScope(profile.role, "payments:read") !== false;
+  // Payment visibility is scope-aware: owner/accountant on any order; a designer
+  // only on their OWN orders; master never. So an authenticated "outsider"
+  // viewing a non-assigned order (see below) never sees payments.
+  const paymentsReadScope = getCapabilityScope(profile.role, "payments:read");
+  const canSeePayment = paymentsReadScope === true || (paymentsReadScope === "assigned" && isAssignedDesigner);
   const paymentsManageScope = getCapabilityScope(profile.role, "payments:manage");
   const canManagePayments = paymentsManageScope === true || (paymentsManageScope === "assigned" && isAssignedDesigner);
 
@@ -36,9 +40,21 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
   const canChangeDesignStage = designStageScope === true || (designStageScope === "assigned" && isAssignedDesigner);
   const canChangeProductionStage = productionStageScope === true || (productionStageScope === "assigned" && isAssignedMasterTailor);
 
+  // View-only: an authenticated user who isn't the owner/manager, accountant, or
+  // this order's assigned designer/master. They can see the order (reached via
+  // QR/link) but not payments, status changes, or edits -- all the can* flags
+  // above are already false for them; this drives the read-only banner.
+  const viewOnly =
+    profile.role !== "owner_manager" &&
+    profile.role !== "accountant" &&
+    !isAssignedDesigner &&
+    !isAssignedMasterTailor;
+
   return (
     <OrderDetailView
       order={order}
+      role={profile.role}
+      viewOnly={viewOnly}
       canEdit={canEdit}
       canSeePayment={canSeePayment}
       canManagePayments={canManagePayments}

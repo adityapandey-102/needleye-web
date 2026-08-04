@@ -11,11 +11,14 @@ export function CardHeader({
   iconTone = "purple",
   title,
   subtitle,
+  action,
 }: {
   icon: string;
   iconTone?: "purple" | "pink" | "green" | "amber" | "blue";
   title: string;
   subtitle?: string;
+  /** Optional right-aligned content in the header (e.g. a compact status stepper or a button). */
+  action?: React.ReactNode;
 }) {
   const toneClasses: Record<string, string> = {
     purple: "bg-primary-bg text-primary",
@@ -34,6 +37,7 @@ export function CardHeader({
         <div className="text-sm font-semibold text-text-primary">{title}</div>
         {subtitle && <div className="truncate text-xs text-text-muted">{subtitle}</div>}
       </div>
+      {action && <div className="ml-auto shrink-0">{action}</div>}
     </div>
   );
 }

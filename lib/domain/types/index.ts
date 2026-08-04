@@ -111,6 +111,69 @@ export interface RevenueReport {
   periods: RevenuePeriod[];
 }
 
+/** One designer/master-tailor's monthly cohort board (orders booked that month) — GET /orders/staff-report. */
+export interface StaffReportSummary {
+  booked: number;
+  active: number;
+  inProduction: number;
+  completed: number;
+  overdue: number;
+  urgent: number;
+  paymentPendingCount: number;
+  paymentPendingAmount: number;
+}
+
+/** One week's throughput point for the staff report graph (Monday-started, oldest first). */
+export interface StaffWeeklyPoint {
+  weekStart: string;
+  booked: number;
+  completed: number;
+}
+
+export interface StaffReport {
+  staff: { id: string; fullName: string; role: "designer" | "master_tailor" };
+  summary: StaffReportSummary;
+  /** The selected month's weeks (Monday-started, oldest first, zero-filled). */
+  weekly: StaffWeeklyPoint[];
+  /** The month the weekly breakdown covers, YYYY-MM. */
+  month: string;
+}
+
+/** A payment's {amount, method} snapshot within a ledger event. */
+export interface LedgerAmountSnapshot {
+  amount: number;
+  method: string;
+}
+
+/** One payment-ledger activity event — GET /orders/ledger-events (reports:financial). */
+export interface LedgerEvent {
+  id: string;
+  /** created = payment recorded, updated = edited, deleted = removed. */
+  action: "created" | "updated" | "deleted";
+  /** ISO-8601 UTC timestamp of the event. */
+  at: string;
+  /** Who did it (null if that account was since removed). */
+  actorName: string | null;
+  orderId: string | null;
+  orderNumber: string | null;
+  /** created/deleted: the payment's amount+method. */
+  snapshot?: LedgerAmountSnapshot;
+  /** updated: values before the edit. */
+  before?: LedgerAmountSnapshot;
+  /** updated: values after the edit. */
+  after?: LedgerAmountSnapshot;
+}
+
+/** Paginated ledger-activity feed envelope. */
+export interface LedgerEventsResult {
+  events: LedgerEvent[];
+  total: number;
+  limit: number;
+  offset: number;
+  from: string;
+  to: string;
+}
+
 export interface TimelineSummary {
   statusLabel: "ON TRACK" | "DUE SOON" | "URGENT" | "OVERDUE" | "N/A";
   tone: "green" | "amber" | "red" | "dark-red" | "gray";

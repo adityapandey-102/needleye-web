@@ -8,10 +8,11 @@ import { Button } from "../../../components/ui/Button";
 /**
  * A single-A4-sheet package label for an order: a large, scannable QR plus the
  * details a workshop needs to match a physical package to its order (customer,
- * phone, order number, category, due date, brief order details). Rendered on
- * its own route so window.print() emits just this sheet -- the app chrome
- * (sidebar/header) is already `print:hidden`. The on-screen toolbar is hidden
- * when printing.
+ * assigned designer + master tailor, order number, category, due date, brief
+ * order details). The customer phone is intentionally NOT on the label (it's a
+ * workshop/package tag, not a contact card). Rendered on its own route so
+ * window.print() emits just this sheet -- the app chrome (sidebar/header) is
+ * already `print:hidden`. The on-screen toolbar is hidden when printing.
  */
 export function CustomerLabel({ order, qrUrl }: { order: Order; qrUrl: string }) {
   const category = PRODUCT_CATEGORIES.find((c) => c.value === order.productCategory);
@@ -57,7 +58,10 @@ export function CustomerLabel({ order, qrUrl }: { order: Order; qrUrl: string })
 
           <div className="flex flex-col justify-center gap-4">
             <LabelField label="Customer" value={order.customerName} big />
-            <LabelField label="Phone" value={order.phone} />
+            <div className="grid grid-cols-2 gap-4">
+              <LabelField label="Designer" value={order.designerName ?? "—"} />
+              <LabelField label="Master Tailor" value={order.masterTailorName ?? "—"} />
+            </div>
             <LabelField label="Product Category" value={category?.label ?? order.productCategory} />
             <LabelField label="Due Date" value={formatDateOnly(order.dueDate)} big />
             <LabelField label="Bill Number" value={order.billNumber} />

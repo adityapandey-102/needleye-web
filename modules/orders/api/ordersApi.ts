@@ -1,10 +1,12 @@
 import type {
   CreateOrderInput,
   GranularStatus,
+  LedgerEventsResult,
   Order,
   OrderStats,
   OrderStatusHistoryEntry,
   RevenueReport,
+  StaffReport,
   UpdateOrderInput,
 } from "../../../lib/domain";
 import { apiFetch, apiUpload } from "../../../lib/api/client";
@@ -71,6 +73,24 @@ export const ordersApi = {
   revenue(from: string, to: string): Promise<RevenueReport> {
     const query = new URLSearchParams({ from, to });
     return apiFetch(`/orders/revenue?${query.toString()}`);
+  },
+
+  /** One staff member's workload report for a month (YYYY-MM, default current) -- owner_manager only (reports:staff). */
+  staffReport(staffId: string, month?: string): Promise<StaffReport> {
+    const query = new URLSearchParams({ staffId });
+    if (month) query.set("month", month);
+    return apiFetch(`/orders/staff-report?${query.toString()}`);
+  },
+
+  /** Paginated payment-ledger activity feed over an inclusive [from, to] window -- owner_manager / accountant only (reports:financial). */
+  ledgerEvents(params: { from: string; to: string; limit: number; offset: number }): Promise<LedgerEventsResult> {
+    const query = new URLSearchParams({
+      from: params.from,
+      to: params.to,
+      limit: String(params.limit),
+      offset: String(params.offset),
+    });
+    return apiFetch(`/orders/ledger-events?${query.toString()}`);
   },
 
   uploadImage(orderId: string, slot: number, file: File): Promise<{ storagePath: string; url: string }> {

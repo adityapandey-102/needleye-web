@@ -20,11 +20,18 @@ export default async function OrdersPage({
           <h1 className="font-serif text-xl font-bold text-text-primary">Orders</h1>
           <p className="text-sm text-text-muted">An at-a-glance view of every order in your scope.</p>
         </div>
-        {hasCapability(profile.role, "orders:create") && (
-          <Link href="/orders/new">
-            <Button>✦ Create New Order</Button>
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {hasCapability(profile.role, "reports:staff") && (
+            <Link href="/orders/staff-report">
+              <Button variant="outline">📊 Staff Report</Button>
+            </Link>
+          )}
+          {hasCapability(profile.role, "orders:create") && (
+            <Link href="/orders/new">
+              <Button>✦ Create New Order</Button>
+            </Link>
+          )}
+        </div>
       </div>
       <OrderStatCards role={profile.role} />
       <OrdersListClient role={profile.role} userId={profile.id} initialBucket={bucket} />
