@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ROLE_LABELS, type Profile } from "../../lib/domain";
 import { visibleNavSections } from "./nav-config";
+import { BrandMark } from "./BrandMark";
+import { Icon } from "../ui/Icon";
 import { authApi } from "../../modules/auth/api/authApi";
 
 function initials(name: string) {
@@ -38,29 +40,32 @@ export function Sidebar({
   return (
     <>
       {open && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} aria-hidden="true" />
+        <div
+          className="animate-fade-in fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
       )}
       <aside
-        className={`fixed top-0 left-0 z-50 flex h-screen w-[260px] flex-col bg-sidebar transition-transform lg:translate-x-0 print:hidden ${
+        className={`gradient-sidebar fixed top-0 left-0 z-50 flex h-screen w-65 flex-col shadow-app-lg transition-transform duration-300 ease-out lg:translate-x-0 print:hidden ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
+        {/* Brand */}
         <div className="border-b border-white/10 px-5 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-app bg-linear-to-br from-primary to-primary-dark text-lg">
-              🪡
-            </div>
+          <div className="flex items-center gap-3">
+            <BrandMark size={40} className="ring-1 ring-gold/30" />
             <div className="flex flex-col">
-              <span className="font-serif text-[15px] leading-tight font-bold text-white">Needle Eye</span>
-              <span className="text-[10px] text-white/45">Luxury ERP</span>
+              <span className="font-serif text-[16px] leading-tight font-bold text-white">Needleye</span>
+              <span className="text-[10px] tracking-[0.16em] text-gold-light/80 uppercase">by Sakina Ahmed</span>
             </div>
           </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           {sections.map((section) => (
-            <div key={section.label} className="mb-4">
-              <div className="px-3 pb-1.5 text-[10px] font-semibold tracking-wider text-white/35 uppercase">
+            <div key={section.label} className="mb-5">
+              <div className="px-3 pb-2 text-[10px] font-semibold tracking-[0.14em] text-white/35 uppercase">
                 {section.label}
               </div>
               {section.items.map((item) => {
@@ -69,10 +74,10 @@ export function Sidebar({
                   return (
                     <div
                       key={item.label}
-                      className="flex cursor-not-allowed items-center gap-2.5 rounded-app px-3 py-2 text-sm text-white/30"
+                      className="flex cursor-not-allowed items-center gap-3 rounded-app px-3 py-2 text-sm text-white/30"
                       title="Coming soon"
                     >
-                      <span className="w-4 text-center">{item.icon}</span>
+                      <Icon emoji={item.icon} size={17} className="opacity-80" />
                       {item.label}
                       <span className="ml-auto text-[9px] tracking-wide uppercase">Soon</span>
                     </div>
@@ -83,13 +88,23 @@ export function Sidebar({
                     key={item.label}
                     href={item.href}
                     onClick={onClose}
-                    className={`flex items-center gap-2.5 rounded-app px-3 py-2 text-sm transition-colors ${
+                    className={`group relative mb-0.5 flex items-center gap-3 rounded-app px-3 py-2 text-sm transition-all duration-200 ${
                       isActive
-                        ? "bg-white/10 font-medium text-white"
-                        : "text-white/70 hover:bg-white/5 hover:text-white"
+                        ? "bg-white/10 font-semibold text-white"
+                        : "text-white/65 hover:bg-white/5 hover:text-white"
                     }`}
                   >
-                    <span className="w-4 text-center">{item.icon}</span>
+                    {/* Gold active indicator */}
+                    <span
+                      className={`gradient-gold absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-r-full transition-opacity duration-200 ${
+                        isActive ? "opacity-100" : "opacity-0"
+                      }`}
+                    />
+                    <Icon
+                      emoji={item.icon}
+                      size={17}
+                      className={`transition-transform duration-200 ${isActive ? "text-gold-light" : "group-hover:scale-110"}`}
+                    />
                     {item.label}
                   </Link>
                 );
@@ -100,17 +115,17 @@ export function Sidebar({
 
         <div className="border-t border-white/10 p-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
+            <div className="gradient-gold ring-gold-light/30 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-primary-dark ring-2">
               {initials(profile.fullName)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-white">{profile.fullName}</div>
-              <div className="truncate text-[11px] text-white/45">{ROLE_LABELS[profile.role]}</div>
+              <div className="truncate text-[11px] text-gold-light/70">{ROLE_LABELS[profile.role]}</div>
             </div>
           </div>
           <button
             onClick={handleSignOut}
-            className="mt-3 w-full rounded-app border border-white/15 px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+            className="mt-3 w-full rounded-app border border-white/15 px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/30 hover:bg-white/5 hover:text-white"
           >
             Sign out
           </button>

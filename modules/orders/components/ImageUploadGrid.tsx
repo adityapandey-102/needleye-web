@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { Icon } from "../../../components/ui/Icon";
 
 export interface ImageSlotState {
   url?: string;
@@ -67,7 +68,7 @@ export function ImageUploadGrid({
               </>
             ) : (
               <div className="flex flex-col items-center gap-1 text-text-muted">
-                <span className="text-xl">📷</span>
+                <Icon name="image" size={22} />
                 <span className="text-[11px]">Image {slot}</span>
               </div>
             )}

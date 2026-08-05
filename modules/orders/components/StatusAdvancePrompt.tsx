@@ -11,6 +11,7 @@ import {
 } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
 import { Button } from "../../../components/ui/Button";
+import { Icon } from "../../../components/ui/Icon";
 import { useToast } from "../../../components/ui/Toast";
 
 /**
@@ -94,10 +95,12 @@ export function StatusAdvancePrompt({
   if (!open || !nextStatus) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 print:hidden" onClick={dismiss}>
-      <div className="w-full max-w-md rounded-app-lg border border-border bg-card p-6 shadow-app-md" onClick={(e) => e.stopPropagation()}>
+    <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm print:hidden" onClick={dismiss}>
+      <div className="animate-scale-in card-accent-top w-full max-w-md rounded-app-lg border border-border bg-card p-6 shadow-app-lg" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-app bg-primary-bg text-xl text-primary">🧵</div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-app bg-primary-bg text-primary ring-1 ring-inset ring-primary/10">
+            <Icon name="needle" size={20} />
+          </div>
           <div>
             <h2 className="font-serif text-lg font-bold text-text-primary">Update production status?</h2>
             <p className="text-xs text-text-muted">Move this order forward in its journey.</p>

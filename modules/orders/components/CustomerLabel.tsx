@@ -35,7 +35,7 @@ export function CustomerLabel({ order, qrUrl }: { order: Order; qrUrl: string })
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-app bg-primary text-2xl">🪡</div>
             <div>
-              <div className="font-serif text-2xl font-bold leading-none">Needle Eye</div>
+              <div className="font-serif text-2xl font-bold leading-none">Needleye</div>
               <div className="text-xs tracking-wide text-neutral-500 uppercase">Luxury Tailoring</div>
             </div>
           </div>

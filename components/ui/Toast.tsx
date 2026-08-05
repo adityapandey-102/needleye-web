@@ -49,7 +49,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             role="status"
-            className={`animate-toast-slide flex max-w-[300px] items-center gap-2 rounded-app-sm px-4 py-3 text-[13px] font-medium shadow-app-lg ${TONE_CLASSES[t.type]}`}
+            className={`animate-toast-slide flex max-w-[300px] items-center gap-2 rounded-app px-4 py-3 text-[13px] font-medium shadow-app-lg ring-1 ring-white/15 ${TONE_CLASSES[t.type]}`}
           >
             {t.message}
           </div>

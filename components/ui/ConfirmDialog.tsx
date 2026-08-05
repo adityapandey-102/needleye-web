@@ -47,12 +47,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           role="dialog"
           aria-modal="true"
           aria-label={options.title}
-          className="fixed inset-0 z-999 flex items-center justify-center bg-black/40 p-4 print:hidden"
+          className="animate-fade-in fixed inset-0 z-999 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm print:hidden"
           onClick={() => settle(false)}
           onKeyDown={(e) => e.key === "Escape" && settle(false)}
         >
           <div
-            className="w-full max-w-sm rounded-app-lg border border-border bg-card p-5 shadow-app-lg"
+            className="animate-scale-in card-accent-top w-full max-w-sm rounded-app-lg border border-border bg-card p-5 shadow-app-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="font-serif text-base font-bold text-text-primary">{options.title}</h2>

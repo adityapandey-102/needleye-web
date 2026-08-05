@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "../../../components/ui/Button";
+import { Icon } from "../../../components/ui/Icon";
 
 /**
  * Print controls for the revenue statement route -- a Print button plus a Close
@@ -14,7 +15,9 @@ export function RevenuePrintTrigger() {
       <Button variant="outline" onClick={() => window.close()}>
         Close
       </Button>
-      <Button onClick={() => window.print()}>🖨️ Print / Save as PDF</Button>
+      <Button onClick={() => window.print()}>
+        <Icon name="printer" size={16} /> Print / Save as PDF
+      </Button>
     </div>
   );
 }

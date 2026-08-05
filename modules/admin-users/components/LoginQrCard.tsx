@@ -4,8 +4,8 @@ import { useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Button } from "../../../components/ui/Button";
 
-const BURGUNDY = "#7a1733";
-const BURGUNDY_DARK = "#5b1026";
+const BURGUNDY = "#7a1d34";
+const BURGUNDY_DARK = "#571325";
 
 /** Opens the composed PNG in a new window and prints it -- avoids print-CSS conflicts with the modal behind it. */
 function printDataUrl(dataUrl: string) {
@@ -52,7 +52,7 @@ export function LoginQrCard({ fullName, roleLabel, loginUrl }: { fullName: strin
     ctx.fillStyle = "#ffffff";
     ctx.textBaseline = "middle";
     ctx.font = "700 20px Georgia, serif";
-    ctx.fillText("Needle Eye", 20, 24);
+    ctx.fillText("Needleye", 20, 24);
     ctx.font = "600 11px Arial, sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.75)";
     ctx.fillText("STAFF LOGIN", 20, 42);
@@ -73,7 +73,7 @@ export function LoginQrCard({ fullName, roleLabel, loginUrl }: { fullName: strin
     ctx.fillStyle = "#555555";
     ctx.font = "12px Arial, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Scan to log in to Needle Eye", width / 2, 344);
+    ctx.fillText("Scan to log in to Needleye", width / 2, 344);
     ctx.fillStyle = "#999999";
     ctx.font = "10px Arial, sans-serif";
     ctx.fillText("Keep private · regenerating replaces this code", width / 2, 366);
@@ -102,7 +102,7 @@ export function LoginQrCard({ fullName, roleLabel, loginUrl }: { fullName: strin
         <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: BURGUNDY }}>
           <div className="flex h-7 w-7 items-center justify-center rounded-app bg-white/15 text-sm">🪡</div>
           <div>
-            <div className="font-serif text-sm leading-none font-bold text-white">Needle Eye</div>
+            <div className="font-serif text-sm leading-none font-bold text-white">Needleye</div>
             <div className="text-[9px] tracking-widest text-white/70 uppercase">Staff Login</div>
           </div>
         </div>
@@ -115,7 +115,7 @@ export function LoginQrCard({ fullName, roleLabel, loginUrl }: { fullName: strin
         <div className="flex justify-center px-4 py-3">
           <QRCodeCanvas ref={qrRef} value={loginUrl} size={168} level="M" />
         </div>
-        <div className="px-4 pb-3 text-center text-[10px] text-neutral-500">Scan to log in to Needle Eye</div>
+        <div className="px-4 pb-3 text-center text-[10px] text-neutral-500">Scan to log in to Needleye</div>
       </div>
 
       <div className="flex gap-2">

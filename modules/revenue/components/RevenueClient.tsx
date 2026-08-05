@@ -7,6 +7,7 @@ import { ordersApi } from "../../orders/api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
+import { Icon } from "../../../components/ui/Icon";
 import { periodLabel, revenueToCsv, downloadCsv } from "../export";
 import { LedgerActivity } from "./LedgerActivity";
 
@@ -137,11 +138,11 @@ export function RevenueClient() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={!report || periods.length === 0} onClick={handleExportCsv}>
-                ⬇️ Export CSV
+                <Icon name="download" size={14} /> Export CSV
               </Button>
               <Link href={`/revenue/print?from=${from}&to=${to}`} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" className="px-3 py-1.5 text-xs">
-                  🖨️ Export PDF
+                  <Icon name="printer" size={14} /> Export PDF
                 </Button>
               </Link>
             </div>

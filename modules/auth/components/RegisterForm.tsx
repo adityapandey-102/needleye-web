@@ -51,7 +51,7 @@ export function RegisterForm() {
       <div className="text-center">
         <h1 className="font-serif text-lg font-bold text-text-primary">Invite-only</h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Needle Eye is already set up. Ask your Owner/Manager to invite you from Administration →
+          Needleye is already set up. Ask your Owner/Manager to invite you from Administration →
           User Management.
         </p>
       </div>

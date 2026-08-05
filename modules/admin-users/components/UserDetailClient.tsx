@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDate, ROLE_LABELS, ROLES, type Role } from "../../../lib/domain";
 import { usersApi, type StaffUser } from "../api/usersApi";
 import { Button } from "../../../components/ui/Button";
+import { Icon } from "../../../components/ui/Icon";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { useToast } from "../../../components/ui/Toast";
 import { useConfirm } from "../../../components/ui/ConfirmDialog";
@@ -134,7 +135,9 @@ export function UserDetailClient({ initialUser, currentUserId }: { initialUser: 
           <p className="text-sm text-text-muted">{ROLE_LABELS[user.role]} · {user.email}</p>
         </div>
         <Link href="/admin/users">
-          <Button variant="outline">← All Users</Button>
+          <Button variant="outline">
+            <Icon name="chevron-right" size={15} className="rotate-180" /> All Users
+          </Button>
         </Link>
       </div>
 
@@ -183,12 +186,13 @@ export function UserDetailClient({ initialUser, currentUserId }: { initialUser: 
               <div className="flex flex-col gap-2">
                 {canRegeneratePassword(user) && (
                   <Button variant="outline" disabled={busy} onClick={handleGeneratePassword}>
-                    🔑 Generate new password
+                    <Icon name="key" size={16} /> Generate new password
                   </Button>
                 )}
                 {user.role === "master_tailor" && (
                   <Button variant="outline" disabled={busy} onClick={handleGenerateQr}>
-                    {user.hasQrLogin ? "🔄 Regenerate QR login" : "📱 Generate QR login"}
+                    <Icon name={user.hasQrLogin ? "refresh" : "qr"} size={16} />
+                    {user.hasQrLogin ? "Regenerate QR login" : "Generate QR login"}
                   </Button>
                 )}
                 <Button
@@ -197,13 +201,13 @@ export function UserDetailClient({ initialUser, currentUserId }: { initialUser: 
                   onClick={handleDeactivate}
                   title={isSelf ? "You cannot deactivate your own account" : undefined}
                 >
-                  🚫 Deactivate account
+                  <Icon name="ban" size={16} /> Deactivate account
                 </Button>
                 {isSelf && <p className="text-[11px] text-text-muted">You cannot deactivate your own account.</p>}
               </div>
             ) : (
               <Button disabled={busy} onClick={handleReactivate}>
-                ✅ Reactivate account
+                <Icon name="check" size={16} /> Reactivate account
               </Button>
             )}
           </CardBody>

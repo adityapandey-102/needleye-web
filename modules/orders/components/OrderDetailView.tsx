@@ -12,6 +12,7 @@ import {
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { StatusPill } from "../../../components/ui/StatusPill";
+import { Icon, type IconName } from "../../../components/ui/Icon";
 import { OrderQrCode } from "./OrderQrCode";
 import { PaymentLedger } from "./PaymentLedger";
 import { ImageGallery } from "./ImageGallery";
@@ -21,8 +22,18 @@ import { OrderStatusControl } from "./OrderStatusControl";
 import { StatusAdvancePrompt } from "./StatusAdvancePrompt";
 import { PrintOrderButton } from "./PrintOrderButton";
 
-function yesNo(value: boolean) {
-  return value ? "Yes" : "No";
+function WorkChip({ icon, label, active }: { icon: IconName; label: string; active: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset ${
+        active ? "bg-success-bg text-success ring-success/20" : "bg-gray-pill-bg text-text-muted ring-black/5"
+      }`}
+    >
+      <Icon name={icon} size={14} />
+      {label}
+      {active && <Icon name="check" size={13} className="ml-0.5" />}
+    </span>
+  );
 }
 
 export function OrderDetailView({
@@ -48,6 +59,12 @@ export function OrderDetailView({
   const payment = PAYMENT_STATUSES.find((p) => p.value === order.paymentStatus);
   const timeline = getTimelineSummary(order);
 
+  // Payment progress (visual bar) — only meaningful when the caller can see money.
+  const total = order.totalAmount ?? 0;
+  const outstanding = order.outstanding ?? 0;
+  const paid = Math.max(total - outstanding, 0);
+  const paidPct = total > 0 ? Math.min(Math.round((paid / total) * 100), 100) : 0;
+
   return (
     <div className="mx-auto max-w-6xl">
       {/* On open (esp. via QR), prompt the assigned designer/master to advance the stage. */}
@@ -61,33 +78,62 @@ export function OrderDetailView({
 
       {viewOnly && (
         <div className="mb-4 flex items-center gap-2 rounded-app-sm border border-info-bg bg-info-bg/40 px-3 py-2 text-sm text-info print:hidden">
-          <span>👁️</span>
+          <Icon name="eye" size={16} />
           <span>View only — this order isn&rsquo;t assigned to you, so payments and status changes are hidden.</span>
         </div>
       )}
 
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-xl font-bold text-text-primary">
-            {order.customerName} — {category?.label ?? order.productCategory}
-          </h1>
-          <p className="text-sm text-text-muted">
-            {order.orderNumber} · {order.billNumber}
-          </p>
-        </div>
-        <div className="flex gap-2 print:hidden">
-          <Link href="/orders">
-            <Button variant="outline">All Orders</Button>
-          </Link>
+      {/* Action row (kept on the light background, above the hero). */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <Link href="/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-primary">
+          <Icon name="chevron-right" size={16} className="rotate-180" /> All Orders
+        </Link>
+        <div className="flex flex-wrap gap-2">
           <PrintOrderButton />
           <Link href={`/orders/${order.id}/label`}>
-            <Button variant="outline">🏷️ Print Label</Button>
+            <Button variant="outline">
+              <Icon name="printer" size={16} /> Print Label
+            </Button>
           </Link>
           {canEdit && (
             <Link href={`/orders/${order.id}/edit`}>
-              <Button>Edit Order</Button>
+              <Button>
+                <Icon name="edit" size={16} /> Edit Order
+              </Button>
             </Link>
           )}
+        </div>
+      </div>
+
+      {/* Gradient hero — customer, order identity, and an at-a-glance visual stat strip. */}
+      <div className="gradient-primary relative mb-4 overflow-hidden rounded-app-lg p-5 text-white shadow-app-lg sm:p-6 print:bg-white print:text-black print:shadow-none print:ring-1 print:ring-neutral-300">
+        <div aria-hidden className="pointer-events-none absolute -top-16 -right-10 h-52 w-52 rounded-full bg-white/10 blur-3xl print:hidden" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-20 left-1/3 h-52 w-52 rounded-full bg-black/10 blur-3xl print:hidden" />
+        <div className="relative">
+          <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-white/70 uppercase print:text-neutral-500">
+            <Icon name="shirt" size={14} />
+            {category?.label ?? order.productCategory}
+            <span className="text-white/40">·</span>
+            {order.orderNumber}
+          </div>
+          <h1 className="mt-1.5 font-serif text-2xl font-bold sm:text-3xl">{order.customerName}</h1>
+          <p className="mt-0.5 text-sm text-white/70 print:text-neutral-500">Bill No. {order.billNumber}</p>
+
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <HeroStat icon="check" label="Stage" value={granularLabel(order.productionStatus)} />
+            <HeroStat icon="clock" label="Timeline" value={timeline.daysRemainingLabel} />
+            {canSeePayment ? (
+              <>
+                <HeroStat icon="wallet" label="Total" value={formatCurrency(total)} />
+                <HeroStat icon="card" label="Outstanding" value={formatCurrency(outstanding)} />
+              </>
+            ) : (
+              <>
+                <HeroStat icon="calendar" label="Booked" value={formatDateOnly(order.bookingDate)} />
+                <HeroStat icon="clock" label="Due" value={formatDateOnly(order.dueDate)} />
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -127,9 +173,15 @@ export function OrderDetailView({
             <CardBody className="flex flex-col gap-2.5">
               <InfoRow label="Category" value={category?.label ?? order.productCategory} />
               <InfoRow label="Order Details" value={order.orderDetails} multiline />
-              <InfoRow label="Hand Work" value={yesNo(order.handWork)} />
-              <InfoRow label="Machine Work" value={yesNo(order.machineWork)} />
-              <InfoRow label="Purchase Required" value={yesNo(order.purchaseRequired)} />
+              {/* Work requirements as visual chips (designers scan these at a glance). */}
+              <div>
+                <div className="mb-1.5 text-xs text-text-muted">Work Requirements</div>
+                <div className="flex flex-wrap gap-2">
+                  <WorkChip icon="hand" label="Hand Work" active={order.handWork} />
+                  <WorkChip icon="settings" label="Machine Work" active={order.machineWork} />
+                  <WorkChip icon="cart" label="Purchase Required" active={order.purchaseRequired} />
+                </div>
+              </div>
             </CardBody>
           </Card>
 
@@ -172,8 +224,21 @@ export function OrderDetailView({
                     <span className="text-xs text-text-muted">Payment</span>
                     <StatusPill label={payment?.label ?? order.paymentStatus ?? ""} tone={order.paymentStatus === "fully_paid" ? "green" : "amber"} />
                   </div>
-                  <InfoRow label="Total" value={formatCurrency(order.totalAmount ?? 0)} />
-                  <InfoRow label="Outstanding" value={formatCurrency(order.outstanding ?? 0)} />
+                  {/* Visual paid-vs-total progress. */}
+                  <div className="mt-1">
+                    <div className="mb-1 flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-success">{formatCurrency(paid)} paid</span>
+                      <span className="font-semibold text-text-secondary">{paidPct}%</span>
+                    </div>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-primary-bg ring-1 ring-inset ring-border">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${order.paymentStatus === "fully_paid" ? "bg-success" : "gradient-gold"}`}
+                        style={{ width: `${paidPct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <InfoRow label="Total" value={formatCurrency(total)} />
+                  <InfoRow label="Outstanding" value={formatCurrency(outstanding)} />
                 </>
               ) : (
                 <p className="text-xs text-text-muted">Payment details are not visible for your role.</p>
@@ -212,6 +277,19 @@ export function OrderDetailView({
             </CardBody>
           </Card>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function HeroStat({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  return (
+    <div className="rounded-app bg-white/10 p-3 ring-1 ring-white/15 backdrop-blur-sm print:bg-neutral-50 print:ring-neutral-200">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide text-white/70 uppercase print:text-neutral-500">
+        <Icon name={icon} size={13} /> {label}
+      </div>
+      <div className="mt-1 truncate text-sm font-bold text-white print:text-black" title={value}>
+        {value}
       </div>
     </div>
   );

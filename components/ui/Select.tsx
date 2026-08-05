@@ -5,7 +5,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
     return (
       <select
         ref={ref}
-        className={`w-full rounded-app-sm border border-border bg-card px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+        className={`w-full rounded-app-sm border border-border bg-card px-3 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary focus:ring-2 focus:ring-gold/25 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
         {...props}
       >
         {children}
@@ -19,7 +19,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttrib
     return (
       <textarea
         ref={ref}
-        className={`w-full resize-y rounded-app-sm border border-border bg-card px-3 py-2.5 text-sm text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+        className={`w-full resize-y rounded-app-sm border border-border bg-card px-3 py-2.5 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-gold/25 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
         {...props}
       />
     );

@@ -7,11 +7,13 @@ import { ordersApi } from "../api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
+import { Icon, type IconName } from "../../../components/ui/Icon";
 import { WeeklyThroughputChart } from "./WeeklyThroughputChart";
 
 type StaffRole = "designer" | "master_tailor";
 
 const ROLE_LABEL: Record<StaffRole, string> = { designer: "Designers", master_tailor: "Master Tailors" };
+const ROLE_ICON: Record<StaffRole, IconName> = { designer: "palette", master_tailor: "scissors" };
 
 /** `YYYY-MM` for a Date, in local time. */
 function ym(d: Date): string {
@@ -86,20 +88,25 @@ export function StaffReportClient() {
   // ---- Step 1: pick a role ----
   if (!role) {
     return (
-      <Card>
-        <CardHeader icon="📊" iconTone="purple" title="Staff Weekly Report" subtitle="Choose a team to review" />
+      <Card accent>
+        <CardHeader icon="bar-chart" iconTone="gold" title="Staff Weekly Report" subtitle="Choose a team to review" />
         <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {(["designer", "master_tailor"] as StaffRole[]).map((r) => (
+          {(["designer", "master_tailor"] as StaffRole[]).map((r, i) => (
             <button
               key={r}
               onClick={() => setRole(r)}
-              className="group flex items-center justify-between rounded-app-lg border border-border bg-card p-5 text-left shadow-app transition-all hover:-translate-y-0.5 hover:shadow-app-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              style={{ animationDelay: `${i * 70}ms` }}
+              className="group animate-rise relative flex items-center gap-4 overflow-hidden rounded-app-lg border border-border bg-card p-5 text-left shadow-app transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-app-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
             >
-              <div>
-                <div className="text-lg font-bold text-text-primary">{ROLE_LABEL[r]}</div>
+              <div aria-hidden className="pointer-events-none absolute -top-8 -right-6 h-24 w-24 rounded-full bg-primary-bg/60 blur-2xl transition-opacity group-hover:opacity-100" />
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-app-lg bg-primary-bg text-primary ring-1 ring-inset ring-primary/10 transition-transform duration-200 group-hover:scale-105">
+                <Icon name={ROLE_ICON[r]} size={26} />
+              </div>
+              <div className="relative min-w-0 flex-1">
+                <div className="font-serif text-lg font-bold text-text-primary">{ROLE_LABEL[r]}</div>
                 <div className="text-xs text-text-muted">See per-person monthly workload &amp; trends</div>
               </div>
-              <span className="text-3xl transition-transform group-hover:scale-110">{r === "designer" ? "🎨" : "✂️"}</span>
+              <Icon name="chevron-right" size={20} className="relative shrink-0 text-primary/40 transition-transform group-hover:translate-x-0.5" />
             </button>
           ))}
         </CardBody>
@@ -112,7 +119,7 @@ export function StaffReportClient() {
       <button onClick={backToRoles} className="font-medium text-primary hover:underline">
         Staff Report
       </button>
-      <span>›</span>
+      <Icon name="chevron-right" size={14} className="text-text-muted" />
       {staffId ? (
         <button onClick={backToList} className="font-medium text-primary hover:underline">
           {ROLE_LABEL[role]}
@@ -122,7 +129,7 @@ export function StaffReportClient() {
       )}
       {staffId && report && (
         <>
-          <span>›</span>
+          <Icon name="chevron-right" size={14} className="text-text-muted" />
           <span className="font-medium text-text-secondary">{report.staff.fullName}</span>
         </>
       )}
@@ -145,17 +152,21 @@ export function StaffReportClient() {
               <div className="p-4 text-sm text-text-muted">No active {ROLE_LABEL[role].toLowerCase()} yet.</div>
             ) : (
               <ul className="divide-y divide-border-light">
-                {members.map((m) => (
+                {members.map((m, i) => (
                   <li key={m.id}>
                     <button
                       onClick={() => pickStaff(m.id)}
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-primary-bg/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}
+                      className="group animate-fade-in flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-primary-bg/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-bg text-xs font-bold text-primary">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-bg text-xs font-bold text-primary ring-1 ring-inset ring-primary/10">
                         {m.fullName.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
                       </span>
                       <span className="flex-1 font-medium text-text-primary">{m.fullName}</span>
-                      <span className="text-primary">View report →</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                        View report
+                        <Icon name="chevron-right" size={15} className="transition-transform group-hover:translate-x-0.5" />
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -215,14 +226,14 @@ export function StaffReportClient() {
               action={monthPicker}
             />
             <CardBody className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatTile icon="📦" label="Booked" value={report.summary.booked} tone="primary" />
-              <StatTile icon="🔨" label="Active" value={report.summary.active} tone="amber" />
-              <StatTile icon="🧵" label="In Production" value={report.summary.inProduction} tone="blue" />
-              <StatTile icon="✅" label="Completed" value={report.summary.completed} tone="success" />
-              <StatTile icon="⏰" label="Overdue" value={report.summary.overdue} tone="error" />
-              <StatTile icon="⚠️" label="Urgent" value={report.summary.urgent} tone="error" />
-              <StatTile icon="💳" label="Payments Pending" value={report.summary.paymentPendingCount} tone="error" />
-              <StatTile icon="💰" label="Pending Amount" value={formatCurrency(report.summary.paymentPendingAmount)} tone="error" />
+              <StatTile icon="package" label="Booked" value={report.summary.booked} tone="primary" index={0} />
+              <StatTile icon="hammer" label="Active" value={report.summary.active} tone="amber" index={1} />
+              <StatTile icon="needle" label="In Production" value={report.summary.inProduction} tone="blue" index={2} />
+              <StatTile icon="check" label="Completed" value={report.summary.completed} tone="success" index={3} />
+              <StatTile icon="clock" label="Overdue" value={report.summary.overdue} tone="error" index={4} />
+              <StatTile icon="alert" label="Urgent" value={report.summary.urgent} tone="error" index={5} />
+              <StatTile icon="card" label="Payments Pending" value={report.summary.paymentPendingCount} tone="error" index={6} />
+              <StatTile icon="wallet" label="Pending Amount" value={formatCurrency(report.summary.paymentPendingAmount)} tone="error" index={7} />
             </CardBody>
           </Card>
 
@@ -249,20 +260,37 @@ export function StaffReportClient() {
 }
 
 const TONES: Record<string, { chip: string; val: string }> = {
-  primary: { chip: "bg-primary-bg text-primary", val: "text-text-primary" },
-  success: { chip: "bg-success-bg text-success", val: "text-success" },
-  error: { chip: "bg-error-bg text-error", val: "text-error" },
-  amber: { chip: "bg-warning-bg text-warning", val: "text-text-primary" },
-  blue: { chip: "bg-info-bg text-info", val: "text-text-primary" },
+  primary: { chip: "bg-primary-bg text-primary ring-primary/10", val: "text-text-primary" },
+  success: { chip: "bg-success-bg text-success ring-success/15", val: "text-success" },
+  error: { chip: "bg-error-bg text-error ring-error/15", val: "text-error" },
+  amber: { chip: "bg-warning-bg text-warning ring-warning/15", val: "text-text-primary" },
+  blue: { chip: "bg-info-bg text-info ring-info/15", val: "text-text-primary" },
 };
 
-function StatTile({ icon, label, value, tone }: { icon: string; label: string; value: string | number; tone: keyof typeof TONES }) {
+function StatTile({
+  icon,
+  label,
+  value,
+  tone,
+  index = 0,
+}: {
+  icon: IconName;
+  label: string;
+  value: string | number;
+  tone: keyof typeof TONES;
+  index?: number;
+}) {
   const t = TONES[tone]!;
   return (
-    <div className="flex items-center gap-3 rounded-app-lg border border-border-light bg-card p-3 transition-all hover:-translate-y-0.5 hover:shadow-app-md">
-      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-app text-base ${t.chip}`}>{icon}</div>
+    <div
+      style={{ animationDelay: `${index * 40}ms` }}
+      className="animate-rise flex items-center gap-3 rounded-app-lg border border-border-light bg-card p-3 shadow-app transition-all duration-200 hover:-translate-y-0.5 hover:shadow-app-md"
+    >
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-app ring-1 ring-inset ${t.chip}`}>
+        <Icon name={icon} size={18} />
+      </div>
       <div className="min-w-0">
-        <div className={`truncate text-xl font-extrabold ${t.val}`}>{value}</div>
+        <div className={`truncate text-xl font-extrabold tabular-nums ${t.val}`}>{value}</div>
         <div className="text-[11px] text-text-muted">{label}</div>
       </div>
     </div>

@@ -1,49 +1,82 @@
 @import "tailwindcss";
 
 /*
- * Design tokens ported from prototype/styles.css :root block.
- * Luxury burgundy / rose / soft-beige boutique palette.
+ * Needleye — premium design system.
+ *
+ * Palette taken from the brand logo: deep burgundy ink on warm taupe / sand.
+ * That pairing is the whole identity — burgundy (heritage, bridal ethnic wear)
+ * over warm sand neutrals, with a muted antique-gold used sparingly (active
+ * states, hairlines, the brand mark, focus rings) as the "gold thread" whisper.
+ *
+ * Every token name from the original prototype theme is preserved (so all
+ * existing `bg-primary`, `shadow-app`, `rounded-app`, etc. utilities keep
+ * working); values are retuned to the logo and new tokens (gold, gradients,
+ * elevated shadows, motion) are added on top.
  */
 :root {
-  --color-primary: #7a1733;
-  --color-primary-light: #d9a5b3;
-  --color-primary-dark: #5b1026;
-  --color-primary-bg: #f7f2ee;
+  /* Burgundy ink — the logo's maroon; the primary brand colour */
+  --color-primary: #7a1d34;
+  --color-primary-light: #c69aa4;
+  --color-primary-dark: #571325;
+  --color-primary-bg: #f5ebe1;
 
-  --color-accent: #d9a5b3;
-  --color-accent-light: #e8c4cd;
-  --color-accent-bg: #f7f2ee;
+  /* Warm taupe accent — the logo's background tone */
+  --color-accent: #b39a78;
+  --color-accent-light: #d8c7ad;
+  --color-accent-bg: #f3ecdf;
 
-  --color-app-bg: #fcfaf8;
-  --color-card: #ffffff;
-  --color-border: #eae4df;
-  --color-border-light: #f2ece7;
+  /* Muted antique gold — the premium signature (used sparingly) */
+  --color-gold: #9c7b3f;
+  --color-gold-light: #c8a865;
+  --color-gold-soft: #ecdcbd;
+  --color-gold-bg: #f4ecdb;
 
-  --color-text-primary: #1f1f1f;
-  --color-text-secondary: #5f5752;
-  --color-text-muted: #988d86;
+  /* Warm sand neutrals (echo the logo's taupe field, kept light) */
+  --color-app-bg: #f5efe5;
+  --color-card: #fffdf8;
+  --color-border: #e7ddcd;
+  --color-border-light: #efe8da;
 
-  --color-success: #10b981;
-  --color-success-bg: #d1fae5;
-  --color-warning: #f59e0b;
-  --color-warning-bg: #fef3c7;
-  --color-warning-text: #92400e;
-  --color-error: #ef4444;
-  --color-error-bg: #fee2e2;
+  --color-text-primary: #241a1b;
+  --color-text-secondary: #5f544c;
+  --color-text-muted: #97897c;
+
+  /* Semantic — tuned warmer/deeper to sit with the brand */
+  --color-success: #0f9d74;
+  --color-success-bg: #d7f0e5;
+  --color-warning: #d9861f;
+  --color-warning-bg: #fbeacd;
+  --color-warning-text: #85480c;
+  --color-error: #cf3f3f;
+  --color-error-bg: #f8dede;
   --color-danger-strong: #7f1d1d;
-  --color-info: #3b82f6;
-  --color-info-bg: #dbeafe;
-  --color-gray-pill-bg: #f1f5f9;
+  --color-info: #3b6fb0;
+  --color-info-bg: #dfe8f3;
+  --color-gray-pill-bg: #f0ece4;
 
-  --color-sidebar: #2b101a;
+  /* Deep burgundy sidebar */
+  --color-sidebar: #3a1320;
+
+  /* Focus ring */
+  --color-ring: #9c7b3f;
 
   --radius-app: 12px;
   --radius-app-sm: 8px;
   --radius-app-lg: 16px;
+  --radius-app-xl: 22px;
 
-  --shadow-app: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-app-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
-  --shadow-app-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  /* Layered, warm-tinted shadows for real depth */
+  --shadow-app: 0 1px 2px rgba(74, 20, 40, 0.05), 0 1px 3px rgba(74, 20, 40, 0.05);
+  --shadow-app-md: 0 4px 12px -2px rgba(74, 20, 40, 0.1), 0 2px 6px -3px rgba(74, 20, 40, 0.07);
+  --shadow-app-lg: 0 14px 30px -8px rgba(74, 20, 40, 0.16), 0 6px 14px -6px rgba(74, 20, 40, 0.1);
+  --shadow-gold: 0 6px 18px -4px rgba(156, 123, 63, 0.4);
+  --shadow-primary: 0 6px 18px -4px rgba(122, 29, 52, 0.4);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #8a2440 0%, #5c1428 100%);
+  --gradient-gold: linear-gradient(135deg, #c8a865 0%, #9c7b3f 100%);
+  --gradient-sidebar: linear-gradient(180deg, #4a1727 0%, #2c0e18 100%);
+  --gradient-sheen: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
 }
 
 @theme inline {
@@ -55,6 +88,11 @@
   --color-accent: var(--color-accent);
   --color-accent-light: var(--color-accent-light);
   --color-accent-bg: var(--color-accent-bg);
+
+  --color-gold: var(--color-gold);
+  --color-gold-light: var(--color-gold-light);
+  --color-gold-soft: var(--color-gold-soft);
+  --color-gold-bg: var(--color-gold-bg);
 
   --color-app-bg: var(--color-app-bg);
   --color-card: var(--color-card);
@@ -78,37 +116,175 @@
   --color-gray-pill-bg: var(--color-gray-pill-bg);
 
   --color-sidebar: var(--color-sidebar);
+  --color-ring: var(--color-ring);
 
   --radius-app: var(--radius-app);
   --radius-app-sm: var(--radius-app-sm);
   --radius-app-lg: var(--radius-app-lg);
+  --radius-app-xl: var(--radius-app-xl);
 
   --shadow-app: var(--shadow-app);
   --shadow-app-md: var(--shadow-app-md);
   --shadow-app-lg: var(--shadow-app-lg);
+  --shadow-gold: var(--shadow-gold);
+  --shadow-primary: var(--shadow-primary);
 
   --font-serif: var(--font-playfair), "Playfair Display", serif;
   --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+
+  /* Motion tokens exposed to Tailwind's `animate-*` */
+  --animate-fade-in: fade-in 0.4s ease both;
+  --animate-rise: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scale-in: scale-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-toast-slide: toast-slide 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body {
   background: var(--color-app-bg);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Toast notifications -- ported from prototype/styles.css's toastSlide keyframe. */
-@keyframes toast-slide {
+/* Serif display headings get tighter tracking for an editorial, couture feel. */
+.font-serif {
+  letter-spacing: -0.01em;
+}
+
+/* Themed, slim scrollbars (premium polish; ignored where unsupported). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary-light) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-primary-light);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* ---- Gradient / material utility classes (Tailwind can't derive these from a var) ---- */
+.gradient-primary {
+  background-image: var(--gradient-primary);
+}
+.gradient-gold {
+  background-image: var(--gradient-gold);
+}
+.gradient-sidebar {
+  background-image: var(--gradient-sidebar);
+}
+.text-gradient-gold {
+  background-image: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Hairline gold top-accent for premium cards. `overflow: hidden` clips the
+ * accent bar to the card's rounded corners so it can't poke past them (its own
+ * 3px height would otherwise clamp its corner radius almost flat). Box-shadows
+ * are drawn outside the border box, so they're unaffected by the clip. */
+.card-accent-top {
+  position: relative;
+  overflow: hidden;
+}
+.card-accent-top::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background-image: var(--gradient-gold);
+  opacity: 0.9;
+}
+
+/* ---- Keyframes ---- */
+@keyframes fade-in {
   from {
-    transform: translateX(100%);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
     opacity: 1;
   }
 }
+@keyframes rise {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes scale-in {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes toast-slide {
+  from {
+    transform: translateY(14px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
 
+/* ---- Motion utility classes ---- */
+.animate-fade-in {
+  animation: var(--animate-fade-in);
+}
+.animate-rise {
+  animation: var(--animate-rise);
+}
+.animate-scale-in {
+  animation: var(--animate-scale-in);
+}
 .animate-toast-slide {
-  animation: toast-slide 0.3s ease;
+  animation: var(--animate-toast-slide);
+}
+
+/* Shimmer skeleton — richer than a flat pulse. */
+.skeleton {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-primary-bg) 30%,
+    rgba(255, 255, 255, 0.85) 50%,
+    var(--color-primary-bg) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

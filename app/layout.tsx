@@ -17,8 +17,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Needle Eye ERP",
-  description: "Luxury boutique production ERP",
+  title: "Needleye ERP",
+  description: "Couture boutique production ERP · by Sakina Ahmed",
 };
 
 export default function RootLayout({

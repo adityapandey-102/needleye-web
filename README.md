@@ -109,6 +109,39 @@ Components calling the API) plus capability checks (redirects), and it
 renders a component from `modules/`. Business logic and API calls for a
 module live inside that module's folder, not scattered across pages.
 
+### Design system & branding
+
+The whole visual language lives in **`app/globals.css`** as CSS custom
+properties exposed to Tailwind v4 via `@theme inline` -- one place to retune
+the brand. The palette is taken from the boutique's logo: **deep burgundy ink
+on warm sand/taupe**, with a muted **antique-gold** accent (the "gold thread"
+signature) used sparingly for active states, hairlines, focus rings, and the
+brand mark. The file also defines the motion system (`animate-rise`,
+`animate-fade-in`, `animate-scale-in`, the `.skeleton` shimmer) with a
+`prefers-reduced-motion` guard, and material utilities (`gradient-primary`,
+`gradient-gold`, `card-accent-top`). Shared primitives in `components/ui/`
+(Button, Card, StatusPill, inputs) consume these tokens, so restyling is
+centralized -- pages don't hardcode colours.
+
+**Responsiveness is mobile/tablet-first** (most staff are on phones/tablets):
+the sidebar collapses to a drawer behind a glass header that carries the brand
+for context, filter bars stack, and wide data tables render as **stacked cards
+below `lg`** (see `OrdersListClient`) instead of forcing horizontal scroll.
+
+**Brand mark:** `components/shell/BrandMark.tsx` renders the logo from
+**`public/Needleye-logo.png`**; if it's missing (or 404s) it degrades to a
+burgundy "N" monogram, so the UI is never broken. The displayed wordmark is
+**"Needleye · by Sakina Ahmed"**.
+
+**Icons:** `components/ui/Icon.tsx` is a self-contained set of premium line
+icons (inlined Feather/Lucide-style SVG paths, no runtime dependency) that
+render in `currentColor`. Because the app historically labelled things with
+emoji, `Icon` also resolves an **emoji → its line icon** via an internal map,
+so `CardHeader`, the sidebar nav, and the stat cards upgrade every icon at once
+just by passing their existing emoji string; an unmapped emoji falls back to
+rendering itself. Use `<Icon name="…" />` directly in new code, `emoji=` only
+at the compatibility seams.
+
 **Every module that talks to the backend has its own `api/*.ts` file**
 (`ordersApi`, `authApi`, `usersApi`) wrapping the generic `lib/api/client.ts`
 fetch helpers into named, typed methods. Components never call `apiFetch`

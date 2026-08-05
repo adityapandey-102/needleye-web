@@ -18,6 +18,7 @@ import { Input } from "../../../components/ui/Field";
 import { Select } from "../../../components/ui/Select";
 import { Button } from "../../../components/ui/Button";
 import { StatusPill } from "../../../components/ui/StatusPill";
+import { Icon } from "../../../components/ui/Icon";
 import { KanbanBoard } from "./KanbanBoard";
 
 type ViewMode = "table" | "kanban";
@@ -137,14 +138,14 @@ export function OrdersListClient({
     <div>
       <Card className="mb-4">
         <CardHeader icon="🔎" iconTone="purple" title="Search & Filter Orders" subtitle="Find work by customer, bill number, order ID, or team" />
-        <CardBody className="flex flex-wrap gap-3">
+        <CardBody className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Input
-            className="min-w-[220px] flex-1"
+            className="w-full sm:min-w-55 sm:flex-1"
             placeholder="Search customer, bill number, or order ID"
             value={search}
             onChange={(e) => changeSearch(e.target.value)}
           />
-          <Select className="w-auto" value={designerId} onChange={(e) => changeDesigner(e.target.value)}>
+          <Select className="w-full sm:w-auto" value={designerId} onChange={(e) => changeDesigner(e.target.value)}>
             <option value="">All Designers</option>
             {designers.map((d) => (
               <option key={d.id} value={d.id}>
@@ -152,7 +153,7 @@ export function OrdersListClient({
               </option>
             ))}
           </Select>
-          <Select className="w-auto" value={masterTailorId} onChange={(e) => changeMaster(e.target.value)}>
+          <Select className="w-full sm:w-auto" value={masterTailorId} onChange={(e) => changeMaster(e.target.value)}>
             <option value="">All Masters</option>
             {masters.map((m) => (
               <option key={m.id} value={m.id}>
@@ -176,10 +177,10 @@ export function OrdersListClient({
 
       <div className="mb-3 flex justify-end gap-2">
         <Button variant={view === "table" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => changeView("table")}>
-          📋 Table
+          <Icon name="list" size={15} /> Table
         </Button>
         <Button variant={view === "kanban" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => changeView("kanban")}>
-          🗂️ Kanban
+          <Icon name="columns" size={15} /> Kanban
         </Button>
       </div>
 
@@ -202,14 +203,61 @@ export function OrdersListClient({
       ) : (
       <Card>
         <CardHeader icon="📋" iconTone="blue" title="All Orders" subtitle="Open any order for full details" />
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="p-6 text-sm text-text-muted">Loading…</div>
-          ) : error ? (
-            <div className="p-6 text-sm text-error">{error}</div>
-          ) : orders.length === 0 ? (
-            <div className="p-6 text-sm text-text-muted">No orders match the current filters.</div>
-          ) : (
+        {loading ? (
+          <div className="p-6 text-sm text-text-muted">Loading…</div>
+        ) : error ? (
+          <div className="p-6 text-sm text-error">{error}</div>
+        ) : orders.length === 0 ? (
+          <div className="p-6 text-sm text-text-muted">No orders match the current filters.</div>
+        ) : (
+          <>
+            {/* Mobile / tablet: stacked cards (a wide table forces horizontal
+                scrolling on the phones + tablets most of the team uses). */}
+            <div className="divide-y divide-border-light lg:hidden">
+              {orders.map((order, i) => {
+                const timeline = getTimelineSummary(order);
+                return (
+                  <Link
+                    key={order.id}
+                    href={`/orders/${order.id}`}
+                    style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
+                    className="animate-fade-in block p-4 transition-colors hover:bg-primary-bg/40 active:bg-primary-bg/60"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-serif text-sm font-bold text-text-primary">{order.customerName}</div>
+                        <div className="mt-0.5 text-xs font-medium text-text-muted">{order.orderNumber}</div>
+                      </div>
+                      <Icon name="chevron-right" size={18} className="mt-0.5 shrink-0 text-primary/40" />
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      <StatusPill label={granularLabel(order.productionStatus)} />
+                      <StatusPill label={timeline.statusLabel} tone={timeline.tone} />
+                      {canSeePayment && order.paymentStatus && (
+                        <StatusPill
+                          label={order.paymentStatus.replace("_", " ")}
+                          tone={order.paymentStatus === "fully_paid" ? "green" : "amber"}
+                        />
+                      )}
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-muted">
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="palette" size={13} /> {order.designerName ?? "—"}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="needle" size={13} /> {order.masterTailorName ?? "—"}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="calendar" size={13} /> {formatDateOnly(order.dueDate)}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Desktop: full table */}
+            <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-border-light bg-primary-bg/40 text-left text-xs text-text-muted uppercase">
@@ -257,8 +305,9 @@ export function OrdersListClient({
                 })}
               </tbody>
             </table>
-          )}
-        </div>
+            </div>
+          </>
+        )}
         {!loading && !error && total > 0 && (
           <div className="flex items-center justify-between gap-3 border-t border-border-light px-4 py-3 text-xs text-text-muted">
             <span>

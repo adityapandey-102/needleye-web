@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ROLE_LABELS, ROLES, type Role } from "../../../lib/domain";
 import { usersApi, type StaffUser } from "../api/usersApi";
 import { Button } from "../../../components/ui/Button";
+import { Icon } from "../../../components/ui/Icon";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
 import { useToast } from "../../../components/ui/Toast";
 import { CredentialRevealOverlay, type RevealModal } from "./CredentialRevealOverlay";
@@ -101,7 +102,15 @@ export default function UserManagementClient() {
           <h1 className="font-serif text-xl font-bold text-text-primary">User Management</h1>
           <p className="text-sm text-text-muted">Create staff accounts and manage roles. Owner/Manager only.</p>
         </div>
-        <Button onClick={() => setCreateOpen((v) => !v)}>{createOpen ? "Cancel" : "+ Create account"}</Button>
+        <Button onClick={() => setCreateOpen((v) => !v)}>
+          {createOpen ? (
+            "Cancel"
+          ) : (
+            <>
+              <Icon name="user" size={16} /> Create account
+            </>
+          )}
+        </Button>
       </div>
 
       {createOpen && (
@@ -164,42 +173,87 @@ export default function UserManagementClient() {
             {search.trim() ? "No staff match your search." : "No staff accounts yet."}
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border-light bg-primary-bg/40 text-left text-xs text-text-muted uppercase">
-                <th className="px-4 py-2.5 font-medium">Name</th>
-                <th className="px-4 py-2.5 font-medium">Email</th>
-                <th className="px-4 py-2.5 font-medium">Role</th>
-                <th className="px-4 py-2.5 font-medium">Status</th>
-                <th className="px-4 py-2.5 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-b border-border-light last:border-0 hover:bg-primary-bg/20">
-                  <td className="px-4 py-2.5 font-medium text-text-primary">{u.fullName}</td>
-                  <td className="px-4 py-2.5 text-text-secondary">{u.email}</td>
-                  <td className="px-4 py-2.5 text-text-secondary">{ROLE_LABELS[u.role]}</td>
-                  <td className="px-4 py-2.5">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        u.active ? "bg-success-bg text-success" : "bg-gray-pill-bg text-text-secondary"
-                      }`}
-                    >
-                      {u.active ? "Active" : "Deactivated"}
+          <>
+            {/* Mobile / tablet: stacked cards — the whole card links to the
+                user's detail page, so "Manage" is always reachable (a 5-column
+                table squeezes the action off-screen on a phone). */}
+            <ul className="divide-y divide-border-light lg:hidden">
+              {users.map((u, i) => (
+                <li key={u.id}>
+                  <Link
+                    href={`/admin/users/${u.id}`}
+                    style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                    className="group animate-fade-in flex items-center gap-3 p-4 transition-colors hover:bg-primary-bg/30 active:bg-primary-bg/50"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-bg text-xs font-bold text-primary ring-1 ring-inset ring-primary/10">
+                      {u.fullName.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
                     </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <Link href={`/admin/users/${u.id}`}>
-                      <Button variant="outline" className="px-3 py-1.5 text-xs">
-                        Manage →
-                      </Button>
-                    </Link>
-                  </td>
-                </tr>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-semibold text-text-primary">{u.fullName}</div>
+                      <div className="truncate text-xs text-text-muted">{u.email}</div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-primary-bg px-2 py-0.5 text-[11px] font-medium text-primary ring-1 ring-inset ring-primary/10">
+                          {ROLE_LABELS[u.role]}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${
+                            u.active ? "bg-success-bg text-success ring-success/15" : "bg-gray-pill-bg text-text-secondary ring-black/5"
+                          }`}
+                        >
+                          {u.active ? "Active" : "Deactivated"}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-app border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-primary shadow-app">
+                      Manage
+                      <Icon name="chevron-right" size={14} className="transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </Link>
+                </li>
               ))}
-            </tbody>
-          </table>
+            </ul>
+
+            {/* Desktop: full table */}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border-light bg-primary-bg/40 text-left text-xs text-text-muted uppercase">
+                    <th className="px-4 py-2.5 font-medium">Name</th>
+                    <th className="px-4 py-2.5 font-medium">Email</th>
+                    <th className="px-4 py-2.5 font-medium">Role</th>
+                    <th className="px-4 py-2.5 font-medium">Status</th>
+                    <th className="px-4 py-2.5 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id} className="border-b border-border-light last:border-0 hover:bg-primary-bg/20">
+                      <td className="px-4 py-2.5 font-medium text-text-primary">{u.fullName}</td>
+                      <td className="px-4 py-2.5 text-text-secondary">{u.email}</td>
+                      <td className="px-4 py-2.5 text-text-secondary">{ROLE_LABELS[u.role]}</td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs ${
+                            u.active ? "bg-success-bg text-success" : "bg-gray-pill-bg text-text-secondary"
+                          }`}
+                        >
+                          {u.active ? "Active" : "Deactivated"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Link href={`/admin/users/${u.id}`}>
+                          <Button variant="outline" className="px-3 py-1.5 text-xs">
+                            Manage
+                            <Icon name="chevron-right" size={14} />
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {!loading && !error && total > 0 && (

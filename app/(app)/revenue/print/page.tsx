@@ -41,7 +41,7 @@ export default async function RevenuePrintPage({
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-app bg-primary text-xl">🪡</div>
             <div>
-              <div className="font-serif text-2xl leading-none font-bold">Needle Eye</div>
+              <div className="font-serif text-2xl leading-none font-bold">Needleye</div>
               <div className="text-xs tracking-wide text-neutral-500 uppercase">Revenue Statement</div>
             </div>
           </div>
@@ -95,7 +95,7 @@ export default async function RevenuePrintPage({
         </table>
 
         <p className="mt-6 text-[11px] text-neutral-400">
-          Needle Eye Luxury Tailoring · Collected revenue by{" "}
+          Needleye · by Sakina Ahmed · Collected revenue by{" "}
           {report.cycleStartDay === 1 ? "calendar month" : `accounting cycle (day ${report.cycleStartDay})`}. Confidential.
         </p>
       </div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { hasCapability } from "../../../lib/domain";
 import { apiFetchServer } from "../../../lib/api/server";
 import { Button } from "../../../components/ui/Button";
+import { Icon } from "../../../components/ui/Icon";
 import { OrdersListClient } from "../../../modules/orders/components/OrdersListClient";
 import { OrderStatCards } from "../../../modules/orders/components/OrderStatCards";
 
@@ -23,12 +24,16 @@ export default async function OrdersPage({
         <div className="flex flex-wrap gap-2">
           {hasCapability(profile.role, "reports:staff") && (
             <Link href="/orders/staff-report">
-              <Button variant="outline">📊 Staff Report</Button>
+              <Button variant="outline">
+                <Icon name="bar-chart" size={16} /> Staff Report
+              </Button>
             </Link>
           )}
           {hasCapability(profile.role, "orders:create") && (
             <Link href="/orders/new">
-              <Button>✦ Create New Order</Button>
+              <Button>
+                <Icon name="sparkles" size={16} /> Create New Order
+              </Button>
             </Link>
           )}
         </div>
