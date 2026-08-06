@@ -30,6 +30,14 @@ describe("canTransitionOrderStatus", () => {
     expect(canTransitionOrderStatus("master_tailor", "stitching", order, "master-2")).toBe(false);
   });
 
+  it("treats Falls / Kutchu as a production stage (designer blocked, assigned master tailor allowed)", () => {
+    // falls_kutchu sits after design_approved but is production work, so the
+    // master tailor advances it, not the designer.
+    expect(canTransitionOrderStatus("designer", "falls_kutchu", order, "designer-1")).toBe(false);
+    expect(canTransitionOrderStatus("master_tailor", "falls_kutchu", order, "master-1")).toBe(true);
+    expect(canTransitionOrderStatus("master_tailor", "falls_kutchu", order, "master-2")).toBe(false);
+  });
+
   it("blocks accountant from transitioning status at all", () => {
     expect(canTransitionOrderStatus("accountant", "design_pending", order, "anyone")).toBe(false);
     expect(canTransitionOrderStatus("accountant", "cutting", order, "anyone")).toBe(false);

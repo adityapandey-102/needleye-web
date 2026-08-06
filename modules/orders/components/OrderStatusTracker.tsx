@@ -4,7 +4,7 @@ const GREEN = "var(--color-success)";
 const GRAY = "var(--color-border)";
 
 /**
- * Amazon/delivery-style horizontal order tracker: the 9 canonical production
+ * Amazon/delivery-style horizontal order tracker: the 10 canonical production
  * stages as labelled nodes on a line, with a green progress line tracing up to
  * the current stage (done stages get a check, the current one is highlighted,
  * later ones are muted). Position is derived from the current status -- the
@@ -17,7 +17,7 @@ export function OrderStatusTracker({ status }: { status: GranularStatus }) {
 
   return (
     <div className="overflow-x-auto pb-1" role="group" aria-label={`Production progress: ${canonicalLabel(current)}`}>
-      <div className="flex min-w-[680px] items-start">
+      <div className="flex min-w-190 items-start">
         {CANONICAL_STAGES.map((stage, i) => {
           const done = i < currentIndex;
           const isCurrent = i === currentIndex;
