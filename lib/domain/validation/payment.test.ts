@@ -15,10 +15,10 @@ describe("createPaymentSchema", () => {
     expect(createPaymentSchema.safeParse({ amount: 500, method: "bitcoin" }).success).toBe(false);
   });
 
-  it("coerces a numeric string amount", () => {
+  it("normalises a numeric string amount to a 2dp money string", () => {
     const result = createPaymentSchema.safeParse({ amount: "500", method: "upi" });
     expect(result.success).toBe(true);
-    if (result.success) expect(result.data.amount).toBe(500);
+    if (result.success) expect(result.data.amount).toBe("500.00");
   });
 });
 

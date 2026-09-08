@@ -4,6 +4,8 @@ import {
   formatDateOnly,
   getTimelineSummary,
   granularLabel,
+  paidFraction,
+  subtractMoney,
   PAYMENT_STATUSES,
   PRODUCT_CATEGORIES,
   type Order,
@@ -40,41 +42,41 @@ export function OrderDetailView({
   order,
   role,
   viewOnly = false,
+  viaScan = false,
   canEdit,
   canSeePayment,
   canManagePayments,
-  canChangeDesignStage,
-  canChangeProductionStage,
+  canChangeStatus,
 }: {
   order: Order;
   role: Role;
   viewOnly?: boolean;
+  /** True only when the page was opened via a QR scan (`?scan=1`). */
+  viaScan?: boolean;
   canEdit: boolean;
   canSeePayment: boolean;
   canManagePayments: boolean;
-  canChangeDesignStage: boolean;
-  canChangeProductionStage: boolean;
+  /** Whether the viewer's role can change the production stage at all (tier-based). */
+  canChangeStatus: boolean;
 }) {
   const category = PRODUCT_CATEGORIES.find((c) => c.value === order.productCategory);
   const payment = PAYMENT_STATUSES.find((p) => p.value === order.paymentStatus);
   const timeline = getTimelineSummary(order);
 
   // Payment progress (visual bar) — only meaningful when the caller can see money.
-  const total = order.totalAmount ?? 0;
-  const outstanding = order.outstanding ?? 0;
-  const paid = Math.max(total - outstanding, 0);
-  const paidPct = total > 0 ? Math.min(Math.round((paid / total) * 100), 100) : 0;
+  // Money stays as 2dp strings; arithmetic goes through the money helpers.
+  const total = order.totalAmount ?? "0.00";
+  const outstanding = order.outstanding ?? "0.00";
+  const paid = subtractMoney(total, outstanding);
+  const paidPct = Math.round(paidFraction(paid, total) * 100);
 
   return (
     <div className="mx-auto max-w-6xl">
-      {/* On open (esp. via QR), prompt the assigned designer/master to advance the stage. */}
-      <StatusAdvancePrompt
-        orderId={order.id}
-        currentStatus={order.productionStatus}
-        role={role}
-        canChangeDesignStage={canChangeDesignStage}
-        canChangeProductionStage={canChangeProductionStage}
-      />
+      {/* Only when reached via a QR scan: prompt whoever received the garment to
+          advance the stage ("Product received for X"). Silent otherwise. */}
+      {viaScan && canChangeStatus && (
+        <StatusAdvancePrompt orderId={order.id} currentStatus={order.productionStatus} role={role} />
+      )}
 
       {viewOnly && (
         <div className="mb-4 flex items-center gap-2 rounded-app-sm border border-info-bg bg-info-bg/40 px-3 py-2 text-sm text-info print:hidden">
@@ -200,15 +202,10 @@ export function OrderDetailView({
             <CardBody className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-muted">Status</span>
-                {canChangeDesignStage || canChangeProductionStage ? (
+                {canChangeStatus ? (
                   <>
                     <span className="print:hidden">
-                      <OrderStatusControl
-                        orderId={order.id}
-                        currentStatus={order.productionStatus}
-                        canChangeDesignStage={canChangeDesignStage}
-                        canChangeProductionStage={canChangeProductionStage}
-                      />
+                      <OrderStatusControl orderId={order.id} currentStatus={order.productionStatus} role={role} />
                     </span>
                     <span className="hidden print:inline">
                       <StatusPill label={granularLabel(order.productionStatus)} />
@@ -250,7 +247,7 @@ export function OrderDetailView({
             <PaymentLedger
               orderId={order.id}
               canManage={canManagePayments}
-              orderTotal={order.totalAmount ?? 0}
+              orderTotal={order.totalAmount ?? "0.00"}
               paymentStatus={order.paymentStatus ?? null}
               nextPaymentDate={order.nextPaymentDate}
             />
@@ -266,7 +263,9 @@ export function OrderDetailView({
           <Card>
             <CardHeader icon="📱" iconTone="purple" title="Order QR" subtitle="Quick access for the team" />
             <CardBody>
-              <OrderQrCode url={`${process.env.NEXT_PUBLIC_WEB_APP_URL}/orders/${order.id}`} />
+              {/* ?scan=1 marks this as a QR entry -- the order page shows the
+                  "product received / advance stage" popup only for scans. */}
+              <OrderQrCode path={`/orders/${order.id}?scan=1`} />
             </CardBody>
           </Card>
 

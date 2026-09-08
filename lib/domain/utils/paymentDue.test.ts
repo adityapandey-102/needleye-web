@@ -19,23 +19,23 @@ describe("derivePaymentStatus", () => {
 });
 
 describe("remainingOutstanding", () => {
-  it("subtracts paid from total, floored at 0", () => {
-    expect(remainingOutstanding(1000, 400)).toBe(600);
-    expect(remainingOutstanding(1000, 1000)).toBe(0);
-    expect(remainingOutstanding(1000, 1200)).toBe(0); // never negative
+  it("subtracts paid from total, floored at 0 (2dp string)", () => {
+    expect(remainingOutstanding("1000.00", "400.00")).toBe("600.00");
+    expect(remainingOutstanding("1000.00", "1000.00")).toBe("0.00");
+    expect(remainingOutstanding("1000.00", "1200.00")).toBe("0.00"); // never negative
   });
 
   it("treats null/undefined as 0", () => {
-    expect(remainingOutstanding(null, null)).toBe(0);
-    expect(remainingOutstanding(500, undefined)).toBe(500);
+    expect(remainingOutstanding(null, null)).toBe("0.00");
+    expect(remainingOutstanding("500.00", undefined)).toBe("500.00");
   });
 });
 
 describe("getPaymentDue", () => {
   it("is 'paid' when fully_paid, regardless of date", () => {
-    const r = getPaymentDue({ totalAmount: 1000, amountPaid: 400, paymentStatus: "fully_paid", nextPaymentDate: "2020-01-01" });
+    const r = getPaymentDue({ totalAmount: "1000.00", amountPaid: "400.00", paymentStatus: "fully_paid", nextPaymentDate: "2020-01-01" });
     expect(r.status).toBe("paid");
-    expect(r.outstanding).toBe(0);
+    expect(r.outstanding).toBe("0.00");
     expect(r.tone).toBe("green");
   });
 
@@ -44,9 +44,9 @@ describe("getPaymentDue", () => {
   });
 
   it("is 'no_date' when there's a balance but no next payment date", () => {
-    const r = getPaymentDue({ totalAmount: 1000, amountPaid: 200, paymentStatus: "partially_paid", nextPaymentDate: null });
+    const r = getPaymentDue({ totalAmount: "1000.00", amountPaid: "200.00", paymentStatus: "partially_paid", nextPaymentDate: null });
     expect(r.status).toBe("no_date");
-    expect(r.outstanding).toBe(800);
+    expect(r.outstanding).toBe("800.00");
   });
 
   it("is 'overdue' with a day count when the date has passed", () => {

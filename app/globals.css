@@ -251,6 +251,22 @@ body {
   }
 }
 
+/* Alarming ripple -- an expanding red ring, for the Alteration stage. */
+@keyframes alarm-ripple {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-error) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-error) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-error) 0%, transparent);
+  }
+}
+.alarm-ripple {
+  animation: alarm-ripple 1.4s ease-out infinite;
+}
+
 /* ---- Motion utility classes ---- */
 .animate-fade-in {
   animation: var(--animate-fade-in);

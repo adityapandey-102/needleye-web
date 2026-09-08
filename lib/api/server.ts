@@ -1,5 +1,6 @@
 import { getAccessToken, getRefreshToken, setSession } from "../session/server";
 import { isExpired } from "../session/jwt";
+import { describeFetchError, logger } from "../logging/logger";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
@@ -50,10 +51,25 @@ export async function apiFetchServer(path: string, init: RequestInit = {}) {
   headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers, cache: "no-store" });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers, cache: "no-store" });
+  } catch (err) {
+    // Transport failure (e.g. the API is down -> ECONNREFUSED). Surface a
+    // friendly message and a 503 so the page can render an error state instead
+    // of a raw stack. status 0 would be ambiguous; 503 reads as "unavailable".
+    const { message } = describeFetchError(err);
+    logger.error("API unreachable from server component", {
+      path,
+      method: init.method ?? "GET",
+      cause: err instanceof Error ? err.message : String(err),
+    });
+    throw new ApiError(message, 503);
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
+    logger.warn("API request failed (server component)", { path, method: init.method ?? "GET", status: response.status, code: body.code, requestId: body.requestId });
     throw new ApiError(body.error ?? `Request failed: ${response.status}`, response.status);
   }
 

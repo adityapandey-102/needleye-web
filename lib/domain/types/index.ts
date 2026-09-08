@@ -37,7 +37,8 @@ export interface OrderStatusHistoryEntry {
 export interface Payment {
   id: string;
   orderId: string;
-  amount: number;
+  /** Money as a 2dp string (see lib/domain/utils/money.ts). */
+  amount: string;
   method: PaymentMethod;
   paidAt: string;
   recordedBy: string | null;
@@ -65,9 +66,10 @@ export interface Order {
   purchaseRequired: boolean;
   /** Absent when the API strips it server-side for a role without payments:read (master_tailor) -- not just hidden in the UI. */
   paymentStatus?: PaymentStatus;
-  totalAmount?: number;
-  amountPaid?: number;
-  outstanding?: number;
+  // Money as 2dp strings (see lib/domain/utils/money.ts).
+  totalAmount?: string;
+  amountPaid?: string;
+  outstanding?: string;
   productionStatus: GranularStatus;
   designerInstructions: string | null;
   specialNotes: string | null;
@@ -92,14 +94,16 @@ export interface OrderStats {
   urgent: number;
   /** Absent entirely (not zero) when the API strips it server-side for a role without payments:read (master_tailor). */
   pendingPayments?: number;
-  collectedRevenue?: number;
-  outstandingRevenue?: number;
+  // Money as 2dp strings.
+  collectedRevenue?: string;
+  outstandingRevenue?: string;
 }
 
 /** One accounting period's collected revenue, from GET /orders/revenue. */
 export interface RevenuePeriod {
   periodStart: string;
-  collected: number;
+  /** Money as a 2dp string. */
+  collected: string;
   paymentCount: number;
 }
 
@@ -120,7 +124,8 @@ export interface StaffReportSummary {
   overdue: number;
   urgent: number;
   paymentPendingCount: number;
-  paymentPendingAmount: number;
+  /** Money as a 2dp string. */
+  paymentPendingAmount: string;
 }
 
 /** One week's throughput point for the staff report graph (Monday-started, oldest first). */
@@ -141,7 +146,8 @@ export interface StaffReport {
 
 /** A payment's {amount, method} snapshot within a ledger event. */
 export interface LedgerAmountSnapshot {
-  amount: number;
+  /** Money as a 2dp string. */
+  amount: string;
   method: string;
 }
 

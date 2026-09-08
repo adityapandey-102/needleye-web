@@ -1,16 +1,26 @@
 import { notFound } from "next/navigation";
-import { getCapabilityScope } from "../../../../lib/domain";
+import { getCapabilityScope, hasCapability } from "../../../../lib/domain";
 import { apiFetchServer, ApiError } from "../../../../lib/api/server";
 import { OrderDetailView } from "../../../../modules/orders/components/OrderDetailView";
 
-export default async function OrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
+export default async function OrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ orderId: string }>;
+  searchParams: Promise<{ scan?: string }>;
+}) {
   const { orderId } = await params;
+  // A QR scan opens this page with `?scan=1`; opening it from the dashboard,
+  // search, or table has no such param. Only the scan flow shows the proactive
+  // "product received for X" status popup (see StatusAdvancePrompt).
+  const viaScan = (await searchParams).scan === "1";
+
   const [{ profile }, { order }] = await Promise.all([
     apiFetchServer("/auth/me"),
     // A 404 here means the order doesn't exist OR is outside the caller's row
-    // scope (e.g. a Master Tailor opening an order assigned to someone else) --
-    // the API returns 404, not 403, so existence isn't confirmed. Show the
-    // clean not-found page instead of letting the Server Component crash.
+    // scope -- the API returns 404, not 403, so existence isn't confirmed. Show
+    // the clean not-found page instead of letting the Server Component crash.
     apiFetchServer(`/orders/${orderId}`).catch((err: unknown) => {
       if (err instanceof ApiError && err.status === 404) notFound();
       throw err;
@@ -28,22 +38,26 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
     (pricingScope === "assigned" && isAssignedDesigner);
 
   // Payment visibility is scope-aware: owner/accountant on any order; a designer
-  // only on their OWN orders; master never. So an authenticated "outsider"
-  // viewing a non-assigned order (see below) never sees payments.
+  // only on their OWN orders; master/worker/PM never.
   const paymentsReadScope = getCapabilityScope(profile.role, "payments:read");
   const canSeePayment = paymentsReadScope === true || (paymentsReadScope === "assigned" && isAssignedDesigner);
   const paymentsManageScope = getCapabilityScope(profile.role, "payments:manage");
   const canManagePayments = paymentsManageScope === true || (paymentsManageScope === "assigned" && isAssignedDesigner);
 
-  const designStageScope = getCapabilityScope(profile.role, "orders:status:design_stages");
-  const productionStageScope = getCapabilityScope(profile.role, "orders:status:production_stages");
-  const canChangeDesignStage = designStageScope === true || (designStageScope === "assigned" && isAssignedDesigner);
-  const canChangeProductionStage = productionStageScope === true || (productionStageScope === "assigned" && isAssignedMasterTailor);
+  // Status changes are gated purely by role tier (no assignment) -- whoever
+  // receives the garment on the floor can advance it. The specific stages a
+  // role may set (and forward-only) are decided in OrderStatusControl /
+  // StatusAdvancePrompt from `role`.
+  const canChangeStatus =
+    hasCapability(profile.role, "orders:status:design") ||
+    hasCapability(profile.role, "orders:status:pm_received") ||
+    hasCapability(profile.role, "orders:status:production");
 
   // View-only: an authenticated user who isn't the owner/manager, accountant, or
-  // this order's assigned designer/master. They can see the order (reached via
-  // QR/link) but not payments, status changes, or edits -- all the can* flags
-  // above are already false for them; this drives the read-only banner.
+  // this order's assigned designer/master -- they see the order (via QR/link)
+  // but not payments, edits, or the detailed status-history feed. Note: the
+  // status *control* is NOT gated by this; a production worker scanning an
+  // unassigned order must still be able to advance its stage.
   const viewOnly =
     profile.role !== "owner_manager" &&
     profile.role !== "accountant" &&
@@ -55,11 +69,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
       order={order}
       role={profile.role}
       viewOnly={viewOnly}
+      viaScan={viaScan}
       canEdit={canEdit}
       canSeePayment={canSeePayment}
       canManagePayments={canManagePayments}
-      canChangeDesignStage={canChangeDesignStage}
-      canChangeProductionStage={canChangeProductionStage}
+      canChangeStatus={canChangeStatus}
     />
   );
 }

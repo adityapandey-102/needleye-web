@@ -1,45 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { canTransitionOrderStatus } from "./orderStatusPermissions";
-import type { StatusTransitionOwners } from "./orderStatusPermissions";
+import { canChangeStage } from "./orderStatusPermissions";
+import type { Role } from "../constants/roles";
 
-const order: StatusTransitionOwners = { designerId: "designer-1", masterTailorId: "master-1" };
-
-describe("canTransitionOrderStatus", () => {
-  it("lets owner_manager move any order into any stage", () => {
-    expect(canTransitionOrderStatus("owner_manager", "design_approved", order, "anyone")).toBe(true);
-    expect(canTransitionOrderStatus("owner_manager", "cutting", order, "anyone")).toBe(true);
+describe("canChangeStage (stage-tier, no assignment)", () => {
+  it("owner_manager can move an order into any stage", () => {
+    for (const s of ["design_pending", "production_manager_received", "cutting", "delivered"] as const) {
+      expect(canChangeStage("owner_manager", s)).toBe(true);
+    }
   });
 
-  it("lets the assigned designer move their own order between design stages", () => {
-    expect(canTransitionOrderStatus("designer", "design_approved", order, "designer-1")).toBe(true);
+  it("design tier (Design Pending/Approved): owner / designer / PM only", () => {
+    for (const r of ["owner_manager", "designer", "production_manager"] as Role[]) {
+      expect(canChangeStage(r, "design_approved")).toBe(true);
+    }
+    for (const r of ["master_tailor", "worker", "accountant"] as Role[]) {
+      expect(canChangeStage(r, "design_approved")).toBe(false);
+    }
   });
 
-  it("blocks a designer moving a design-stage order they are not assigned to", () => {
-    expect(canTransitionOrderStatus("designer", "design_approved", order, "designer-2")).toBe(false);
+  it("PM-received tier: owner / PM only", () => {
+    expect(canChangeStage("production_manager", "production_manager_received")).toBe(true);
+    for (const r of ["designer", "master_tailor", "worker", "accountant"] as Role[]) {
+      expect(canChangeStage(r, "production_manager_received")).toBe(false);
+    }
   });
 
-  it("blocks a designer from ever moving an order into a production stage", () => {
-    expect(canTransitionOrderStatus("designer", "cutting", order, "designer-1")).toBe(false);
-  });
-
-  it("lets the assigned master tailor move their own order between production stages", () => {
-    expect(canTransitionOrderStatus("master_tailor", "stitching", order, "master-1")).toBe(true);
-  });
-
-  it("blocks a master tailor moving a production-stage order they are not assigned to", () => {
-    expect(canTransitionOrderStatus("master_tailor", "stitching", order, "master-2")).toBe(false);
-  });
-
-  it("treats Falls / Kutchu as a production stage (designer blocked, assigned master tailor allowed)", () => {
-    // falls_kutchu sits after design_approved but is production work, so the
-    // master tailor advances it, not the designer.
-    expect(canTransitionOrderStatus("designer", "falls_kutchu", order, "designer-1")).toBe(false);
-    expect(canTransitionOrderStatus("master_tailor", "falls_kutchu", order, "master-1")).toBe(true);
-    expect(canTransitionOrderStatus("master_tailor", "falls_kutchu", order, "master-2")).toBe(false);
-  });
-
-  it("blocks accountant from transitioning status at all", () => {
-    expect(canTransitionOrderStatus("accountant", "design_pending", order, "anyone")).toBe(false);
-    expect(canTransitionOrderStatus("accountant", "cutting", order, "anyone")).toBe(false);
+  it("production tier (Falls/Kutchu ... Delivered): everyone on the floor, not accountant", () => {
+    for (const r of ["owner_manager", "designer", "master_tailor", "production_manager", "worker"] as Role[]) {
+      expect(canChangeStage(r, "cutting")).toBe(true);
+    }
+    expect(canChangeStage("accountant", "cutting")).toBe(false);
   });
 });

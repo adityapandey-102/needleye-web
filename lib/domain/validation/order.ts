@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { GRANULAR_STATUS_VALUES } from "../constants/orderStatus";
 import { PRODUCT_CATEGORY_VALUES } from "../constants/productCategories";
+import { moneyField } from "./money";
 
 /** Mirrors prototype's phoneNumber input filter + validateOrderForm() regex check. */
 const phoneSchema = z.string().regex(/^\d{10}$/, "Enter a valid 10-digit number");
@@ -23,7 +24,8 @@ export const createOrderSchema = z.object({
   purchaseRequired: z.boolean().default(false),
   // Payment status is DERIVED from the ledger by the API, never submitted. An
   // advance is recorded separately via the payments endpoint after creation.
-  totalAmount: z.coerce.number().min(0).default(0),
+  // Money crosses the wire as a 2dp string ("send money as text").
+  totalAmount: moneyField.default("0.00"),
   productionStatus: z.enum(GRANULAR_STATUS_VALUES, {
     errorMap: () => ({ message: "Please select current status" }),
   }),

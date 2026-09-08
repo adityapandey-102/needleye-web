@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { formatCurrency, hasCapability, periodLabel, type RevenueReport } from "../../../../lib/domain";
+import { addMoney, formatCurrency, hasCapability, periodLabel, type RevenueReport } from "../../../../lib/domain";
 import { apiFetchServer } from "../../../../lib/api/server";
 import { RevenuePrintTrigger } from "../../../../modules/revenue/components/RevenuePrintTrigger";
 
@@ -25,7 +25,7 @@ export default async function RevenuePrintPage({
   if (to) query.set("to", to);
   const report: RevenueReport = await apiFetchServer(`/orders/revenue?${query.toString()}`);
 
-  const total = report.periods.reduce((sum, p) => sum + p.collected, 0);
+  const total = addMoney(...report.periods.map((p) => p.collected));
   const payments = report.periods.reduce((sum, p) => sum + p.paymentCount, 0);
   const fromYear = report.from.slice(0, 4);
   const toYear = report.to.slice(0, 4);

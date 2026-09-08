@@ -1,3 +1,4 @@
+import { addMoney } from "./money";
 import type { RevenueReport } from "../types";
 
 /**
@@ -23,10 +24,10 @@ function csvCell(value: string | number): string {
 /** Builds a CSV (Period, Period Start, Collected, Payments) + a total row -- opens directly in Excel/Sheets. */
 export function revenueToCsv(report: RevenueReport): string {
   const rows: (string | number)[][] = [["Period", "Period Start", "Collected", "Payments"]];
-  let total = 0;
+  let total = "0.00";
   for (const p of report.periods) {
     rows.push([periodLabel(p.periodStart, report.cycleStartDay), p.periodStart, p.collected, p.paymentCount]);
-    total += p.collected;
+    total = addMoney(total, p.collected);
   }
   rows.push([]);
   rows.push(["Total", "", total, ""]);

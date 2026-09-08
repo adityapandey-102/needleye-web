@@ -6,10 +6,11 @@ import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSe
 import {
   CANONICAL_STAGES,
   CANONICAL_TO_GRANULAR,
-  canTransitionOrderStatus,
+  canChangeStage,
   canonicalLabel,
   getTimelineSummary,
   hasCapability,
+  stageIndex,
   toCanonicalStage,
   type CanonicalStage,
   type Order,
@@ -28,15 +29,16 @@ import { useToast } from "../../../components/ui/Toast";
 export function KanbanBoard({
   orders: initialOrders,
   role,
-  userId,
 }: {
   orders: Order[];
   role: Role;
-  userId: string;
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const { showToast } = useToast();
-  const canDragAtAll = hasCapability(role, "orders:status:design_stages") || hasCapability(role, "orders:status:production_stages");
+  const canDragAtAll =
+    hasCapability(role, "orders:status:design") ||
+    hasCapability(role, "orders:status:pm_received") ||
+    hasCapability(role, "orders:status:production");
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -52,8 +54,14 @@ export function KanbanBoard({
     if (toCanonicalStage(order.productionStatus) === targetStage) return;
 
     const targetGranular = CANONICAL_TO_GRANULAR[targetStage];
-    if (!canTransitionOrderStatus(role, targetGranular, order, userId)) {
+    if (!canChangeStage(role, targetGranular)) {
       showToast(`Your role can't move this order into "${canonicalLabel(targetStage)}"`, "error");
+      return;
+    }
+    // Forward-only: the production flow only moves ahead (the API enforces this
+    // too, but reject the backward drag up front for instant feedback).
+    if (stageIndex(targetGranular) <= stageIndex(order.productionStatus)) {
+      showToast(`The production flow only moves forward -- can't move back to "${canonicalLabel(targetStage)}".`, "error");
       return;
     }
 

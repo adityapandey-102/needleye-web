@@ -7,6 +7,8 @@ import {
   formatCurrency,
   GRANULAR_STATUSES,
   granularLabel,
+  isPositiveMoney,
+  moneyGreaterThan,
   PAYMENT_METHODS,
   PRODUCT_CATEGORIES,
   type CreateOrderInput,
@@ -219,7 +221,7 @@ export function OrderForm({
       handWork: form.handWork,
       machineWork: form.machineWork,
       purchaseRequired: form.purchaseRequired,
-      totalAmount: form.totalAmount === "" ? 0 : Number(form.totalAmount),
+      totalAmount: form.totalAmount === "" ? "0.00" : form.totalAmount,
       nextPaymentDate: form.nextPaymentDate || null,
       productionStatus: (form.productionStatus || undefined) as CreateOrderInput["productionStatus"] | undefined,
       designerInstructions: form.designerInstructions || undefined,
@@ -246,9 +248,9 @@ export function OrderForm({
       // Validate an optional advance against the order total before creating,
       // so the derived status ends up right and the API's overpayment guard
       // isn't hit after the order already exists.
-      const advance = form.advanceAmount === "" ? 0 : Number(form.advanceAmount);
-      const total = form.totalAmount === "" ? 0 : Number(form.totalAmount);
-      if (advance > 0 && (!Number.isFinite(advance) || advance > total)) {
+      const advance = form.advanceAmount === "" ? "0.00" : form.advanceAmount;
+      const total = form.totalAmount === "" ? "0.00" : form.totalAmount;
+      if (isPositiveMoney(advance) && moneyGreaterThan(advance, total)) {
         setErrors({ advanceAmount: `Advance can't exceed the total (${formatCurrency(total)}).` });
         return;
       }
@@ -274,12 +276,12 @@ export function OrderForm({
       // (re-submitting would create a duplicate order). Navigate to the order
       // regardless and surface a warning so they can finish it from there.
       const warnings: string[] = [];
-      if (advance > 0) {
+      if (isPositiveMoney(advance)) {
         try {
           await paymentsApi.add(createdId, {
             amount: advance,
             method: form.advanceMethod,
-            nextPaymentDate: advance < total ? form.nextPaymentDate || null : null,
+            nextPaymentDate: moneyGreaterThan(total, advance) ? form.nextPaymentDate || null : null,
           });
         } catch {
           warnings.push("the advance payment wasn't recorded — add it from the payment ledger");
@@ -326,12 +328,12 @@ export function OrderForm({
       });
     }
     if (canEditPricingFields) {
-      const newTotal = form.totalAmount === "" ? 0 : Number(form.totalAmount);
+      const newTotal = form.totalAmount === "" ? "0.00" : form.totalAmount;
       // Mirror the API's invariant: the total can't drop below what's already
       // been collected (that would make the order "overpaid"). Reduce the
       // payment in the ledger first. The API enforces this for real.
-      const alreadyPaid = order.amountPaid ?? 0;
-      if (newTotal < alreadyPaid) {
+      const alreadyPaid = order.amountPaid ?? "0.00";
+      if (moneyGreaterThan(alreadyPaid, newTotal)) {
         setErrors({ totalAmount: `Total can't be below the ${formatCurrency(alreadyPaid)} already collected — reduce a payment in the ledger first.` });
         return;
       }

@@ -42,11 +42,9 @@ const BUCKET_LABELS: Record<string, string> = {
 
 export function OrdersListClient({
   role,
-  userId,
   initialBucket,
 }: {
   role: Role;
-  userId: string;
   initialBucket?: string;
 }) {
   const router = useRouter();
@@ -197,7 +195,7 @@ export function OrdersListClient({
                 find older orders.
               </div>
             )}
-            <KanbanBoard orders={orders} role={role} userId={userId} />
+            <KanbanBoard orders={orders} role={role} />
           </>
         )
       ) : (

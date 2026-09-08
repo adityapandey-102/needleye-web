@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { formatCurrency, type OrderStats, type RevenueReport } from "../../../lib/domain";
+import { addMoney, formatCurrency, money, type OrderStats, type RevenueReport } from "../../../lib/domain";
 import { ordersApi } from "../../orders/api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
@@ -67,8 +67,8 @@ export function RevenueClient() {
   }, [from, to, reloadKey]);
 
   const periods = report?.periods ?? [];
-  const maxCollected = Math.max(1, ...periods.map((p) => p.collected));
-  const rangeTotal = periods.reduce((sum, p) => sum + p.collected, 0);
+  const maxCollected = Math.max(1, ...periods.map((p) => money(p.collected).toNumber()));
+  const rangeTotal = addMoney(...periods.map((p) => p.collected));
   const rangeLabel = fromYear === toYear ? `${fromYear}` : `${fromYear}–${toYear}`;
 
   function handleExportCsv() {
@@ -195,7 +195,7 @@ export function RevenueClient() {
                       <td className="hidden py-2.5 pr-4 text-text-secondary sm:table-cell">{p.paymentCount}</td>
                       <td className="py-2.5">
                         <div className="h-2 w-full max-w-40 overflow-hidden rounded-full bg-primary-bg/60">
-                          <div className="h-full rounded-full bg-success" style={{ width: `${Math.round((p.collected / maxCollected) * 100)}%` }} />
+                          <div className="h-full rounded-full bg-success" style={{ width: `${Math.round((money(p.collected).toNumber() / maxCollected) * 100)}%` }} />
                         </div>
                       </td>
                     </tr>

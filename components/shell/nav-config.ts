@@ -46,6 +46,10 @@ export const NAV_SECTIONS: NavSection[] = [
 ];
 
 export function visibleNavSections(role: Role): NavSection[] {
+  // Workers have no dashboard at all -- they only ever open a single order via
+  // its QR scan. Their landing is /scan (see app/(app)/scan), the sidebar is empty.
+  if (role === "worker") return [];
+
   return NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) => !item.requires || hasCapability(role, item.requires)),

@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  addMoney,
   formatCurrency,
   formatDateOnly,
   getPaymentDue,
+  isPositiveMoney,
+  moneyGreaterThan,
+  moneyGte,
   PAYMENT_METHODS,
   type Payment,
   type PaymentMethod,
@@ -29,8 +33,8 @@ const TONE_CLASSES: Record<string, string> = {
 interface PaymentLedgerProps {
   orderId: string;
   canManage: boolean;
-  /** Order's total, and its payment schedule -- for the outstanding + due-status summary and overpayment guard. */
-  orderTotal: number;
+  /** Order's total (2dp money string), and its payment schedule -- for the outstanding + due-status summary and overpayment guard. */
+  orderTotal: string;
   paymentStatus: string | null;
   nextPaymentDate: string | null;
 }
@@ -70,7 +74,7 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
       const [list, { order }] = await Promise.all([paymentsApi.list(orderId), ordersApi.get(orderId)]);
       setPayments(list.payments);
       setOrderFields({
-        totalAmount: order.totalAmount ?? 0,
+        totalAmount: order.totalAmount ?? "0.00",
         paymentStatus: order.paymentStatus ?? null,
         nextPaymentDate: order.nextPaymentDate,
       });
@@ -90,7 +94,7 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
         if (!cancelled) {
           setPayments(list.payments);
           setOrderFields({
-            totalAmount: order.totalAmount ?? 0,
+            totalAmount: order.totalAmount ?? "0.00",
             paymentStatus: order.paymentStatus ?? null,
             nextPaymentDate: order.nextPaymentDate,
           });
@@ -109,7 +113,7 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
     };
   }, [orderId]);
 
-  const paid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const paid = addMoney(...payments.map((p) => p.amount));
   const due = getPaymentDue({
     totalAmount: orderFields.totalAmount,
     amountPaid: paid,
@@ -121,13 +125,13 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
     e.preventDefault();
     setFormError(null);
 
-    const value = Number(amount);
-    if (!Number.isFinite(value) || value <= 0) {
+    const value = amount.trim();
+    if (!isPositiveMoney(value)) {
       setFormError("Enter an amount greater than 0.");
       return;
     }
     // Overpayment guard (mirrors the API's PAYMENT_EXCEEDS_TOTAL rule).
-    if (value > due.outstanding) {
+    if (moneyGreaterThan(value, due.outstanding)) {
       setFormError(`Amount exceeds the outstanding balance of ${formatCurrency(due.outstanding)}.`);
       return;
     }
@@ -135,7 +139,7 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
     // Whether this payment settles the order -- if a balance remains, the next
     // payment date reschedules the order's due tracking (fixing a stale
     // "Due Today" after a same-day payment); once settled, it's cleared.
-    const settles = value >= due.outstanding;
+    const settles = moneyGte(value, due.outstanding);
 
     setSaving(true);
     try {
@@ -246,7 +250,7 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
         )}
 
         {canManage &&
-          due.outstanding > 0 &&
+          isPositiveMoney(due.outstanding) &&
           (formOpen ? (
             <form onSubmit={handleAdd} className="mt-2 flex flex-col gap-2 rounded-app-sm border border-border-light p-3 print:hidden">
               <div className="grid grid-cols-2 gap-2">
@@ -280,7 +284,7 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
               </div>
               {/* If this payment won't settle the balance, capture when the next
                   one is expected -- keeps the due tracking accurate. */}
-              {Number(amount) < due.outstanding && (
+              {moneyGreaterThan(due.outstanding, amount) && (
                 <div>
                   <FieldLabel>Next Payment Date</FieldLabel>
                   <Input type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />

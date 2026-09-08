@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CAPABILITIES, getCapabilityScope, hasCapability, isScopedToOwnRecords } from "./capabilities";
 import type { Role } from "./roles";
 
-const ROLES: Role[] = ["owner_manager", "designer", "master_tailor", "accountant"];
+const ROLES: Role[] = ["owner_manager", "designer", "master_tailor", "accountant", "production_manager", "worker"];
 
 describe("capabilities matrix", () => {
   it("defines a scope for every role on every capability", () => {
@@ -30,10 +30,13 @@ describe("capabilities matrix", () => {
     expect(isScopedToOwnRecords("designer", "payments:manage")).toBe(true);
   });
 
-  it("splits status transitions by stage between designer and master_tailor", () => {
-    expect(getCapabilityScope("designer", "orders:status:design_stages")).toBe("assigned");
-    expect(getCapabilityScope("designer", "orders:status:production_stages")).toBe(false);
-    expect(getCapabilityScope("master_tailor", "orders:status:production_stages")).toBe("assigned");
-    expect(getCapabilityScope("master_tailor", "orders:status:design_stages")).toBe(false);
+  it("gates each status tier by role (no assignment scope on status)", () => {
+    expect(getCapabilityScope("designer", "orders:status:design")).toBe(true);
+    expect(getCapabilityScope("production_manager", "orders:status:pm_received")).toBe(true);
+    expect(getCapabilityScope("designer", "orders:status:pm_received")).toBe(false);
+    for (const role of ["owner_manager", "designer", "master_tailor", "production_manager", "worker"] as Role[]) {
+      expect(getCapabilityScope(role, "orders:status:production")).toBe(true);
+    }
+    expect(getCapabilityScope("accountant", "orders:status:production")).toBe(false);
   });
 });

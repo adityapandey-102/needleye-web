@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { PAYMENT_METHOD_VALUES } from "../constants/productCategories";
+import { positiveMoneyField } from "./money";
 
 export const createPaymentSchema = z.object({
-  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  // Money crosses the wire as a 2dp string ("send money as text").
+  amount: positiveMoneyField,
   method: z.enum(PAYMENT_METHOD_VALUES),
   paidAt: z.string().min(1).optional(),
   notes: z.string().trim().max(500).optional(),

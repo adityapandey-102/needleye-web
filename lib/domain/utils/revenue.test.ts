@@ -20,8 +20,8 @@ describe("revenueToCsv", () => {
     from: "2026-01-01",
     to: "2026-12-31",
     periods: [
-      { periodStart: "2026-01-01", collected: 1200, paymentCount: 3 },
-      { periodStart: "2026-02-01", collected: 800, paymentCount: 2 },
+      { periodStart: "2026-01-01", collected: "1200.00", paymentCount: 3 },
+      { periodStart: "2026-02-01", collected: "800.00", paymentCount: 2 },
     ],
   };
 
@@ -29,7 +29,7 @@ describe("revenueToCsv", () => {
     const csv = revenueToCsv(report);
     const lines = csv.split("\n");
     expect(lines[0]).toBe("Period,Period Start,Collected,Payments");
-    expect(lines).toContain("Total,,2000,");
+    expect(lines).toContain("Total,,2000.00,");
     // Two period rows + header + blank + total.
     expect(lines.filter((l) => l.includes("2026-0")).length).toBe(2);
   });
@@ -38,7 +38,7 @@ describe("revenueToCsv", () => {
     const withComma: RevenueReport = {
       ...report,
       cycleStartDay: 7,
-      periods: [{ periodStart: "2026-01-07", collected: 1000, paymentCount: 1 }],
+      periods: [{ periodStart: "2026-01-07", collected: "1000.00", paymentCount: 1 }],
     };
     const csv = revenueToCsv(withComma);
     // A "7 Jan, 2026"-style label (locale-dependent) must stay one CSV cell.

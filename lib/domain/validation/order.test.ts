@@ -45,7 +45,7 @@ describe("createOrderSchema", () => {
       expect(result.data.handWork).toBe(false);
       expect(result.data.machineWork).toBe(false);
       expect(result.data.purchaseRequired).toBe(false);
-      expect(result.data.totalAmount).toBe(0);
+      expect(result.data.totalAmount).toBe("0.00");
     }
   });
 

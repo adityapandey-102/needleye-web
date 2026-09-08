@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { hasCapability } from "../../../lib/domain";
 import { apiFetchServer } from "../../../lib/api/server";
 import { Button } from "../../../components/ui/Button";
@@ -12,6 +13,8 @@ export default async function OrdersPage({
   searchParams: Promise<{ bucket?: string }>;
 }) {
   const { profile } = await apiFetchServer("/auth/me");
+  // Workers have no dashboard -- send them to their scan landing.
+  if (profile.role === "worker") redirect("/scan");
   const { bucket } = await searchParams;
 
   return (
@@ -39,7 +42,7 @@ export default async function OrdersPage({
         </div>
       </div>
       <OrderStatCards role={profile.role} />
-      <OrdersListClient role={profile.role} userId={profile.id} initialBucket={bucket} />
+      <OrdersListClient role={profile.role} initialBucket={bucket} />
     </div>
   );
 }

@@ -30,10 +30,14 @@ jobs:
 
       - name: Build
         env:
-          # Build-time placeholder -- Vercel (or wherever this deploys)
-          # supplies the real value as a project env var. Present here only
+          # Build-time placeholders -- Vercel (or wherever this deploys)
+          # supplies the real values as project env vars. Present here only
           # so `next build`'s static analysis/prerendering doesn't fail.
+          # NOTE: NEXT_PUBLIC_* are INLINED AT BUILD TIME, so the real values
+          # must exist in the hosting project before its build runs -- changing
+          # one there needs a redeploy, not just a restart.
           NEXT_PUBLIC_API_BASE_URL: https://placeholder.example.com/api/v1
+          NEXT_PUBLIC_WEB_APP_URL: https://placeholder.example.com
         run: npm run build
 
       # Deploy step goes here once a hosting target is chosen (Vercel is

@@ -1,29 +1,19 @@
-import { DESIGN_STAGE_STATUSES } from "../constants/orderStatus";
 import { getCapabilityScope } from "../constants/capabilities";
+import { stageCapability } from "../constants/orderStatus";
 import type { GranularStatus } from "../constants/orderStatus";
 import type { Role } from "../constants/roles";
 
-export interface StatusTransitionOwners {
-  designerId: string;
-  masterTailorId: string;
-}
-
 /**
- * Client-side mirror of needleye-api's assertCanTransitionStatus
- * (modules/orders/domain/order-status.rules.ts) -- used only for immediate
- * UI feedback (rejecting a Kanban drop before it even hits the network, or
- * filtering the status dropdown). The API re-checks this on every request
- * regardless; this is a UX nicety, never the real authorization boundary.
+ * Client-side mirror of needleye-api's assertCanChangeStage
+ * (modules/orders/domain/order-status.rules.ts) -- used only for immediate UI
+ * feedback (showing/hiding the status control, gating the scan popup). The API
+ * re-checks this on every request regardless; this is a UX nicety, never the
+ * real authorization boundary.
+ *
+ * Which roles may move an order INTO a stage depends only on the stage's
+ * capability tier -- assignment is NOT considered (shop-floor model). Forward-
+ * only ordering + concurrency are enforced server-side.
  */
-export function canTransitionOrderStatus(role: Role, newStatus: GranularStatus, order: StatusTransitionOwners, callerId: string): boolean {
-  const isDesignStage = DESIGN_STAGE_STATUSES.includes(newStatus);
-  const capability = isDesignStage ? "orders:status:design_stages" : "orders:status:production_stages";
-  const scope = getCapabilityScope(role, capability);
-
-  if (scope === false) return false;
-  if (scope === "assigned") {
-    const ownerId = isDesignStage ? order.designerId : order.masterTailorId;
-    return ownerId === callerId;
-  }
-  return true;
+export function canChangeStage(role: Role, newStatus: GranularStatus): boolean {
+  return getCapabilityScope(role, stageCapability(newStatus)) !== false;
 }

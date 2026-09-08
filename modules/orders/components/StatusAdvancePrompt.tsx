@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  DESIGN_STAGE_STATUSES,
+  canChangeStage,
   GRANULAR_STATUS_VALUES,
   granularLabel,
+  stageIndex,
   type GranularStatus,
   type Role,
 } from "../../../lib/domain";
@@ -13,72 +14,61 @@ import { ordersApi } from "../api/ordersApi";
 import { Button } from "../../../components/ui/Button";
 import { Icon } from "../../../components/ui/Icon";
 import { useToast } from "../../../components/ui/Toast";
+import { useConfirm } from "../../../components/ui/ConfirmDialog";
 
 /**
- * On opening an order (typically via its QR), the assigned designer/master is
- * prompted to move it to the NEXT stage in the production journey -- current
- * stage + the next one + an Advance button that confirms and applies the
- * change (reusing PATCH /orders/:id/status; the API re-checks stage RBAC). Only
- * shown when the viewer is actually allowed to make that specific transition
- * (a designer advances design stages, a master production stages), so it's
- * never a dead button. Auto-shows once per order per browser session; the
- * always-available on-page status control handles any further changes.
+ * Shown ONLY when an order is opened via its QR scan (the parent renders this
+ * just for `?scan=1`). Whoever physically received the garment is prompted to
+ * advance it to the next stage in the flow -- "Product received for X". Tapping
+ * the advance button asks for a final confirmation, then applies the change
+ * (PATCH /orders/:id/status; the API re-checks role tier, forward-only, and
+ * concurrency). Rendered only when the next stage is one this role may set.
  */
 export function StatusAdvancePrompt({
   orderId,
   currentStatus,
   role,
-  canChangeDesignStage,
-  canChangeProductionStage,
 }: {
   orderId: string;
   currentStatus: GranularStatus;
   role: Role;
-  canChangeDesignStage: boolean;
-  canChangeProductionStage: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const idx = GRANULAR_STATUS_VALUES.indexOf(currentStatus);
+  const idx = stageIndex(currentStatus);
   const nextStatus = idx >= 0 && idx < GRANULAR_STATUS_VALUES.length - 1 ? GRANULAR_STATUS_VALUES[idx + 1]! : null;
-  const nextIsDesign = nextStatus ? DESIGN_STAGE_STATUSES.includes(nextStatus) : false;
-  const canAdvance = !!nextStatus && (nextIsDesign ? canChangeDesignStage : canChangeProductionStage);
-  // Only the people who actually work the order get the proactive prompt.
-  const enabled = role === "designer" || role === "master_tailor";
-  const sessionKey = `neye-status-prompt-${orderId}`;
+  const canAdvance = !!nextStatus && canChangeStage(role, nextStatus);
 
   useEffect(() => {
-    if (!enabled || !canAdvance) return;
+    if (!canAdvance) return;
     let cancelled = false;
-    // Deferred so the open isn't a synchronous setState in the effect body;
-    // also the only place sessionStorage is read (client-only).
+    // Deferred so it's not a synchronous setState in the effect body.
     queueMicrotask(() => {
-      if (cancelled) return;
-      try {
-        if (!sessionStorage.getItem(sessionKey)) setOpen(true);
-      } catch {
-        setOpen(true); // sessionStorage blocked -- still show once
-      }
+      if (!cancelled) setOpen(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [enabled, canAdvance, sessionKey]);
+  }, [canAdvance]);
 
   function dismiss() {
-    try {
-      sessionStorage.setItem(sessionKey, "1");
-    } catch {
-      // sessionStorage blocked (private mode) -- fine, just closes for now.
-    }
     setOpen(false);
   }
 
   async function advance() {
     if (!nextStatus) return;
+    const ok = await confirm({
+      title: `Move to ${granularLabel(nextStatus)}?`,
+      body: `Confirm this order has moved from “${granularLabel(currentStatus)}” to “${granularLabel(nextStatus)}”. This is recorded in the order's status history and can't be undone.`,
+      confirmLabel: `Yes, move to ${granularLabel(nextStatus)}`,
+      cancelLabel: "Cancel",
+    });
+    if (!ok) return;
+
     setSaving(true);
     try {
       await ordersApi.updateStatus(orderId, nextStatus);
@@ -99,11 +89,11 @@ export function StatusAdvancePrompt({
       <div className="animate-scale-in card-accent-top w-full max-w-md rounded-app-lg border border-border bg-card p-6 shadow-app-lg" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-app bg-primary-bg text-primary ring-1 ring-inset ring-primary/10">
-            <Icon name="needle" size={20} />
+            <Icon name="package" size={20} />
           </div>
           <div>
-            <h2 className="font-serif text-lg font-bold text-text-primary">Update production status?</h2>
-            <p className="text-xs text-text-muted">Move this order forward in its journey.</p>
+            <h2 className="font-serif text-lg font-bold text-text-primary">Product received?</h2>
+            <p className="text-xs text-text-muted">You scanned this order. Advance it to the next stage.</p>
           </div>
         </div>
 
@@ -122,7 +112,7 @@ export function StatusAdvancePrompt({
             Not now
           </Button>
           <Button onClick={advance} disabled={saving}>
-            {saving ? "Updating…" : `Advance to ${granularLabel(nextStatus)}`}
+            {saving ? "Updating…" : `Received for ${granularLabel(nextStatus)}`}
           </Button>
         </div>
       </div>

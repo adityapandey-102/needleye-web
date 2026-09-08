@@ -208,20 +208,20 @@ now live (`UserDetailClient.tsx`):
   server-generated password shown once in a dismissible overlay
   (`CredentialRevealOverlay`). Neither this app nor needleye-api can show it
   again afterward, only regenerate it.
-- **Generate/regenerate password**: shown for `designer`/`master_tailor`
-  accounts always, and for `owner_manager`/`accountant` accounts only until
-  they've logged in once (`user.lastLoginAt`) -- matching the backend's
-  `UsersService.generatePassword` rule (this UI condition is convenience; the
-  API enforces it for real).
-- **QR login card** (`master_tailor` only, `LoginQrCard.tsx`): the
+- **Generate/regenerate password**: shown for **every** role (the earlier
+  "self-managed roles can't regenerate" restriction was removed in ADR 0005) --
+  the API accepts a regenerate for any account.
+- **QR login card** (`master_tailor` and `worker` -- the shop-floor roles,
+  `LoginQrCard.tsx`): the
   "Generate/Regenerate QR login" action calls `usersApi.generateQrToken`, then
   the one-time reveal overlay renders the returned `loginUrl` as an
   **ID-card-style login card** (company branding, name, role, the login QR)
   that can be **saved as a PNG or printed** -- both composed from the same
   offscreen canvas. This is intentionally the *only* card export and it is
-  master-tailor-only: there is no separate staff-ID card, and the QR always
-  encodes the login URL, never a plain identifier. Regenerating (or
-  deactivating the account) invalidates it immediately.
+  limited to the shop-floor roles (`master_tailor`/`worker`): there is no
+  separate staff-ID card, and the QR always encodes the login URL, never a plain
+  identifier. Regenerating (or deactivating the account) invalidates it
+  immediately.
 - **Copy password**: the one-time password reveal has a Copy button
   (`navigator.clipboard`) since it's shown only once.
 - **Activate/deactivate**: deactivation (`usersApi.deactivate`) is now
@@ -372,7 +372,32 @@ code package.
 **RBAC in the UI:** nav items and form fields are gated via
 `lib/domain`'s capability matrix (`hasCapability`/`getCapabilityScope`)
 mirroring the same rules the API enforces -- this is UI convenience, not the
-security boundary; the API is what actually rejects unauthorized writes.
+security boundary; the API is what actually rejects unauthorized writes. Six
+roles: `owner_manager`, `designer`, `master_tailor`, `accountant`,
+`production_manager` (a designer that sees *all* orders), and `worker` (no
+dashboard -- nav is empty and `/orders` redirects to `/scan`; scans an order QR
+and advances it). Status permissions are the three tiers in
+`orderStatusPermissions.ts`'s `canChangeStage` (design / pm_received /
+production); moves are forward-only (the API enforces both). See needleye-api
+ADR 0005.
+
+**Money — one way, decimal, string on the wire.** All money is a 2-decimal
+**string** ("1500.00"), never a JS `number`, everywhere in this app (API JSON,
+props, state) — mirroring the API contract. `lib/domain/utils/money.ts` (the
+mirror of the API's `money.ts`, using **decimal.js**) is the single place money
+math happens: `money`, `toMoneyString`, `addMoney`, `subtractMoney`,
+`outstanding`, `moneyGreaterThan`, `moneyGte`, `isPositiveMoney`, `paidFraction`.
+`formatCurrency` (in `currency.ts`) is the only thing that turns money into
+display text; form inputs are validated via `moneyField`/`positiveMoneyField`
+(`lib/domain/validation/money.ts`). Never do `+ - > Number() parseFloat` on
+money.
+
+**Frontend logging:** `lib/logging/logger.ts` is the one web-side logger
+(leveled, structured, browser + server-component safe; never logs tokens).
+`describeFetchError` turns a raw transport failure (server unreachable /
+`ECONNREFUSED` / aborted) into a friendly, user-safe message; `apiFetch`,
+`apiUpload`, and `apiFetchServer` route through it (a down API surfaces a `503`
+with a friendly message instead of a raw stack).
 
 ## Environment variables
 

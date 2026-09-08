@@ -16,6 +16,7 @@ export * from "./constants/orderStatus";
 export * from "./constants/productCategories";
 export * from "./types";
 export * from "./utils/date";
+export * from "./utils/money";
 export * from "./utils/currency";
 export * from "./utils/timeline";
 export * from "./utils/paymentDue";

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { formatDateOnly, PRODUCT_CATEGORIES, type Order } from "../../../lib/domain";
@@ -14,8 +15,20 @@ import { Button } from "../../../components/ui/Button";
  * window.print() emits just this sheet -- the app chrome (sidebar/header) is
  * already `print:hidden`. The on-screen toolbar is hidden when printing.
  */
-export function CustomerLabel({ order, qrUrl }: { order: Order; qrUrl: string }) {
+export function CustomerLabel({ order }: { order: Order }) {
   const category = PRODUCT_CATEGORIES.find((c) => c.value === order.productCategory);
+  // Encode an absolute URL from the origin the label is printed from (LAN IP,
+  // localhost, or prod domain) so the printed QR resolves for staff scanning on
+  // that same network -- not a fixed env host. Computed after mount (client-only).
+  // NEXT_PUBLIC_WEB_APP_URL (e.g. a LAN IP a phone can reach) when set, else the
+  // viewing origin. Inlined at dev-server START -- restart after editing .env.local.
+  const [qrUrl, setQrUrl] = useState("");
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_WEB_APP_URL || window.location.origin;
+    // ?scan=1 -> scanning this printed label opens the order with the
+    // "product received / advance stage" popup (same as scanning the on-screen QR).
+    queueMicrotask(() => setQrUrl(`${base}/orders/${order.id}?scan=1`));
+  }, [order.id]);
 
   return (
     <div className="mx-auto max-w-[210mm]">
@@ -49,7 +62,7 @@ export function CustomerLabel({ order, qrUrl }: { order: Order; qrUrl: string })
         <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-[auto_1fr]">
           <div className="flex flex-col items-center">
             <div className="rounded-app border-2 border-black bg-white p-4">
-              <QRCodeSVG value={qrUrl} size={260} level="M" />
+              {qrUrl ? <QRCodeSVG value={qrUrl} size={260} level="M" /> : <div className="h-65 w-65" />}
             </div>
             <p className="mt-2 max-w-[260px] text-center text-[11px] text-neutral-500">
               Scan to open this order (staff login required).

@@ -15,5 +15,5 @@ export default async function OrderLabelPage({ params }: { params: Promise<{ ord
     throw err;
   });
 
-  return <CustomerLabel order={order} qrUrl={`${process.env.NEXT_PUBLIC_WEB_APP_URL}/orders/${order.id}`} />;
+  return <CustomerLabel order={order} />;
 }

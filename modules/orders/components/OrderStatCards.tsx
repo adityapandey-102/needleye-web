@@ -91,10 +91,18 @@ export function OrderStatCards({ role }: { role: Role }) {
         ))}
       </div>
 
+      {/* Collected & Outstanding Revenue are financial figures -- shown only to
+          roles with reports:financial (owner / accountant). Designers (and
+          anyone with only payments:read) see just the actionable Pending
+          Payments count, not the revenue totals. */}
       {canSeePayments && (
-        <div className="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <MetricCard href={canSeeRevenue ? "/revenue" : undefined} label="Collected Revenue" value={formatCurrency(stats.collectedRevenue)} icon="wallet" tone="burgundy" />
-          <MetricCard href="/orders/pending-payments" label="Outstanding Revenue" value={formatCurrency(stats.outstandingRevenue)} icon="trending-up" tone="gold" />
+        <div className={`mt-3.5 grid grid-cols-1 gap-3 ${canSeeRevenue ? "sm:grid-cols-3" : ""}`}>
+          {canSeeRevenue && (
+            <>
+              <MetricCard href="/revenue" label="Collected Revenue" value={formatCurrency(stats.collectedRevenue)} icon="wallet" tone="burgundy" />
+              <MetricCard href="/orders/pending-payments" label="Outstanding Revenue" value={formatCurrency(stats.outstandingRevenue)} icon="trending-up" tone="gold" />
+            </>
+          )}
           <MetricCard href="/orders/pending-payments" label="Pending Payments" value={stats.pendingPayments!} icon="card" tone="plum" />
         </div>
       )}

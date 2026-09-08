@@ -1,25 +1,23 @@
 import { diffDays, parseDateOnly, pluralize, startOfDay } from "./date";
+import { money, outstanding as outstandingMoney, type MoneyLike } from "./money";
 import type { PaymentStatus } from "../constants/productCategories";
 
-/** Remaining payable on an order -- never negative (an overpaid ledger still reads 0 outstanding). */
-export function remainingOutstanding(totalAmount: number | null | undefined, amountPaid: number | null | undefined): number {
-  return Math.max((Number(totalAmount) || 0) - (Number(amountPaid) || 0), 0);
+/** Remaining payable on an order (2dp string) -- never negative (an overpaid ledger still reads 0 outstanding). */
+export function remainingOutstanding(totalAmount: MoneyLike, amountPaid: MoneyLike): string {
+  return outstandingMoney(totalAmount, amountPaid);
 }
 
 /**
  * Client mirror of the API's derivePaymentStatus -- payment status is derived
  * from the ledger, never chosen by hand. Used for immediate UI feedback (e.g.
  * previewing status while entering an advance at order creation); the API is
- * the real authority. Kept cent-safe to match the server exactly.
+ * the real authority. Exact (decimal.js), so it matches the server exactly.
  */
-export function derivePaymentStatus(
-  paymentsSum: number | null | undefined,
-  totalAmount: number | null | undefined,
-): PaymentStatus {
-  const paid = Math.round((Number(paymentsSum) || 0) * 100);
-  const total = Math.round((Number(totalAmount) || 0) * 100);
-  if (total <= 0 || paid <= 0) return "unpaid";
-  if (paid >= total) return "fully_paid";
+export function derivePaymentStatus(paymentsSum: MoneyLike, totalAmount: MoneyLike): PaymentStatus {
+  const paid = money(paymentsSum);
+  const total = money(totalAmount);
+  if (total.lessThanOrEqualTo(0) || paid.lessThanOrEqualTo(0)) return "unpaid";
+  if (paid.greaterThanOrEqualTo(total)) return "fully_paid";
   return "advance_paid";
 }
 
@@ -33,7 +31,8 @@ export interface PaymentDueInfo {
   /** Days until due (upcoming), 0 (due today), or days overdue (positive); null when not applicable. */
   days: number | null;
   daysLabel: string;
-  outstanding: number;
+  /** Money as a 2dp string. */
+  outstanding: string;
 }
 
 /**
@@ -44,15 +43,15 @@ export interface PaymentDueInfo {
  * date is "no_date"; otherwise it's overdue / due today / upcoming with a day count.
  */
 export function getPaymentDue(input: {
-  totalAmount?: number | null;
-  amountPaid?: number | null;
+  totalAmount?: MoneyLike;
+  amountPaid?: MoneyLike;
   paymentStatus?: string | null;
   nextPaymentDate?: string | null;
 }): PaymentDueInfo {
   const outstanding = remainingOutstanding(input.totalAmount, input.amountPaid);
 
-  if (input.paymentStatus === "fully_paid" || outstanding <= 0) {
-    return { status: "paid", label: "Fully Paid", tone: "green", days: null, daysLabel: "Settled", outstanding: 0 };
+  if (input.paymentStatus === "fully_paid" || !money(outstanding).greaterThan(0)) {
+    return { status: "paid", label: "Fully Paid", tone: "green", days: null, daysLabel: "Settled", outstanding: "0.00" };
   }
 
   const due = parseDateOnly(input.nextPaymentDate);

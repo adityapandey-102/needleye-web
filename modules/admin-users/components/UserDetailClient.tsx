@@ -11,10 +11,9 @@ import { useToast } from "../../../components/ui/Toast";
 import { useConfirm } from "../../../components/ui/ConfirmDialog";
 import { CredentialRevealOverlay, type RevealModal } from "./CredentialRevealOverlay";
 
-/** Roles that self-manage their own password once they've logged in at least once. */
-function canRegeneratePassword(user: StaffUser): boolean {
-  if (user.role === "designer" || user.role === "master_tailor") return true;
-  return !user.lastLoginAt;
+/** QR-card login is for the shop-floor roles (Master Tailor, Worker). */
+function usesQrLogin(role: StaffUser["role"]): boolean {
+  return role === "master_tailor" || role === "worker";
 }
 
 export function UserDetailClient({ initialUser, currentUserId }: { initialUser: StaffUser; currentUserId: string }) {
@@ -184,12 +183,11 @@ export function UserDetailClient({ initialUser, currentUserId }: { initialUser: 
 
             {user.active ? (
               <div className="flex flex-col gap-2">
-                {canRegeneratePassword(user) && (
-                  <Button variant="outline" disabled={busy} onClick={handleGeneratePassword}>
-                    <Icon name="key" size={16} /> Generate new password
-                  </Button>
-                )}
-                {user.role === "master_tailor" && (
+                {/* Every role can be issued a fresh one-time password. */}
+                <Button variant="outline" disabled={busy} onClick={handleGeneratePassword}>
+                  <Icon name="key" size={16} /> Generate new password
+                </Button>
+                {usesQrLogin(user.role) && (
                   <Button variant="outline" disabled={busy} onClick={handleGenerateQr}>
                     <Icon name={user.hasQrLogin ? "refresh" : "qr"} size={16} />
                     {user.hasQrLogin ? "Regenerate QR login" : "Generate QR login"}

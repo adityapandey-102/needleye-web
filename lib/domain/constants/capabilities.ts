@@ -5,8 +5,13 @@ export const CAPABILITIES = [
   "orders:read",
   "orders:edit:customer_product_fields",
   "orders:edit:pricing_assignment",
-  "orders:status:design_stages",
-  "orders:status:production_stages",
+  // Production-flow stage tiers (see orderStatus.ts STAGE_CAPABILITY). Which
+  // roles may move an order INTO a stage depends only on the stage's tier --
+  // NOT on whether the order is assigned to them (the shop-floor model: whoever
+  // physically receives the garment scans it and advances the stage).
+  "orders:status:design", //          Design Pending, Design Approved
+  "orders:status:pm_received", //     Production Manager Received
+  "orders:status:production", //      Falls/Kutchu ... Delivered
   "payments:manage",
   "payments:read",
   "reports:financial",
@@ -22,8 +27,8 @@ export type Capability = (typeof CAPABILITIES)[number];
  *                 master_tailor_id (or, for payments, the order's designer).
  * `false` -> never allowed.
  *
- * Kept as a flat lookup table on purpose (not a generic policy engine) --
- * four roles, ten capabilities, all known up front.
+ * Mirror of needleye-api's src/domain/capabilities.ts -- kept identical.
+ * NOTE: the three `orders:status:*` capabilities never use "assigned".
  */
 type CapabilityScope = boolean | "assigned";
 
@@ -33,70 +38,96 @@ export const CAPABILITY_MATRIX: Record<Capability, Record<Role, CapabilityScope>
     designer: true,
     master_tailor: false,
     accountant: false,
+    production_manager: true,
+    worker: false,
   },
   "orders:read": {
     owner_manager: true,
     designer: "assigned",
     master_tailor: "assigned",
     accountant: true,
+    production_manager: true,
+    worker: "assigned",
   },
   "orders:edit:customer_product_fields": {
     owner_manager: true,
     designer: "assigned",
     master_tailor: false,
     accountant: false,
+    production_manager: true,
+    worker: false,
   },
   "orders:edit:pricing_assignment": {
     owner_manager: true,
     designer: false,
     master_tailor: false,
     accountant: false,
+    production_manager: false,
+    worker: false,
   },
-  "orders:status:design_stages": {
+  "orders:status:design": {
     owner_manager: true,
-    designer: "assigned",
+    designer: true,
     master_tailor: false,
     accountant: false,
+    production_manager: true,
+    worker: false,
   },
-  "orders:status:production_stages": {
+  "orders:status:pm_received": {
     owner_manager: true,
     designer: false,
-    master_tailor: "assigned",
+    master_tailor: false,
     accountant: false,
+    production_manager: true,
+    worker: false,
   },
-  // Designer manages payments on their own orders -- they collect money from
-  // the client at booking. Master Tailor has no payment visibility at all.
+  "orders:status:production": {
+    owner_manager: true,
+    designer: true,
+    master_tailor: true,
+    accountant: false,
+    production_manager: true,
+    worker: true,
+  },
   "payments:manage": {
     owner_manager: true,
     designer: "assigned",
     master_tailor: false,
     accountant: true,
+    production_manager: false,
+    worker: false,
   },
   "payments:read": {
     owner_manager: true,
     designer: "assigned",
     master_tailor: false,
     accountant: true,
+    production_manager: false,
+    worker: false,
   },
   "reports:financial": {
     owner_manager: true,
     designer: false,
     master_tailor: false,
     accountant: true,
+    production_manager: false,
+    worker: false,
   },
-  // Staff performance reports (per designer/master weekly workload) -- a
-  // management view, Owner/Manager only (deliberately NOT the accountant).
   "reports:staff": {
     owner_manager: true,
     designer: false,
     master_tailor: false,
     accountant: false,
+    production_manager: false,
+    worker: false,
   },
   "users:manage": {
     owner_manager: true,
     designer: false,
     master_tailor: false,
     accountant: false,
+    production_manager: false,
+    worker: false,
   },
 };
 
