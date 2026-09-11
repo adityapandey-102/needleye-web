@@ -77,7 +77,7 @@ modules/
     components/                 # LoginForm, RegisterForm, ResetPasswordForm, UpdatePasswordForm
     api/authApi.ts                # every HTTP call the Auth module makes -- login/logout/qrLogin also own writing/clearing the session cookies
   orders/
-    components/                 # OrderForm (create+edit, advance at booking), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (A4 print), PaymentLedger
+    components/                 # OrderForm (create+edit, advance at booking), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
@@ -310,12 +310,16 @@ page.
 ### Print: order sheet & customer label
 
 Two print paths off an order's detail page: the existing full-order print
-(`window.print()` with app chrome `print:hidden`), and a new **A4 customer
-label** (`CustomerLabel.tsx`, `/orders/[orderId]/label`) -- a single sheet
-with a large scannable QR plus customer/order-number/category/due-date/
-order-details plus the assigned **designer and master tailor** names (the
-customer's phone is deliberately omitted from the package label), sized for a
-real package label. Both live on their own routes so printing emits just the
+(`window.print()` with app chrome `print:hidden`), and the **package-box
+sticker** (`CustomerLabel.tsx`, `/orders/[orderId]/label`) -- an
+**8.5in x 2.75in** label styled after the boutique's existing printed sticker
+(antique-gold band, brand monogram, rule-underlined fields, ticked boxes for
+hand/machine/purchase), carrying a scannable QR plus customer/order-number/
+category/due-date/bill-number/order-details plus the assigned **designer and
+master tailor** names (the customer's phone is deliberately omitted from the
+package label). `@page { size: 8.5in 2.75in; margin: 0 }` makes Print emit
+exactly one sticker, and `print-color-adjust: exact` keeps the gold band from
+being dropped when "Background graphics" is unticked. Both live on their own routes so printing emits just the
 intended sheet.
 
 ### Reference images: client-side compression

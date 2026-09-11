@@ -3,7 +3,7 @@ import { apiFetchServer, ApiError } from "../../../../../lib/api/server";
 import { CustomerLabel } from "../../../../../modules/orders/components/CustomerLabel";
 
 /**
- * Printable A4 customer/package label for a single order. Reuses the order
+ * Printable 8.5in x 2.75in package-box sticker for a single order. Reuses the order
  * read endpoint (so row-scoping still applies -- a 404 means missing OR out of
  * scope). Renders only the label; the app chrome is `print:hidden`, so
  * printing this route emits a clean single sheet.
