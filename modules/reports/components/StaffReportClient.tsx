@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatCurrency, type StaffReport } from "../../../lib/domain";
-import { useTeamMembers } from "../hooks/useTeamMembers";
-import { ordersApi } from "../api/ordersApi";
+import { ordersApi } from "../../orders/api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
 import { Icon, type IconName } from "../../../components/ui/Icon";
 import { WeeklyThroughputChart } from "./WeeklyThroughputChart";
+import { StaffPicker } from "./StaffPicker";
 
 type StaffRole = "designer" | "master_tailor";
 
@@ -41,8 +41,6 @@ export function StaffReportClient() {
   const [staffId, setStaffId] = useState<string | null>(null);
   const months = useMemo(() => lastSixMonths(), []);
   const [month, setMonth] = useState(months[0]!.value);
-
-  const { members, loading: membersLoading, error: membersError } = useTeamMembers(role ?? "designer");
 
   const [report, setReport] = useState<StaffReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -143,36 +141,7 @@ export function StaffReportClient() {
         {crumb}
         <Card>
           <CardHeader icon="👥" iconTone="blue" title={ROLE_LABEL[role]} subtitle="Pick a person to see their report" />
-          <div className="p-2">
-            {membersLoading ? (
-              <div className="p-4 text-sm text-text-muted">Loading…</div>
-            ) : membersError ? (
-              <div className="p-4 text-sm text-error">{membersError}</div>
-            ) : members.length === 0 ? (
-              <div className="p-4 text-sm text-text-muted">No active {ROLE_LABEL[role].toLowerCase()} yet.</div>
-            ) : (
-              <ul className="divide-y divide-border-light">
-                {members.map((m, i) => (
-                  <li key={m.id}>
-                    <button
-                      onClick={() => pickStaff(m.id)}
-                      style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}
-                      className="group animate-fade-in flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-primary-bg/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-bg text-xs font-bold text-primary ring-1 ring-inset ring-primary/10">
-                        {m.fullName.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
-                      </span>
-                      <span className="flex-1 font-medium text-text-primary">{m.fullName}</span>
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                        View report
-                        <Icon name="chevron-right" size={15} className="transition-transform group-hover:translate-x-0.5" />
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <StaffPicker role={role} roleLabel={ROLE_LABEL[role]} onPick={pickStaff} />
         </Card>
       </div>
     );

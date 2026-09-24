@@ -36,3 +36,23 @@ export function formatDateOnly(value: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) return "N/A";
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(date);
 }
+
+/**
+ * "just now" / "5 min ago" / "3 h ago" / "yesterday" / "12 days ago" -- how
+ * long since an ISO timestamp, for "last seen" style columns. Calendar days
+ * (not 24h blocks) from "yesterday" on, so 23:50 seen at 00:10 is "yesterday".
+ */
+export function timeAgoLabel(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return "Never";
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "Never";
+  const minutes = Math.floor((now.getTime() - then.getTime()) / 60_000);
+  const days = diffDays(now, then);
+  if (days <= 0) {
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} min ago`;
+    return `${Math.floor(minutes / 60)} h ago`;
+  }
+  if (days === 1) return "yesterday";
+  return `${days} ${pluralize("day", days)} ago`;
+}

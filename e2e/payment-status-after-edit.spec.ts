@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { createFixtureStaff, loginAsOwner } from "./fixtures";
+import { createFixtureStaff, loginAsOwner, uniqueDueDate } from "./fixtures";
 
 const API = process.env.E2E_API_BASE_URL ?? "http://localhost:4000/api/v1";
 const OWNER_EMAIL = process.env.E2E_OWNER_EMAIL ?? "owner@needleeye.test";
@@ -31,7 +31,7 @@ test.describe.serial("payment status stays correct after editing the total", () 
         phone: "9123456700",
         billNumber: `PS-${Date.now()}`,
         bookingDate: "2026-07-01",
-        dueDate: "2026-12-01",
+        dueDate: uniqueDueDate(),
         designerId: designer.id,
         masterTailorId: master.id,
         productCategory: "saree",

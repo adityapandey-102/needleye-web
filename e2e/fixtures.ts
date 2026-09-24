@@ -52,3 +52,17 @@ export async function createFixtureStaff(ownerToken: string, role: "designer" | 
   });
   return { email, password, id: userId };
 }
+
+/**
+ * A delivery due date no other run has used: a day in the ten years from
+ * `startYear` (default 2040–2049) picked from
+ * the current second. Orders count against their due date's delivery
+ * capacity (10 a day by default), so a fixed date would fill up after a few
+ * runs and every later create would hit 409 DELIVERY_DAY_FULL. Far enough
+ * out to stay clear of real bookings and of rbac-matrix.mjs's 2032–2041 range;
+ * a spec that deliberately fills a day uses its own decade (2050+).
+ */
+export function uniqueDueDate(startYear = 2040): string {
+  const day = Math.floor(Date.now() / 1000) % 3650;
+  return new Date(Date.UTC(startYear, 0, 1) + day * 86_400_000).toISOString().slice(0, 10);
+}

@@ -10,7 +10,6 @@ import {
   isPositiveMoney,
   moneyGreaterThan,
   PAYMENT_METHODS,
-  PRODUCT_CATEGORIES,
   type CreateOrderInput,
   type Order,
   type PaymentMethod,
@@ -26,6 +25,9 @@ import { Select, Textarea } from "../../../components/ui/Select";
 import { RadioGroup } from "../../../components/ui/RadioGroup";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { ImageUploadGrid, type ImageSlotState } from "./ImageUploadGrid";
+import { ProductCategoryPicker } from "./ProductCategoryPicker";
+import { DeliveryDateField } from "./DeliveryDateField";
+import { isApiErrorCode } from "../../../lib/api/client";
 import { compressImage } from "../../../lib/images/compressImage";
 import { useToast } from "../../../components/ui/Toast";
 
@@ -138,6 +140,11 @@ export function OrderForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Delivery capacity: the due date's day is full and the Production Manager
+  // agreed to take it anyway (sent as confirmedWithProductionManager, audited
+  // by the API), and whether the full-day dialog is showing.
+  const [pmConfirmed, setPmConfirmed] = useState(false);
+  const [fullDayPromptOpen, setFullDayPromptOpen] = useState(false);
 
   const [stagedFiles, setStagedFiles] = useState<Partial<Record<1 | 2 | 3 | 4, File>>>({});
   const [stagedPreviews, setStagedPreviews] = useState<Partial<Record<1 | 2 | 3 | 4, string>>>({});
@@ -226,8 +233,9 @@ export function OrderForm({
       productionStatus: (form.productionStatus || undefined) as CreateOrderInput["productionStatus"] | undefined,
       designerInstructions: form.designerInstructions || undefined,
       specialNotes: form.specialNotes || undefined,
+      confirmedWithProductionManager: pmConfirmed || undefined,
     }),
-    [form],
+    [form, pmConfirmed],
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -264,10 +272,15 @@ export function OrderForm({
         const { order: created } = await ordersApi.create(parsed.data);
         createdId = created.id;
       } catch (err) {
+        setSubmitting(false);
+        if (isApiErrorCode(err, "DELIVERY_DAY_FULL")) {
+          // The day filled up (or was already full) -- same choice as picking it.
+          setFullDayPromptOpen(true);
+          return;
+        }
         const message = err instanceof Error ? err.message : "Failed to create order";
         setSubmitError(message);
         showToast(message, "error");
-        setSubmitting(false);
         return;
       }
 
@@ -348,6 +361,7 @@ export function OrderForm({
     // else saved a change in the meantime, the API rejects this with a clear
     // "changed by someone else" message instead of silently overwriting them.
     editable.version = order.version;
+    if (pmConfirmed && "dueDate" in editable) editable.confirmedWithProductionManager = true;
 
     setSubmitting(true);
     try {
@@ -356,6 +370,10 @@ export function OrderForm({
       router.push(`/orders/${order.id}`);
       router.refresh();
     } catch (err) {
+      if (isApiErrorCode(err, "DELIVERY_DAY_FULL")) {
+        setFullDayPromptOpen(true);
+        return;
+      }
       const message = err instanceof Error ? err.message : "Failed to save changes";
       setSubmitError(message);
       showToast(message, "error");
@@ -380,11 +398,16 @@ export function OrderForm({
           </div>
           <div>
             <FieldLabel required>Delivery Due Date</FieldLabel>
-            <Input
-              type="date"
+            <DeliveryDateField
               disabled={!canEditContentFields}
               value={form.dueDate}
-              onChange={(e) => set("dueDate", e.target.value)}
+              onChange={(date) => set("dueDate", date)}
+              confirmed={pmConfirmed}
+              onConfirmedChange={setPmConfirmed}
+              promptOpen={fullDayPromptOpen}
+              onPromptOpenChange={setFullDayPromptOpen}
+              originalValue={mode === "edit" ? order?.dueDate : undefined}
+              excludeOrderId={mode === "edit" ? order?.id : undefined}
             />
             <FieldError>{errors.dueDate}</FieldError>
           </div>
@@ -492,18 +515,11 @@ export function OrderForm({
           <CardBody className="flex flex-col gap-3.5">
             <div>
               <FieldLabel required>Product Category</FieldLabel>
-              <Select
+              <ProductCategoryPicker
                 disabled={!canEditContentFields}
                 value={form.productCategory}
-                onChange={(e) => set("productCategory", e.target.value)}
-              >
-                <option value="">Select Category</option>
-                {PRODUCT_CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.emoji} {c.label}
-                  </option>
-                ))}
-              </Select>
+                onChange={(v) => set("productCategory", v)}
+              />
               <FieldError>{errors.productCategory}</FieldError>
             </div>
             <div>

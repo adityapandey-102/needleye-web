@@ -5,6 +5,30 @@ import { ApiFailure, describeFetchError, logger } from "../logging/logger";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 /**
+ * A non-2xx response from the API. Still an `Error` with the server's message,
+ * so every existing `err instanceof Error ? err.message : ...` keeps working --
+ * but it also carries the HTTP status, the API's stable error `code`, and any
+ * `details`, for the few callers that must react to a specific failure (e.g.
+ * 409 DELIVERY_DAY_FULL reopening the delivery-day prompt).
+ */
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+    readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
+/** True when `err` is an API error with the given stable `code`. */
+export function isApiErrorCode(err: unknown, code: string): err is ApiRequestError {
+  return err instanceof ApiRequestError && err.code === code;
+}
+
+/**
  * Runs a fetch, converting a transport failure (server unreachable, aborted)
  * into a friendly ApiFailure and logging the technical cause. HTTP responses
  * (including non-2xx) pass straight through -- those are handled by the caller.
@@ -56,7 +80,7 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
     logger.warn("API request failed", { path, method: init.method ?? "GET", status: response.status, code: body.code, requestId: body.requestId });
-    throw new Error(body.error ?? `Request failed: ${response.status}`);
+    throw new ApiRequestError(body.error ?? `Request failed: ${response.status}`, response.status, body.code, body.details);
   }
 
   if (response.status === 204) return null;
@@ -75,7 +99,7 @@ export async function apiUpload(path: string, formData: FormData) {
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
     logger.warn("API upload failed", { path, status: response.status, code: body.code, requestId: body.requestId });
-    throw new Error(body.error ?? `Request failed: ${response.status}`);
+    throw new ApiRequestError(body.error ?? `Request failed: ${response.status}`, response.status, body.code, body.details);
   }
 
   return response.json();

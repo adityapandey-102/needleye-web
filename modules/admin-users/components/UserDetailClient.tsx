@@ -11,9 +11,16 @@ import { useToast } from "../../../components/ui/Toast";
 import { useConfirm } from "../../../components/ui/ConfirmDialog";
 import { CredentialRevealOverlay, type RevealModal } from "./CredentialRevealOverlay";
 
-/** QR-card login is for the shop-floor roles (Master Tailor, Worker). */
+/**
+ * Roles that can be issued a QR login card -- mirror of needleye-api's
+ * account-credential.rules.ts (which is what actually enforces it). Owner/Manager
+ * and Accountant are excluded: a printed card is a bearer credential, and those
+ * roles hold the pricing, payment, and staff-management powers.
+ */
+const QR_LOGIN_ROLES: ReadonlyArray<StaffUser["role"]> = ["designer", "master_tailor", "production_manager", "worker"];
+
 function usesQrLogin(role: StaffUser["role"]): boolean {
-  return role === "master_tailor" || role === "worker";
+  return QR_LOGIN_ROLES.includes(role);
 }
 
 export function UserDetailClient({ initialUser, currentUserId }: { initialUser: StaffUser; currentUserId: string }) {

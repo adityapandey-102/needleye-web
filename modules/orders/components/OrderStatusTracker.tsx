@@ -29,7 +29,7 @@ function labelClass({ done, isCurrent, alarming }: NodeState): string {
 }
 
 /**
- * The 13-stage production progress, forward-only.
+ * The 14-stage production progress, forward-only.
  *
  * - Desktop / tablet (>= sm): a connected, horizontal progress bar. A green
  *   line traces through the completed stages up to the current one; each stage

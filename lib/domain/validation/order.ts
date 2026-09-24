@@ -31,6 +31,12 @@ export const createOrderSchema = z.object({
   }),
   designerInstructions: z.string().trim().optional(),
   specialNotes: z.string().trim().optional(),
+  /**
+   * Not an order field: "the due date's day is full, and the Production Manager
+   * agreed to take it". Must survive parsing (zod strips unknown keys), or the
+   * API would refuse the full day with 409 DELIVERY_DAY_FULL.
+   */
+  confirmedWithProductionManager: z.boolean().optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

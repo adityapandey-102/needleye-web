@@ -51,6 +51,14 @@ Every change touching auth, forms, or user input gets a security review:
 XSS protection, safe handling of the session tokens in `lib/session/`, CSRF
 where applicable, no secrets ever in `NEXT_PUBLIC_*` env vars.
 
+## Performance
+
+The concrete rules and their reasons are in `docs/engineering-practices.md`:
+every search box debounced (`useDebouncedValue` + `SEARCH_DEBOUNCE_MS`),
+every list paginated by the server (shared `Pager`), data loaded on demand,
+and first-load JS per page within budget (`npm run check:bundle` after a
+build).
+
 ## CI strategy
 
 CI only -- no complex CD until a deployment platform is finalized.

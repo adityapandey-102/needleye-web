@@ -57,6 +57,10 @@ logic are the priority, E2E only for critical workflows.
   CI (it needs a live backend + database, a heavier dependency than this
   repo's own CI job should take on) -- run it locally before a release. See
   `e2e/README.md`.
+- **`npm run check:bundle`** (after `npm run build`) -- first-load JS per page,
+  gzipped, against a 300 KB budget (`scripts/bundle-budget.mjs`; `--write`
+  refreshes `docs/performance/bundle-budget.md`). The practices this protects,
+  and why, are in `docs/engineering-practices.md`.
 
 ## Architecture
 
@@ -74,22 +78,27 @@ app/                       # routing only -- thin pages that compose module comp
   proxy.ts                       # Next.js 16's middleware.ts equivalent (renamed upstream) -- session refresh + route guarding
 modules/
   auth/
-    components/                 # LoginForm, RegisterForm, ResetPasswordForm, UpdatePasswordForm
+    components/                 # LoginForm (with a show/hide password toggle), RegisterForm, ResetPasswordForm, UpdatePasswordForm
     api/authApi.ts                # every HTTP call the Auth module makes -- login/logout/qrLogin also own writing/clearing the session cookies
   orders/
-    components/                 # OrderForm (create+edit, advance at booking), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
+    components/                 # OrderForm (create+edit, advance at booking), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 43 categories / 6 collections, browse or debounced search), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
     components/RevenueClient.tsx   # owner_manager/accountant financial dashboard -- collected/outstanding + monthly accounting-cycle history + LedgerActivity audit trail (/revenue)
-  orders/components/StaffReportClient.tsx + WeeklyThroughputChart.tsx  # owner-only staff weekly report (/orders/staff-report): lazy drill-down role -> person -> that person's report + SVG throughput chart
+  reports/                       # owner-only (reports:staff) -- /reports
+    components/                 # ReportPageHeader, TeamStatusCard (/reports/team: server-paged Working/Idle), ActivityFeedCard (/reports/activity: 7 days, each loaded when opened), StaffReportClient + StaffPicker + WeeklyThroughputChart (/reports/staff: team -> searchable paged person list -> monthly report + SVG chart; /orders/staff-report redirects)
+    requireReportsAccess.ts        # server-side owner-only gate shared by every /reports page
+    api/reportsApi.ts              # staffActivity(), activityDays(), activity(day, offset) -- the staff report itself stays ordersApi.staffReport()
   payments/
     api/paymentsApi.ts             # every HTTP call the Payments module makes -- mirrors needleye-api's own Payments module
   admin-users/
     components/                 # UserManagementClient (searchable/paginated directory) + UserDetailClient (per-user actions) + LoginQrCard (printable/downloadable Master-Tailor login-QR card) -- owner_manager only
     api/usersApi.ts                # every HTTP call the Admin Users module makes (list paginated + get/reactivate)
-components/                  # cross-MODULE only: ui/ primitives (Button, Card, Field, ...), shell/ (Sidebar, AppShell, nav config)
+components/                  # cross-MODULE only: ui/ primitives (Button, Card, Field, Modal, Pager (shared server-pagination footer), ...), shell/ (Sidebar, AppShell, nav config)
 lib/
+  hooks/useDebouncedValue.ts   # debounce hook + SEARCH_DEBOUNCE_MS (300 ms) -- EVERY search box uses it (orders, users, team status, staff picker; category picker 200 ms)
+  hooks/useMediaQuery.ts       # live CSS media-query match (calendar: 2 months side by side from sm, 1 on a phone)
   domain/                      # this repo's OWN copy of RBAC/order-status/validation -- see below, not a package
     index.ts                     # barrel export of everything below
     constants/, types/, utils/, validation/
@@ -211,17 +220,18 @@ now live (`UserDetailClient.tsx`):
 - **Generate/regenerate password**: shown for **every** role (the earlier
   "self-managed roles can't regenerate" restriction was removed in ADR 0005) --
   the API accepts a regenerate for any account.
-- **QR login card** (`master_tailor` and `worker` -- the shop-floor roles,
-  `LoginQrCard.tsx`): the
+- **QR login card** (`designer`, `master_tailor`, `production_manager`,
+  `worker` -- never `owner_manager` or `accountant`, `LoginQrCard.tsx`): the
   "Generate/Regenerate QR login" action calls `usersApi.generateQrToken`, then
   the one-time reveal overlay renders the returned `loginUrl` as an
   **ID-card-style login card** (company branding, name, role, the login QR)
   that can be **saved as a PNG or printed** -- both composed from the same
   offscreen canvas. This is intentionally the *only* card export and it is
-  limited to the shop-floor roles (`master_tailor`/`worker`): there is no
-  separate staff-ID card, and the QR always encodes the login URL, never a plain
-  identifier. Regenerating (or deactivating the account) invalidates it
-  immediately.
+  limited to those four roles (`QR_LOGIN_ROLES` in `UserDetailClient.tsx`,
+  mirroring the API rule that actually enforces it): there is no separate
+  staff-ID card, and the QR always encodes the login URL, never a plain
+  identifier. The card is an extra way in -- password login is unaffected.
+  Regenerating (or deactivating the account) invalidates it immediately.
 - **Copy password**: the one-time password reveal has a Copy button
   (`navigator.clipboard`) since it's shown only once.
 - **Activate/deactivate**: deactivation (`usersApi.deactivate`) is now
@@ -350,7 +360,118 @@ README).
 
 Native `confirm()` is gone: `components/ui/ConfirmDialog.tsx` provides a
 styled, promise-returning `useConfirm()` used for every destructive action
-(payment delete, deactivate, password/QR regenerate). Every self-fetching
+(payment delete, deactivate, password/QR regenerate). Any other dialog builds
+on `components/ui/Modal.tsx` -- a portal-rendered panel (bottom sheet on
+phones) that traps Tab focus, closes on Escape from anywhere, locks page
+scroll, and returns focus to whatever opened it. Use it rather than a
+hand-rolled overlay.
+
+### Product category picker
+
+`ProductCategoryPicker` replaces the category `<select>` on the order form --
+43 categories in 6 collections is too many for a dropdown. It opens a
+catalogue dialog: browse a collection from the rail (chips on a phone), or
+search everything. Search (`lib/domain/utils/productCategorySearch.ts`, unit
+tested) ignores case, spaces, and punctuation ("jumpsuit" finds "Jump Suit"),
+requires every typed word to match the label or collection ("mens shirt" finds
+only the Mens Wear one; "mens" alone lists that whole collection), and keeps
+collections in a fixed order so results don't jump while typing. Typing is
+debounced (200 ms); clearing applies instantly. It's an ARIA combobox: while
+searching, the best match is pre-highlighted -- an EXACT label first
+(`bestMatchIndex`), so "saree" + Enter picks Saree, not the Saree Blouse listed
+above it -- then Up/Down move, Enter picks, Escape closes.
+
+The catalogue itself is `lib/domain/constants/productCategories.ts`, mirroring
+needleye-api's. **Never change an existing `value`** -- orders store it; labels
+are display-only. Values are correctly spelled even where a label keeps the
+business's spelling ("Devided Skirt" -> `divided_skirt`), and Mens/Kids values
+are prefixed so the repeated labels "Shirt" and "Pant" stay distinct.
+
+### Reports (owner only)
+
+"Reports" in the sidebar opens `/reports`, which is owner_manager only
+(`reports:staff`): the menu item is hidden from other roles, and every
+reports page redirects them (`modules/reports/requireReportsAccess.ts`).
+
+`/reports` is a home page with **three cards**; it fetches nothing. Each card
+opens its own page, which has a "← Reports" back link:
+
+- **Check team status** (`/reports/team`, `TeamStatusCard`): every active
+  designer, master tailor, production manager and worker as **Working** or
+  **Idle**. The rule is the API's: designers by undelivered orders they created
+  in the last 45 days, everyone else by undelivered orders whose latest stage
+  move was theirs in the last 30 days.
+  - **Search (debounced), role, status and page (20 a page) are all sent to the
+    API.** Nothing is filtered in the browser, so it stays fast however big
+    the team gets.
+  - The Working/Idle tiles show the API's counts and double as filters.
+- **Check staff report** (`/reports/staff`, `StaffReportClient`): pick a team,
+  then a person, then their month.
+  - The person list (`StaffPicker`) is searchable (debounced) and paged (15 a
+    page) through the same API endpoint with `role=`. It loads only after a
+    team is chosen.
+  - The old `/orders/staff-report` address redirects here. The All Orders page
+    no longer has a Staff Report button, so Reports in the sidebar is the way in.
+- **Check daily activity** (`/reports/activity`, `ActivityFeedCard`): today
+  and the 6 days before it.
+  - A day loads only when opened, 50 actions at a time, with "Show more".
+  - Payment events are excluded (they're on Revenue & Ledger).
+  - `describeActivity` (`lib/domain/utils/activityEvent.ts`, unit tested)
+    turns each audit event into a sentence that links to the order.
+  - Times use the shop's timezone, which the API returns.
+
+E2E: `e2e/reports.spec.ts` covers the three cards, the debounce (4 keystrokes
+→ exactly 1 request), paging and access.
+
+### Delivery due date & calendar
+
+The workshop can deliver about 10 orders a day (the API's
+`DELIVERY_DAY_CAPACITY`; the web never hard-codes it, it reads `capacity` /
+`nearCapacity` from `GET /orders/delivery-load`). `DeliveryDateField` replaces
+the order form's due-date input:
+
+- **Picking a date checks it.** After a 300 ms debounce the field shows
+  "Checking delivery availability…" with a spinner, then *Available for
+  delivery · N of 10 booked* (green) or *Available, filling up* (amber, from
+  80%). Results are keyed by date, so a slow answer for an older date is never
+  shown. If the check itself fails, a note says it will be re-checked on save.
+  The form still works.
+- **A full day opens a dialog** with three choices. *Check the calendar* opens
+  the calendar. *Already checked with Production Manager — proceed* sends
+  `confirmedWithProductionManager: true` with the save, and the API audits the
+  override. *Cancel* clears the date (or restores the saved one when editing).
+  Changing the date resets the confirmation.
+- **The API has the final word.** Its check runs under a per-day lock at save
+  time, so a day that filled up in the meantime comes back as 409
+  `DELIVERY_DAY_FULL`. `OrderForm` recognises it with `isApiErrorCode` (from
+  `lib/api/client.ts`, whose `ApiRequestError` carries the status, code and
+  details) and reopens the same dialog instead of showing an error toast.
+- **Editing:** an unchanged due date isn't checked (the order already holds its
+  slot), and `excludeOrderId` keeps the order out of its own day's count.
+
+`DeliveryCalendar` (on the shared `Modal`) shows two months side by side (one
+on a phone, paged via `useMediaQuery`), from this month up to six months ahead
+(`lastBookableDate`). Each day shows its booked count: blue while open, amber
+when filling up, red with a warning sign when full. Zeros are dimmed. A full day
+**can** still be picked: doing so closes the calendar and opens the full-day
+dialog again, every time. Past days and days beyond the window can't be picked;
+today has a gold ring. **Loading is lazy:** only the months on screen are
+fetched (one request covering them). Each arrow click fetches just the newly
+shown month, and months already seen come from memory until the calendar
+closes. (In `next dev`, React Strict Mode runs the first fetch twice; the
+production build doesn't.) The date maths
+(`lib/domain/utils/deliveryCalendar.ts`) works on plain `YYYY-MM-DD` strings in
+UTC, so no timezone can move a day. Its tests check every month from 1900 to
+2200 against independent rules that don't use JS `Date`: the leap-year rule
+written out by hand (2000 and 2028 leap; 1900, 2100 and 2027 not) and Zeller's
+congruence for weekdays. E2E: `e2e/delivery-capacity.spec.ts` fills a day
+through the API and walks the dialog → calendar → override → create path. It
+also picks a full day inside the calendar (with a browser-mocked load, so no
+real near-term day is filled) and checks Cancel. Specs that create
+orders use `uniqueDueDate()` (e2e/fixtures.ts) so repeated runs never fill a
+day by accident.
+
+Every self-fetching
 surface renders explicit loading / empty / error states with a retry, and
 route-group error/not-found boundaries (`app/(app)/error.tsx`,
 `app/(app)/not-found.tsx`, plus the orders-specific ones) catch server-fetch
@@ -380,10 +501,14 @@ security boundary; the API is what actually rejects unauthorized writes. Six
 roles: `owner_manager`, `designer`, `master_tailor`, `accountant`,
 `production_manager` (a designer that sees *all* orders), and `worker` (no
 dashboard -- nav is empty and `/orders` redirects to `/scan`; scans an order QR
-and advances it). Status permissions are the three tiers in
+and advances it). Status permissions are the four tiers in
 `orderStatusPermissions.ts`'s `canChangeStage` (design / pm_received /
-production); moves are forward-only (the API enforces both). See needleye-api
-ADR 0005.
+production / finalization -- QC, Alteration and Delivered are owner / designer /
+PM only); moves are forward-only, and `canTransition` / `blockingStage` refuse a
+jump past a stage the role can't set (so a designer isn't offered Falls/Kutchu
+from Design Approved -- that would skip PM Received). The status dropdown and the
+Kanban board both apply this; the API enforces all of it. See needleye-api
+ADR 0005 and its 2026-09-24 amendment.
 
 **Money — one way, decimal, string on the wire.** All money is a 2-decimal
 **string** ("1500.00"), never a JS `number`, everywhere in this app (API JSON,

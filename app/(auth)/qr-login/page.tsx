@@ -4,7 +4,10 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authApi } from "../../../modules/auth/api/authApi";
 
-/** Reached by scanning a Master Tailor's QR code -- ?token= is the raw QR login token. */
+/**
+ * Reached by scanning a staff member's QR login card (Designer, Master Tailor,
+ * Production Manager, Worker) -- ?token= is the raw QR login token.
+ */
 function QrLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();

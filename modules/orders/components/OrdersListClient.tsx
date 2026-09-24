@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import { useRouter } from "next/navigation";
 import {
   formatDateOnly,
@@ -17,6 +18,7 @@ import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Field";
 import { Select } from "../../../components/ui/Select";
 import { Button } from "../../../components/ui/Button";
+import { Pager } from "../../../components/ui/Pager";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { Icon } from "../../../components/ui/Icon";
 import { KanbanBoard } from "./KanbanBoard";
@@ -57,6 +59,9 @@ export function OrdersListClient({
   const [bucket, setBucket] = useState(initialBucket ?? "");
 
   const [search, setSearch] = useState("");
+  // Only TYPING is debounced (one request per pause, not per keystroke);
+  // page / filter / view changes fetch immediately.
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const [designerId, setDesignerId] = useState("");
   const [masterTailorId, setMasterTailorId] = useState("");
 
@@ -94,14 +99,14 @@ export function OrdersListClient({
   useEffect(() => {
     let cancelled = false;
 
-    const timeout = setTimeout(() => {
+    const run = () => {
       setLoading(true);
       // Table pages through the results; Kanban needs the whole board at once,
       // so it pulls a single bounded page (the server caps limit at 100 too).
       const pagination = view === "table" ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE } : { limit: KANBAN_LIMIT, offset: 0 };
       ordersApi
         .list({
-          search: search.trim() || undefined,
+          search: debouncedSearch || undefined,
           designerId: designerId || undefined,
           masterTailorId: masterTailorId || undefined,
           bucket: bucket || undefined,
@@ -120,17 +125,14 @@ export function OrdersListClient({
         .finally(() => {
           if (!cancelled) setLoading(false);
         });
-    }, 250);
+    };
+    run();
 
     return () => {
       cancelled = true;
-      clearTimeout(timeout);
     };
-  }, [search, designerId, masterTailorId, bucket, view, page]);
+  }, [debouncedSearch, designerId, masterTailorId, bucket, view, page]);
 
-  const pageStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
-  const pageEnd = Math.min((page + 1) * PAGE_SIZE, total);
-  const hasNextPage = pageEnd < total;
 
   return (
     <div>
@@ -306,31 +308,7 @@ export function OrdersListClient({
             </div>
           </>
         )}
-        {!loading && !error && total > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-border-light px-4 py-3 text-xs text-text-muted">
-            <span>
-              Showing {pageStart}–{pageEnd} of {total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="px-3 py-1.5 text-xs"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(p - 1, 0))}
-              >
-                ← Prev
-              </Button>
-              <Button
-                variant="outline"
-                className="px-3 py-1.5 text-xs"
-                disabled={!hasNextPage}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next →
-              </Button>
-            </div>
-          </div>
-        )}
+        {!loading && !error && <Pager page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />}
       </Card>
       )}
     </div>

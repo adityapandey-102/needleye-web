@@ -20,7 +20,7 @@ function printDataUrl(dataUrl: string) {
 }
 
 /**
- * An ID-card-style card carrying a Master Tailor's LOGIN QR (never a staff-id
+ * An ID-card-style card carrying a staff member's LOGIN QR (never a staff-id
  * or credential text) -- shown once, right after the QR is generated. The
  * card can be downloaded as a PNG or printed; both are composed from the same
  * offscreen canvas so they look identical. Regenerating the QR invalidates

@@ -13,6 +13,7 @@ import {
 import { ordersApi } from "../api/ordersApi";
 import { Card, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
+import { Pager } from "../../../components/ui/Pager";
 import { StatusPill } from "../../../components/ui/StatusPill";
 
 const PAGE_SIZE = 20;
@@ -58,9 +59,6 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
     };
   }, [bucket, page, reloadKey]);
 
-  const pageStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
-  const pageEnd = Math.min((page + 1) * PAGE_SIZE, total);
-  const hasNextPage = pageEnd < total;
 
   return (
     <Card>
@@ -128,21 +126,7 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
           </table>
         )}
       </div>
-      {!loading && !error && total > 0 && (
-        <div className="flex items-center justify-between gap-3 border-t border-border-light px-4 py-3 text-xs text-text-muted">
-          <span>
-            Showing {pageStart}–{pageEnd} of {total}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={page === 0} onClick={() => setPage((p) => Math.max(p - 1, 0))}>
-              ← Prev
-            </Button>
-            <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={!hasNextPage} onClick={() => setPage((p) => p + 1)}>
-              Next →
-            </Button>
-          </div>
-        </div>
-      )}
+      {!loading && !error && <Pager page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />}
     </Card>
   );
 }

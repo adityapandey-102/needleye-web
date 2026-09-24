@@ -6,6 +6,7 @@ import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSe
 import {
   CANONICAL_STAGES,
   CANONICAL_TO_GRANULAR,
+  blockingStage,
   canChangeStage,
   canonicalLabel,
   getTimelineSummary,
@@ -38,7 +39,8 @@ export function KanbanBoard({
   const canDragAtAll =
     hasCapability(role, "orders:status:design") ||
     hasCapability(role, "orders:status:pm_received") ||
-    hasCapability(role, "orders:status:production");
+    hasCapability(role, "orders:status:production") ||
+    hasCapability(role, "orders:status:finalization");
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -62,6 +64,16 @@ export function KanbanBoard({
     // too, but reject the backward drag up front for instant feedback).
     if (stageIndex(targetGranular) <= stageIndex(order.productionStatus)) {
       showToast(`The production flow only moves forward -- can't move back to "${canonicalLabel(targetStage)}".`, "error");
+      return;
+    }
+    // No jumping over a stage this role can't set (e.g. a designer dragging from
+    // Design Approved straight past PM Received). The API enforces this too.
+    const blocker = blockingStage(role, order.productionStatus, targetGranular);
+    if (blocker) {
+      showToast(
+        `Your role can't move this order past "${canonicalLabel(blocker)}" -- someone who can set that stage has to advance it first.`,
+        "error",
+      );
       return;
     }
 

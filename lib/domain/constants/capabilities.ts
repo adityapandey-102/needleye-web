@@ -11,7 +11,8 @@ export const CAPABILITIES = [
   // physically receives the garment scans it and advances the stage).
   "orders:status:design", //          Design Pending, Design Approved
   "orders:status:pm_received", //     Production Manager Received
-  "orders:status:production", //      Falls/Kutchu ... Delivered
+  "orders:status:production", //      Falls/Kutchu ... Finishing
+  "orders:status:finalization", //    Quality Check / Trail, Alteration, Delivered
   "payments:manage",
   "payments:read",
   "reports:financial",
@@ -28,7 +29,7 @@ export type Capability = (typeof CAPABILITIES)[number];
  * `false` -> never allowed.
  *
  * Mirror of needleye-api's src/domain/capabilities.ts -- kept identical.
- * NOTE: the three `orders:status:*` capabilities never use "assigned".
+ * NOTE: the four `orders:status:*` capabilities never use "assigned".
  */
 type CapabilityScope = boolean | "assigned";
 
@@ -88,6 +89,15 @@ export const CAPABILITY_MATRIX: Record<Capability, Record<Role, CapabilityScope>
     accountant: false,
     production_manager: true,
     worker: true,
+  },
+  // Sign-off stages (QC / trial, rework, hand-over) -- not the floor.
+  "orders:status:finalization": {
+    owner_manager: true,
+    designer: true,
+    master_tailor: false,
+    accountant: false,
+    production_manager: true,
+    worker: false,
   },
   "payments:manage": {
     owner_manager: true,

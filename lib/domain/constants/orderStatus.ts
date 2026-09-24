@@ -2,7 +2,7 @@ import type { Capability } from "./capabilities";
 
 /**
  * The production lifecycle -- mirror of needleye-api's src/domain/order-status.ts.
- * A single linear, forward-only flow of 13 stages (see STAGE_ORDER).
+ * A single linear, forward-only flow of 14 stages (see STAGE_ORDER).
  * `orders.production_status` always stores one of these granular values.
  */
 export const GRANULAR_STATUSES = [
@@ -11,6 +11,7 @@ export const GRANULAR_STATUSES = [
   { value: "production_manager_received", label: "Production Manager Received" },
   { value: "falls_kutchu", label: "Falls / Kutchu" },
   { value: "fabric_purchased", label: "Fabric Purchased" },
+  { value: "dyeing", label: "Dyeing" },
   { value: "cutting", label: "Cutting" },
   { value: "stitching", label: "Stitching" },
   { value: "hand_work", label: "Hand Work" },
@@ -70,14 +71,15 @@ export const STAGE_CAPABILITY: Record<GranularStatus, StatusCapability> = {
   production_manager_received: "orders:status:pm_received",
   falls_kutchu: "orders:status:production",
   fabric_purchased: "orders:status:production",
+  dyeing: "orders:status:production",
   cutting: "orders:status:production",
   stitching: "orders:status:production",
   hand_work: "orders:status:production",
   machine_work: "orders:status:production",
   finishing: "orders:status:production",
-  quality_check: "orders:status:production",
-  alteration: "orders:status:production",
-  delivered: "orders:status:production",
+  quality_check: "orders:status:finalization",
+  alteration: "orders:status:finalization",
+  delivered: "orders:status:finalization",
 };
 
 export function stageCapability(status: GranularStatus): StatusCapability {
@@ -88,8 +90,13 @@ export const DESIGN_STAGE_STATUSES: GranularStatus[] = GRANULAR_STATUS_VALUES.fi
   (s) => STAGE_CAPABILITY[s] === "orders:status:design",
 );
 
+/**
+ * Falls/Kutchu through Delivered -- a REPORTING grouping, defined by position in
+ * the flow, not by permission tier (the finalization tier split QC / Alteration /
+ * Delivered off for permissions only). Mirror of needleye-api's order-status.ts.
+ */
 export const PRODUCTION_STAGE_STATUSES: GranularStatus[] = GRANULAR_STATUS_VALUES.filter(
-  (s) => STAGE_CAPABILITY[s] === "orders:status:production",
+  (s) => STAGE_ORDER[s] >= STAGE_ORDER.falls_kutchu,
 );
 
 export const COMPLETED_CANONICAL_STAGES: CanonicalStage[] = ["delivered"];

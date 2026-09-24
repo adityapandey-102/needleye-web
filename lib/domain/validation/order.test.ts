@@ -33,6 +33,12 @@ describe("createOrderSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("accepts the new catalogue categories (incl. prefixed mens/kids values)", () => {
+    for (const productCategory of ["anarkali", "mens_shirt", "kids_girls_custom", "petticoat"]) {
+      expect(createOrderSchema.safeParse({ ...validOrder, productCategory }).success).toBe(true);
+    }
+  });
+
   it("requires customerName, dueDate, and orderDetails", () => {
     const result = createOrderSchema.safeParse({ ...validOrder, customerName: "" });
     expect(result.success).toBe(false);

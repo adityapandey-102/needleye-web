@@ -38,5 +38,11 @@ describe("capabilities matrix", () => {
       expect(getCapabilityScope(role, "orders:status:production")).toBe(true);
     }
     expect(getCapabilityScope("accountant", "orders:status:production")).toBe(false);
+    for (const role of ["owner_manager", "designer", "production_manager"] as Role[]) {
+      expect(getCapabilityScope(role, "orders:status:finalization")).toBe(true);
+    }
+    for (const role of ["master_tailor", "worker", "accountant"] as Role[]) {
+      expect(getCapabilityScope(role, "orders:status:finalization")).toBe(false);
+    }
   });
 });

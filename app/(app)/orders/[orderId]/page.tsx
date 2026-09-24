@@ -51,7 +51,8 @@ export default async function OrderDetailPage({
   const canChangeStatus =
     hasCapability(profile.role, "orders:status:design") ||
     hasCapability(profile.role, "orders:status:pm_received") ||
-    hasCapability(profile.role, "orders:status:production");
+    hasCapability(profile.role, "orders:status:production") ||
+    hasCapability(profile.role, "orders:status:finalization");
 
   // View-only: an authenticated user who isn't the owner/manager, accountant, or
   // this order's assigned designer/master -- they see the order (via QR/link)

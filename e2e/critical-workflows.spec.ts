@@ -1,7 +1,7 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { createFixtureStaff, loginAsOwner } from "./fixtures";
+import { createFixtureStaff, loginAsOwner, uniqueDueDate } from "./fixtures";
 import type { FixtureUser } from "./fixtures";
 
 const SAMPLE_IMAGE = path.join(__dirname, "fixtures", "sample.png");
@@ -49,12 +49,20 @@ test.describe.serial("critical workflows", () => {
     await page.getByPlaceholder("e.g. Priya Sharma").fill(customerName);
     await page.getByPlaceholder("e.g. 9876543210").fill("9123456780");
     await page.getByPlaceholder("e.g. BILL-2024-001").fill(billNumber);
-    // Date inputs in DOM order: [0] Booking Date, [1] Delivery Due Date, [2] Next Payment Date.
-    await page.locator('input[type="date"]').nth(1).fill("2026-12-01"); // Delivery Due Date (required)
+    await page.getByLabel("Delivery due date").fill(uniqueDueDate()); // required
+    await expect(page.getByText("Available for delivery")).toBeVisible(); // the capacity check ran
 
     await page.locator("select").filter({ has: page.locator('option[value=""]:text("Select Designer")') }).selectOption(designer.id);
     await page.locator("select").filter({ has: page.locator('option[value=""]:text("Select Master")') }).selectOption(masterTailor.id);
-    await page.locator("select").filter({ has: page.locator('option[value=""]:text("Select Category")') }).selectOption("saree");
+    // Product category is a catalogue dialog (ProductCategoryPicker), not a
+    // <select>. "saree" also matches Saree Blouse (listed first) and Half Saree;
+    // the exact label is pre-highlighted, so Enter must pick Saree itself.
+    await page.getByRole("button", { name: /choose a product category/i }).click();
+    const categorySearch = page.getByRole("combobox", { name: "Search categories" });
+    await categorySearch.fill("saree");
+    await expect(page.getByRole("option", { name: "Saree", exact: true })).toBeVisible(); // past the debounce
+    await categorySearch.press("Enter");
+    await expect(page.getByRole("button", { name: /^product category: saree\. change category$/i })).toBeVisible();
     await page.locator("select").filter({ has: page.locator('option[value=""]:text("Select Status")') }).selectOption("design_pending");
 
     await page.getByPlaceholder("Measurements, design references, fabric type, embellishments, color preferences...").fill(

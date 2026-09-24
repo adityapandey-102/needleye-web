@@ -84,6 +84,16 @@ export interface Order {
   updatedAt: string;
 }
 
+/**
+ * GET /orders/delivery-load -- orders due per day (shop-wide), plus the
+ * thresholds the calendar colours by. A day missing from `days` has 0.
+ */
+export interface DeliveryLoad {
+  capacity: number;
+  nearCapacity: number;
+  days: { date: string; count: number }[];
+}
+
 export interface OrderStats {
   total: number;
   active: number;
@@ -186,4 +196,66 @@ export interface TimelineSummary {
   daysRemainingLabel: string;
   orderAgeLabel: string;
   remainingDays: number | null;
+}
+
+/** Owner Reports: who is Working vs Idle -- GET /reports/staff-activity. */
+export type TrackedStaffRole = "designer" | "master_tailor" | "production_manager" | "worker";
+
+export interface StaffActivityRow {
+  id: string;
+  fullName: string;
+  role: TrackedStaffRole;
+  status: "working" | "idle";
+  /** Undelivered orders that make them Working. */
+  openOrders: number;
+  /** ISO-8601 UTC of the latest qualifying event (order created / stage move), or null. */
+  lastWorkAt: string | null;
+  /** ISO-8601 UTC of their latest audited action of any kind, or null. */
+  lastSeenAt: string | null;
+}
+
+/** One page of GET /reports/staff-activity (searched, filtered and paged by the API). */
+export interface StaffActivity {
+  /** Look-back windows in days: designers by orders created, everyone else by stage moves. */
+  windows: { designerDays: number; floorDays: number };
+  /** Working / Idle across the search + role filter (ignores the status filter) -- the summary tiles. */
+  counts: { working: number; idle: number };
+  /** This page. */
+  staff: StaffActivityRow[];
+  /** Rows matching every filter. */
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** GET /reports/activity-days -- the 7 days the feed covers (shop timezone), newest first. */
+export interface ActivityDays {
+  timeZone: string;
+  today: string;
+  days: string[];
+}
+
+/** One audited action in the owner's daily activity feed (never a payment event). */
+export interface ActivityEvent {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  /** ISO-8601 UTC. */
+  at: string;
+  actorName: string | null;
+  actorRole: string | null;
+  orderNumber: string | null;
+  targetName: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+/** GET /reports/activity -- one page of one day. */
+export interface ActivityDay {
+  day: string;
+  timeZone: string;
+  events: ActivityEvent[];
+  total: number;
+  limit: number;
+  offset: number;
 }

@@ -35,7 +35,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Revenue & Ledger", href: "/revenue", icon: "💰", requires: "reports:financial" },
       { label: "Purchases", icon: "🛒", comingSoon: true },
-      { label: "Reports", icon: "📊", comingSoon: true },
+      { label: "Reports", href: "/reports", icon: "📊", requires: "reports:staff" },
       { label: "Team", icon: "👥", comingSoon: true },
     ],
   },

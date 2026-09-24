@@ -1,5 +1,6 @@
 import type {
   CreateOrderInput,
+  DeliveryLoad,
   GranularStatus,
   LedgerEventsResult,
   Order,
@@ -67,6 +68,17 @@ export const ordersApi = {
 
   stats(): Promise<OrderStats> {
     return apiFetch("/orders/stats");
+  },
+
+  /**
+   * Orders due per day in [from, to] (inclusive, at most 200 days), shop-wide,
+   * with the capacity thresholds. `excludeOrderId` leaves the order being edited
+   * out, so it doesn't count against its own day. Owner / designer / PM only.
+   */
+  deliveryLoad(from: string, to: string, excludeOrderId?: string): Promise<DeliveryLoad> {
+    const query = new URLSearchParams({ from, to });
+    if (excludeOrderId) query.set("excludeOrderId", excludeOrderId);
+    return apiFetch(`/orders/delivery-load?${query.toString()}`);
   },
 
   /** Monthly revenue report over an inclusive [from, to] window -- owner_manager / accountant only (reports:financial). */

@@ -25,13 +25,6 @@ export default async function OrdersPage({
           <p className="text-sm text-text-muted">An at-a-glance view of every order in your scope.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {hasCapability(profile.role, "reports:staff") && (
-            <Link href="/orders/staff-report">
-              <Button variant="outline">
-                <Icon name="bar-chart" size={16} /> Staff Report
-              </Button>
-            </Link>
-          )}
           {hasCapability(profile.role, "orders:create") && (
             <Link href="/orders/new">
               <Button>
