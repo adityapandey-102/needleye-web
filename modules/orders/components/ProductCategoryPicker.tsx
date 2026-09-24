@@ -21,7 +21,7 @@ const GROUP_SIZES = new Map<ProductCategoryGroup, number>(
 );
 
 /**
- * The product-category field on the order form. The catalogue is 43 categories
+ * The product-category field on the order form. The catalogue is 47 categories
  * in 6 collections -- too many for a <select> -- so the field opens a catalogue
  * dialog: browse a collection from the rail (chips on a phone), or search
  * everything at once. Search is debounced and forgiving (see
@@ -135,7 +135,7 @@ export function ProductCategoryPicker({
           <span className="flex min-w-0 items-baseline gap-2">
             <span className="truncate font-medium text-text-primary">{productCategoryLabel(value)}</span>
             {selectedGroup && (
-              <span className="shrink-0 text-[11px] tracking-wide text-text-muted uppercase">
+              <span className="shrink-0 text-[11px] text-text-muted">
                 {productCategoryGroupLabel(selectedGroup)}
               </span>
             )}
@@ -160,7 +160,7 @@ export function ProductCategoryPicker({
         <div className="border-b border-border-light px-5 pt-5 pb-4 sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">Product category</p>
+              <p className="text-[11px] font-semibold text-gold">Product category</p>
               <h2 id={titleId} className="mt-1 font-serif text-xl font-bold text-text-primary">
                 Choose from the catalogue
               </h2>
@@ -243,7 +243,7 @@ export function ProductCategoryPicker({
         <div className="flex min-h-0 flex-1">
           {/* Collections: rail on desktop */}
           <nav aria-label="Collections" className="hidden w-52 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border-light bg-app-bg/40 p-3 sm:flex">
-            <p className="px-3 pt-1 pb-2 text-[10px] font-semibold tracking-[0.16em] text-text-muted uppercase">
+            <p className="px-3 pt-1 pb-2 text-[11px] font-semibold text-text-muted">
               Collections
             </p>
             {PRODUCT_CATEGORY_GROUPS.map((g) => {

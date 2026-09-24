@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "../../../components/ui/Button";
 import { LoginQrCard } from "./LoginQrCard";
+import { Icon } from "../../../components/ui/Icon";
 
 export type RevealModal =
   | { kind: "password"; name: string; password: string }
@@ -38,11 +39,19 @@ export function CredentialRevealOverlay({ reveal, onClose }: { reveal: RevealMod
           <>
             <h2 className="font-serif text-lg font-bold text-text-primary">Password for {reveal.name}</h2>
             <p className="mt-1 text-xs text-text-muted">Shown once -- copy or note it down now. It cannot be shown again after you close this.</p>
-            <div className="mt-4 rounded-app-sm border border-border bg-primary-bg/40 px-4 py-3 font-mono text-base tracking-wide text-text-primary">
+            <div className="mt-4 rounded-app-sm border border-border bg-app-bg/70 px-4 py-3 font-mono text-base tracking-wide text-text-primary">
               {reveal.password}
             </div>
             <Button variant="outline" className="mt-3 w-full" onClick={copyPassword}>
-              {copied ? "✓ Copied" : "📋 Copy password"}
+              {copied ? (
+                <>
+                  <Icon name="check" size={16} /> Copied
+                </>
+              ) : (
+                <>
+                  <Icon name="clipboard" size={16} /> Copy password
+                </>
+              )}
             </Button>
           </>
         ) : (

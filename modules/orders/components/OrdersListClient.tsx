@@ -5,11 +5,14 @@ import Link from "next/link";
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import { useRouter } from "next/navigation";
 import {
+  addMonthsIso,
   formatDateOnly,
+  isoToday,
+  longDateLabel,
   getTimelineSummary,
   granularLabel,
   hasCapability,
-  type Order,
+  type OrderListItem,
   type Role,
 } from "../../../lib/domain";
 import { useTeamMembers } from "../hooks/useTeamMembers";
@@ -25,9 +28,15 @@ import { KanbanBoard } from "./KanbanBoard";
 
 type ViewMode = "table" | "kanban";
 
-/** Table page size, and the (bounded) number of cards the Kanban board pulls in one go. */
+/** Table page size. */
 const PAGE_SIZE = 20;
-const KANBAN_LIMIT = 100;
+/**
+ * Kanban: the board shows only orders BOOKED in the last KANBAN_WINDOW_MONTHS
+ * months, KANBAN_PAGE_SIZE at a time (newest first), paged with the same Pager
+ * as the table. Older orders stay reachable in Table view.
+ */
+const KANBAN_PAGE_SIZE = 50;
+const KANBAN_WINDOW_MONTHS = 2;
 
 /** Human labels for the dashboard buckets a summary card can deep-link into (?bucket=). */
 const BUCKET_LABELS: Record<string, string> = {
@@ -50,7 +59,7 @@ export function OrdersListClient({
   initialBucket?: string;
 }) {
   const router = useRouter();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -59,6 +68,8 @@ export function OrdersListClient({
   const [bucket, setBucket] = useState(initialBucket ?? "");
 
   const [search, setSearch] = useState("");
+  // The Kanban's window start: today (the user's calendar) minus 2 months, fixed for this visit.
+  const [kanbanFrom] = useState(() => addMonthsIso(isoToday(), -KANBAN_WINDOW_MONTHS));
   // Only TYPING is debounced (one request per pause, not per keystroke);
   // page / filter / view changes fetch immediately.
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
@@ -101,9 +112,12 @@ export function OrdersListClient({
 
     const run = () => {
       setLoading(true);
-      // Table pages through the results; Kanban needs the whole board at once,
-      // so it pulls a single bounded page (the server caps limit at 100 too).
-      const pagination = view === "table" ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE } : { limit: KANBAN_LIMIT, offset: 0 };
+      // Table: all orders, 20 a page. Kanban: the last 2 months only, 50 a page
+      // -- both paged by the server, so the board never loads more than 50.
+      const pagination =
+        view === "table"
+          ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE }
+          : { limit: KANBAN_PAGE_SIZE, offset: page * KANBAN_PAGE_SIZE, createdFrom: kanbanFrom };
       ordersApi
         .list({
           search: debouncedSearch || undefined,
@@ -131,7 +145,7 @@ export function OrdersListClient({
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch, designerId, masterTailorId, bucket, view, page]);
+  }, [debouncedSearch, designerId, masterTailorId, bucket, view, page, kanbanFrom]);
 
 
   return (
@@ -191,13 +205,18 @@ export function OrdersListClient({
           <div className="p-6 text-sm text-error">{error}</div>
         ) : (
           <>
-            {total > KANBAN_LIMIT && (
-              <div className="mb-3 rounded-app-sm border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Showing the {KANBAN_LIMIT} most recent orders on the board (of {total}). Use Table view with search/filters to
-                find older orders.
-              </div>
-            )}
+            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-app border border-border bg-card px-3.5 py-2.5 text-xs text-text-secondary shadow-app">
+              <Icon name="calendar" size={14} className="text-primary" />
+              <span>
+                Orders booked since <strong className="font-semibold text-text-primary">{longDateLabel(kanbanFrom)}</strong>, newest
+                first, {KANBAN_PAGE_SIZE} per page.
+              </span>
+              <span className="text-text-muted">Older orders are in Table view.</span>
+            </div>
             <KanbanBoard orders={orders} role={role} />
+            <div className="mt-3 overflow-hidden rounded-app-lg border border-border bg-card shadow-app">
+              <Pager page={page} pageSize={KANBAN_PAGE_SIZE} total={total} onPageChange={setPage} className="border-t-0" />
+            </div>
           </>
         )
       ) : (
@@ -221,7 +240,7 @@ export function OrdersListClient({
                     key={order.id}
                     href={`/orders/${order.id}`}
                     style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
-                    className="animate-fade-in block p-4 transition-colors hover:bg-primary-bg/40 active:bg-primary-bg/60"
+                    className="animate-fade-in block p-4 transition-colors hover:bg-app-bg/70 active:bg-primary-bg/60"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -260,7 +279,7 @@ export function OrdersListClient({
             <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
-                <tr className="border-b border-border-light bg-primary-bg/40 text-left text-xs text-text-muted uppercase">
+                <tr className="border-b border-border bg-primary-bg/70 text-left text-xs font-semibold text-primary/85">
                   <th className="px-4 py-2.5 font-medium">Order ID</th>
                   <th className="px-4 py-2.5 font-medium">Customer</th>
                   <th className="px-4 py-2.5 font-medium">Designer</th>
@@ -272,12 +291,12 @@ export function OrdersListClient({
                   <th className="px-4 py-2.5 font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="rows-in">
                 {orders.map((order) => {
                   const timeline = getTimelineSummary(order);
                   return (
-                    <tr key={order.id} className="border-b border-border-light last:border-0">
-                      <td className="px-4 py-2.5 font-semibold text-text-primary">{order.orderNumber}</td>
+                    <tr key={order.id} className="border-b border-border-light transition-colors last:border-0 hover:bg-primary-bg/30">
+                      <td className="px-4 py-2.5 font-medium whitespace-nowrap text-text-primary">{order.orderNumber}</td>
                       <td className="px-4 py-2.5">{order.customerName}</td>
                       <td className="px-4 py-2.5 text-text-secondary">{order.designerName ?? "—"}</td>
                       <td className="px-4 py-2.5 text-text-secondary">{order.masterTailorName ?? "—"}</td>

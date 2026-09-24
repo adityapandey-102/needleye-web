@@ -49,7 +49,7 @@ export function RegisterForm() {
   if (ownerExists) {
     return (
       <div className="text-center">
-        <h1 className="font-serif text-lg font-bold text-text-primary">Invite-only</h1>
+        <h1 className="font-serif text-[26px] leading-tight text-text-primary">Invite-only</h1>
         <p className="mt-2 text-sm text-text-secondary">
           Needleye is already set up. Ask your Owner/Manager to invite you from Administration →
           User Management.
@@ -61,7 +61,7 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <h1 className="font-serif text-lg font-bold text-text-primary">First-time setup</h1>
+        <h1 className="font-serif text-[26px] leading-tight text-text-primary">First-time setup</h1>
         <p className="text-xs text-text-muted">
           No Owner/Manager account exists yet. Create the first one -- every other account will be
           invited from here afterward.

@@ -16,7 +16,7 @@ export default async function ScanPage() {
       <div className="gradient-primary mb-5 flex h-20 w-20 items-center justify-center rounded-app-xl text-white shadow-primary">
         <Icon name="qr" size={40} />
       </div>
-      <h1 className="font-serif text-2xl font-bold text-text-primary">Hi {firstName} 👋</h1>
+      <h1 className="font-serif text-2xl font-bold text-text-primary">Hi {firstName}</h1>
       <p className="mt-2 text-sm text-text-secondary">
         Scan an order&rsquo;s <span className="font-semibold text-text-primary">QR code</span> to open it. When you receive a
         garment for your stage, scanning it lets you confirm and move the order to the next step.

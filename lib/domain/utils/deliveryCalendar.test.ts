@@ -118,3 +118,14 @@ describe("the grid is the genuine calendar (independent check, 1900-2200)", () =
     expect(col("2026-12-25")).toBe(5);
   });
 });
+
+describe("addMonthsIso backwards (the Kanban's 2-month window)", () => {
+  it("steps back two months, across a year boundary", () => {
+    expect(addMonthsIso("2026-09-25", -2)).toBe("2026-07-25");
+    expect(addMonthsIso("2026-01-15", -2)).toBe("2025-11-15");
+  });
+  it("clamps to the month's end, leap years included", () => {
+    expect(addMonthsIso("2026-04-30", -2)).toBe("2026-02-28");
+    expect(addMonthsIso("2028-04-30", -2)).toBe("2028-02-29");
+  });
+});

@@ -4,6 +4,7 @@ import { apiFetchServer } from "../../../../../lib/api/server";
 import { Button } from "../../../../../components/ui/Button";
 import { BucketOrdersClient } from "../../../../../modules/orders/components/BucketOrdersClient";
 import { BUCKET_META, bucketMeta } from "../../../../../modules/orders/buckets";
+import { Icon } from "../../../../../components/ui/Icon";
 
 /**
  * A dedicated, focused view for one dashboard bucket -- just the filtered
@@ -26,11 +27,14 @@ export default async function OrderBucketPage({ params }: { params: Promise<{ bu
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-xl font-bold text-text-primary">{meta.title}</h1>
+          <h1 className="page-title">{meta.title}</h1>
           <p className="text-sm text-text-muted">{meta.subtitle}</p>
         </div>
         <Link href="/orders">
-          <Button variant="outline">← All Orders</Button>
+          <Button variant="outline">
+            <Icon name="chevron-right" size={16} className="rotate-180" />
+            All Orders
+          </Button>
         </Link>
       </div>
       <BucketOrdersClient bucket={bucket} role={profile.role} />

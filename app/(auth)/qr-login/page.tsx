@@ -31,7 +31,7 @@ function QrLoginContent() {
   if (message) {
     return (
       <div className="text-center">
-        <h1 className="font-serif text-lg font-bold text-text-primary">QR login failed</h1>
+        <h1 className="font-serif text-[26px] leading-tight text-text-primary">QR login failed</h1>
         <p className="mt-2 text-sm text-text-secondary">{message}</p>
         <p className="mt-4 text-xs text-text-muted">Ask your Owner/Manager to regenerate your QR code.</p>
       </div>

@@ -1,4 +1,5 @@
 import { ALARMING_STATUS, CANONICAL_STAGES, canonicalLabel, stageIndex, toCanonicalStage, type GranularStatus } from "../../../lib/domain";
+import { Icon } from "../../../components/ui/Icon";
 
 const GREEN = "var(--color-success)";
 const GRAY = "var(--color-border)";
@@ -79,10 +80,10 @@ export function OrderStatusTracker({ status }: { status: GranularStatus }) {
                     <span className="absolute top-1/2 right-0 left-1/2 h-[2.5px] -translate-y-1/2" style={{ background: rightGreen ? GREEN : GRAY }} />
                   )}
                   <span
-                    className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 text-[11px] font-bold ${state.alarming ? "alarm-ripple" : ""}`}
+                    className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 text-[11px] font-bold ${state.alarming ? "alarm-ripple" : state.isCurrent ? "current-pulse" : ""}`}
                     style={circleStyle(state)}
                   >
-                    {state.done ? "✓" : i + 1}
+                    {state.done ? <Icon name="check" size={14} strokeWidth={2.75} /> : i + 1}
                   </span>
                 </div>
                 <span className={`mt-1.5 max-w-[92px] text-center text-[10px] leading-tight ${labelClass(state)}`}>{stage.label}</span>
@@ -99,7 +100,7 @@ export function OrderStatusTracker({ status }: { status: GranularStatus }) {
             const state: NodeState = { done: false, isCurrent: true, alarming: current === ALARMING_STATUS };
             return (
               <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${state.alarming ? "alarm-ripple" : ""}`}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${state.alarming ? "alarm-ripple" : state.isCurrent ? "current-pulse" : ""}`}
                 style={circleStyle(state)}
               >
                 {currentIndex + 1}
@@ -107,7 +108,7 @@ export function OrderStatusTracker({ status }: { status: GranularStatus }) {
             );
           })()}
           <span className="min-w-0 flex-1">
-            <span className="block text-[10px] uppercase tracking-wide text-text-muted">{stepLabel}</span>
+            <span className="block text-[11px] text-text-muted">{stepLabel}</span>
             <span className={`block truncate text-sm ${current === ALARMING_STATUS ? "font-bold text-error" : "font-bold text-text-primary"}`}>
               {canonicalLabel(current)}
             </span>
@@ -140,10 +141,10 @@ export function OrderStatusTracker({ status }: { status: GranularStatus }) {
                   <span className="absolute top-0 h-1/2 w-[3px] rounded-full" style={{ background: isFirst ? "transparent" : topGreen ? GREEN : GRAY }} />
                   <span className="absolute bottom-0 h-1/2 w-[3px] rounded-full" style={{ background: isLast ? "transparent" : bottomGreen ? GREEN : GRAY }} />
                   <span
-                    className={`relative z-10 my-1 flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold ${state.alarming ? "alarm-ripple" : ""}`}
+                    className={`relative z-10 my-1 flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold ${state.alarming ? "alarm-ripple" : state.isCurrent ? "current-pulse" : ""}`}
                     style={circleStyle(state)}
                   >
-                    {state.done ? "✓" : i + 1}
+                    {state.done ? <Icon name="check" size={14} strokeWidth={2.75} /> : i + 1}
                   </span>
                 </div>
                 <span className={`flex min-h-10 items-center py-1 text-sm leading-tight ${labelClass(state)}`}>{stage.label}</span>

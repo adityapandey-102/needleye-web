@@ -9,7 +9,7 @@ export function ReportPageHeader({ title, description }: { title: string; descri
         <Icon name="chevron-right" size={15} className="rotate-180" />
         Reports
       </Link>
-      <h1 className="mt-2 font-serif text-xl font-bold text-text-primary">{title}</h1>
+      <h1 className="page-title mt-2">{title}</h1>
       <p className="text-sm text-text-muted">{description}</p>
     </div>
   );

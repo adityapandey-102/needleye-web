@@ -93,7 +93,7 @@ test.describe.serial("delivery capacity", () => {
       "Booked on a full day with the Production Manager's OK.",
     );
 
-    await page.getByRole("button", { name: "✦ Create Product Order" }).click();
+    await page.getByRole("button", { name: "Create Product Order" }).click();
     await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/, { timeout: 15_000 });
     await expect(page.getByText(customerName).first()).toBeVisible();
   });

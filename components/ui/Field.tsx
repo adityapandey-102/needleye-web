@@ -5,16 +5,17 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     return (
       <input
         ref={ref}
-        className={`w-full rounded-app-sm border border-border bg-card px-3 py-2.5 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-gold/25 ${className}`}
+        className={`w-full rounded-app-sm border border-border bg-card px-3 py-2.5 text-sm text-text-primary hover:border-accent-light outline-none transition-all placeholder:text-text-muted focus:border-primary/60 focus:ring-3 focus:ring-primary/8 ${className}`}
         {...props}
       />
     );
   },
 );
 
-export function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
+/** Pass  (the input's id) so screen readers and tests can find the field by its label. */
+export function FieldLabel({ children, required, htmlFor }: { children: React.ReactNode; required?: boolean; htmlFor?: string }) {
   return (
-    <label className="mb-1.5 block text-xs font-medium text-text-secondary">
+    <label htmlFor={htmlFor} className="mb-1.5 block text-xs font-medium text-text-secondary">
       {children}
       {required && <span className="ml-0.5 text-error">*</span>}
     </label>
@@ -23,5 +24,5 @@ export function FieldLabel({ children, required }: { children: React.ReactNode; 
 
 export function FieldError({ children }: { children?: string | null }) {
   if (!children) return null;
-  return <p className="mt-1.5 text-xs text-error">⚠ {children}</p>;
+  return <p className="mt-1.5 text-xs text-error">{children}</p>;
 }

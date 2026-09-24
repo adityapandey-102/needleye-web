@@ -1,31 +1,36 @@
 @import "tailwindcss";
 
 /*
- * Needleye — premium design system.
+ * Needleye -- "atelier ledger" design system.
  *
- * Palette taken from the brand logo: deep burgundy ink on warm taupe / sand.
- * That pairing is the whole identity — burgundy (heritage, bridal ethnic wear)
- * over warm sand neutrals, with a muted antique-gold used sparingly (active
- * states, hairlines, the brand mark, focus rings) as the "gold thread" whisper.
+ * The back office of a couture house: white paper on a cool stone table, ink
+ * type, the brand's oxblood for anything you act on, and gold used only as a
+ * thread -- the dashed "tacking stitch" (.stitch-rule) under page titles and
+ * beside the active menu item. Hierarchy comes from type and hairlines, not
+ * from boxes, gradients or shadows; shadows are only for things that float
+ * (menus, dialogs, toasts). Playfair Display (display) + Plus Jakarta Sans (text).
+ * Designed with Anthropic's frontend-design skill (.claude/skills/).
  *
- * Every token name from the original prototype theme is preserved (so all
- * existing `bg-primary`, `shadow-app`, `rounded-app`, etc. utilities keep
- * working); values are retuned to the logo and new tokens (gold, gradients,
- * elevated shadows, motion) are added on top.
+ * Every token NAME from the original theme is kept (so `bg-primary`,
+ * `shadow-app`, `rounded-app`, `gradient-primary`, ... keep working
+ * everywhere); only the values changed. Semantic colours keep their meaning.
  */
 :root {
-  /* Burgundy ink — the logo's maroon; the primary brand colour */
+  /* The brand palette, taken from the Needleye logo: burgundy ink on warm taupe
+   * / sand, with antique gold as the "gold thread". */
+
+  /* Burgundy ink -- the logo's maroon; the primary brand colour */
   --color-primary: #7a1d34;
   --color-primary-light: #c69aa4;
   --color-primary-dark: #571325;
   --color-primary-bg: #f5ebe1;
 
-  /* Warm taupe accent — the logo's background tone */
+  /* Warm taupe accent -- the logo's background tone */
   --color-accent: #b39a78;
   --color-accent-light: #d8c7ad;
   --color-accent-bg: #f3ecdf;
 
-  /* Muted antique gold — the premium signature (used sparingly) */
+  /* Antique gold -- the premium signature (used sparingly) */
   --color-gold: #9c7b3f;
   --color-gold-light: #c8a865;
   --color-gold-soft: #ecdcbd;
@@ -34,14 +39,14 @@
   /* Warm sand neutrals (echo the logo's taupe field, kept light) */
   --color-app-bg: #f5efe5;
   --color-card: #fffdf8;
-  --color-border: #e7ddcd;
+  --color-border: #e3d7c4;
   --color-border-light: #efe8da;
 
-  --color-text-primary: #241a1b;
-  --color-text-secondary: #5f544c;
-  --color-text-muted: #97897c;
+  --color-text-primary: #1f1617;
+  --color-text-secondary: #4a403a;
+  --color-text-muted: #75685d;
 
-  /* Semantic — tuned warmer/deeper to sit with the brand */
+  /* Semantic -- tuned warmer/deeper to sit with the brand */
   --color-success: #0f9d74;
   --color-success-bg: #d7f0e5;
   --color-warning: #d9861f;
@@ -60,12 +65,13 @@
   /* Focus ring */
   --color-ring: #9c7b3f;
 
-  --radius-app: 12px;
-  --radius-app-sm: 8px;
-  --radius-app-lg: 16px;
-  --radius-app-xl: 22px;
+  /* Radii by hierarchy: panels 12, controls 8, chips 6 */
+  --radius-app: 8px;
+  --radius-app-sm: 6px;
+  --radius-app-lg: 12px;
+  --radius-app-xl: 16px;
 
-  /* Layered, warm-tinted shadows for real depth */
+  /* Layered, warm-tinted shadows */
   --shadow-app: 0 1px 2px rgba(74, 20, 40, 0.05), 0 1px 3px rgba(74, 20, 40, 0.05);
   --shadow-app-md: 0 4px 12px -2px rgba(74, 20, 40, 0.1), 0 2px 6px -3px rgba(74, 20, 40, 0.07);
   --shadow-app-lg: 0 14px 30px -8px rgba(74, 20, 40, 0.16), 0 6px 14px -6px rgba(74, 20, 40, 0.1);
@@ -129,8 +135,8 @@
   --shadow-gold: var(--shadow-gold);
   --shadow-primary: var(--shadow-primary);
 
-  --font-serif: var(--font-playfair), "Playfair Display", serif;
-  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-display), "Playfair Display", Georgia, serif;
+  --font-sans: var(--font-body), "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
 
   /* Motion tokens exposed to Tailwind's `animate-*` */
   --animate-fade-in: fade-in 0.4s ease both;
@@ -147,26 +153,149 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Serif display headings get tighter tracking for an editorial, couture feel. */
+/* Display face (Playfair Display): semibold so titles stay crisp and visible. */
 .font-serif {
+  letter-spacing: -0.005em;
+  font-weight: 600 !important;
+  font-variant-numeric: lining-nums;
+}
+
+/* Tabular figures everywhere, so columns of money, dates and counts line up. */
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Headline NUMBERS (counts, money, KPIs) use the sans face: serif digits and
+ * commas are hard to read at a glance ("₹5,56,813" looked like
+ * "5.56.813"). The serif stays for words (titles, names). */
+.figure {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ---- Motion system (all of it is switched off by prefers-reduced-motion below) ---- */
+
+/* Children rise in one after another -- dashboard cells, card grids, table rows. */
+.stagger-in > * {
+  animation: rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stagger-in > :nth-child(2) { animation-delay: 40ms; }
+.stagger-in > :nth-child(3) { animation-delay: 80ms; }
+.stagger-in > :nth-child(4) { animation-delay: 120ms; }
+.stagger-in > :nth-child(5) { animation-delay: 160ms; }
+.stagger-in > :nth-child(6) { animation-delay: 200ms; }
+.stagger-in > :nth-child(7) { animation-delay: 240ms; }
+.stagger-in > :nth-child(8) { animation-delay: 280ms; }
+.stagger-in > :nth-child(n + 9) { animation-delay: 320ms; }
+
+/* Table rows: a quicker fade so a new page of results settles in smoothly. */
+.rows-in > tr {
+  animation: fade-in 0.35s ease both;
+}
+.rows-in > tr:nth-child(2) { animation-delay: 25ms; }
+.rows-in > tr:nth-child(3) { animation-delay: 50ms; }
+.rows-in > tr:nth-child(4) { animation-delay: 75ms; }
+.rows-in > tr:nth-child(5) { animation-delay: 100ms; }
+.rows-in > tr:nth-child(n + 6) { animation-delay: 125ms; }
+
+/* Progress / share bars fill from the left when they appear. */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.grow-x {
+  transform-origin: left center;
+  animation: grow-x 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The current production stage breathes softly so the eye finds it. */
+@keyframes current-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 22%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-success) 10%, transparent);
+  }
+}
+.current-pulse {
+  animation: current-pulse 2.4s ease-in-out infinite;
+}
+
+/* A card you can click lifts a touch on hover. */
+.lift {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-app-md);
+}
+
+/* THE signature: a tailor's tacking stitch in gold thread -- under page titles
+ * and beside the active menu item. Used nowhere else. */
+.stitch-rule {
+  height: 1px;
+  background-image: linear-gradient(to right, var(--color-gold) 60%, transparent 60%);
+  background-size: 9px 1px;
+  background-repeat: repeat-x;
+}
+.stitch-rule-v {
+  width: 1px;
+  background-image: linear-gradient(to bottom, var(--color-gold-light) 60%, transparent 60%);
+  background-size: 1px 6px;
+  background-repeat: repeat-y;
+}
+
+/* Page title: the display face, larger, no card around it -- and a short run
+ * of the gold tacking stitch beneath it. */
+.page-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 1.75rem;
+  line-height: 1.15;
   letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+.page-title::after {
+  content: "";
+  display: block;
+  width: 3.5rem;
+  height: 1px;
+  margin: 0.6rem 0 0.45rem;
+  background-image: linear-gradient(to right, var(--color-gold) 60%, transparent 60%);
+  background-size: 9px 1px;
+  background-repeat: repeat-x;
+}
+@media (min-width: 1024px) {
+  .page-title {
+    font-size: 2rem;
+  }
 }
 
 /* Themed, slim scrollbars (premium polish; ignored where unsupported). */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-primary-light) transparent;
+  scrollbar-color: var(--color-accent-light) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--color-primary-light);
+  background: var(--color-accent-light);
   border-radius: 9999px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary);
+  background: var(--color-accent);
 }
 
 /* ---- Gradient / material utility classes (Tailwind can't derive these from a var) ---- */
@@ -285,9 +414,9 @@ body {
 .skeleton {
   background-image: linear-gradient(
     100deg,
-    var(--color-primary-bg) 30%,
+    var(--color-border-light) 30%,
     rgba(255, 255, 255, 0.85) 50%,
-    var(--color-primary-bg) 70%
+    var(--color-border-light) 70%
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;

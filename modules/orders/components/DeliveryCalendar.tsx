@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import {
+  addMonthsIso,
   compareMonths,
   dayOfMonth,
   deliveryLoadLevel,
@@ -20,6 +21,7 @@ import { ordersApi } from "../api/ordersApi";
 import { Icon } from "../../../components/ui/Icon";
 import { Modal } from "../../../components/ui/Modal";
 import { useMediaQuery } from "../../../lib/hooks/useMediaQuery";
+import { DeliveryDayList } from "./DeliveryDayList";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -47,21 +49,34 @@ const monthKey = (ym: YearMonth) => `${ym.year}-${ym.month}`;
  * month is derived from `value` when it mounts.
  */
 export function DeliveryCalendar({
-  value,
+  value = "",
   onSelect,
   onClose,
   excludeOrderId,
+  mode = "pick",
 }: {
-  value: string;
-  /** `full`: the day already has its full quota -- the caller must ask about an override. */
-  onSelect: (date: string, full: boolean) => void;
+  value?: string;
+  /** `full`: the day already has its full quota -- the caller must ask about an override. (pick mode) */
+  onSelect?: (date: string, full: boolean) => void;
   onClose: () => void;
   excludeOrderId?: string;
+  /**
+   * `pick` (order form): choose a due date from today to 6 months ahead.
+   * `browse` (owner / production manager dashboard): look back 3 months and
+   * ahead 6, and click ANY day -- past or full included -- to list the orders
+   * due that day, inside this same window.
+   */
+  mode?: "pick" | "browse";
 }) {
+  const browse = mode === "browse";
   const titleId = `${useId()}-title`;
   const [today] = useState(isoToday);
   const lastDate = lastBookableDate(today);
-  const minMonth = yearMonthOf(today);
+  // Browsing reaches back 3 months (overdue days); picking starts today.
+  const earliest = browse ? addMonthsIso(today, -3) : today;
+  const minMonth = yearMonthOf(earliest);
+  /** The day whose order list is open (browse mode). */
+  const [openDay, setOpenDay] = useState<string | null>(null);
   const maxMonth = yearMonthOf(lastDate);
 
   // Two months side by side from `sm` up, one on a phone -- paging (and how far
@@ -70,7 +85,7 @@ export function DeliveryCalendar({
 
   // Open on the chosen date's month when it's inside the window, else this month.
   const [anchor, setAnchor] = useState<YearMonth>(() =>
-    value && value >= today && value <= lastDate ? yearMonthOf(value) : minMonth,
+    value && value >= today && value <= lastDate ? yearMonthOf(value) : yearMonthOf(today),
   );
   // Side by side, the last page is (max - 1, max) rather than (max, max + 1).
   const first =
@@ -135,14 +150,14 @@ export function DeliveryCalendar({
             .flat()
             .map((date, i) => {
               if (!date) return <div key={`pad-${i}`} />;
-              const outside = date < today || date > lastDate;
+              const outside = date < earliest || date > lastDate;
               const count = counts[date] ?? 0;
               const level = thresholds ? deliveryLoadLevel(count, thresholds.capacity, thresholds.nearCapacity) : "open";
               const full = level === "full";
               const selected = date === value;
               const disabled = outside || !monthLoaded;
               const label = outside
-                ? `${longDateLabel(date)}: outside the booking window`
+                ? `${longDateLabel(date)}: outside the ${browse ? "calendar" : "booking"} window`
                 : thresholds
                   ? `${longDateLabel(date)}: ${count} of ${thresholds.capacity} deliveries booked${full ? ", fully booked" : ""}`
                   : longDateLabel(date);
@@ -150,11 +165,12 @@ export function DeliveryCalendar({
                 <button
                   key={date}
                   type="button"
+                  data-date={date}
                   disabled={disabled}
                   aria-label={label}
                   aria-pressed={selected}
                   title={label}
-                  onClick={() => onSelect(date, full)}
+                  onClick={() => (browse ? setOpenDay(date) : onSelect?.(date, full))}
                   className={`flex h-14 flex-col items-center justify-center rounded-app-sm transition-colors ${
                     selected
                       ? "bg-primary text-white shadow-primary"
@@ -191,14 +207,23 @@ export function DeliveryCalendar({
     <Modal open onClose={onClose} labelledBy={titleId} panelClassName="max-h-[92vh] sm:max-w-3xl">
       <div className="flex items-start justify-between gap-4 border-b border-border-light px-5 pt-5 pb-4 sm:px-6">
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">Delivery calendar</p>
+          <p className="text-[11px] font-semibold text-gold">Delivery calendar</p>
           <h2 id={titleId} className="mt-1 font-serif text-xl font-bold text-text-primary">
-            Choose a delivery date
+            {browse ? "Deliveries by day" : "Choose a delivery date"}
           </h2>
           <p className="mt-1 text-xs text-text-muted">
-            Deliveries already booked per day
-            {thresholds ? ` · a day is full at ${thresholds.capacity}` : ""}. Bookable up to{" "}
-            {longDateLabel(lastDate)}.
+            {browse ? (
+              <>
+                Orders due on each day{thresholds ? ` · a day is full at ${thresholds.capacity}` : ""}. Click a day to see
+                its orders.
+              </>
+            ) : (
+              <>
+                Deliveries already booked per day
+                {thresholds ? ` · a day is full at ${thresholds.capacity}` : ""}. Bookable up to{" "}
+                {longDateLabel(lastDate)}.
+              </>
+            )}
           </p>
         </div>
         <button
@@ -212,6 +237,10 @@ export function DeliveryCalendar({
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+        {openDay ? (
+          <DeliveryDayList date={openDay} onBack={() => setOpenDay(null)} />
+        ) : (
+          <>
         <div className="absolute top-5 right-5 left-5 flex justify-between sm:right-6 sm:left-6">
           <button
             type="button"
@@ -255,6 +284,8 @@ export function DeliveryCalendar({
             ))}
           </div>
         )}
+          </>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-border-light bg-app-bg/40 px-5 py-3 text-[11px] text-text-secondary sm:px-6">
@@ -263,7 +294,16 @@ export function DeliveryCalendar({
           dot="bg-warning"
           label={thresholds ? `Filling up (${thresholds.nearCapacity}–${thresholds.capacity - 1})` : "Filling up"}
         />
-        <Legend dot="bg-error" label={thresholds ? `Full (${thresholds.capacity}+) — needs the Production Manager's OK` : "Full"} />
+        <Legend
+          dot="bg-error"
+          label={
+            thresholds
+              ? browse
+                ? `Full (${thresholds.capacity}+)`
+                : `Full (${thresholds.capacity}+) — needs the Production Manager's OK`
+              : "Full"
+          }
+        />
       </div>
     </Modal>
   );

@@ -4,6 +4,7 @@ import type {
   GranularStatus,
   LedgerEventsResult,
   Order,
+  OrderListItem,
   OrderStats,
   OrderStatusHistoryEntry,
   RevenueReport,
@@ -19,13 +20,18 @@ export interface OrderListFilters {
   status?: string;
   /** Dashboard filter a summary card links to (active, production, completed, overdue, urgent, pending_payment, this_month, ...). */
   bucket?: string;
+  /** Only orders created on/after this shop day (YYYY-MM-DD) -- the Kanban's 2-month window. */
+  createdFrom?: string;
+  /** Only orders due on this day (YYYY-MM-DD) -- the delivery calendar day list. */
+  dueOn?: string;
   limit?: number;
   offset?: number;
 }
 
 /** The paginated envelope GET /orders returns -- `total` is the full count matching the filters, for the pager. */
 export interface OrderListResult {
-  orders: Order[];
+  /** Rows without images -- see OrderListItem. */
+  orders: OrderListItem[];
   total: number;
   limit: number;
   offset: number;
@@ -40,6 +46,8 @@ export const ordersApi = {
     if (filters.masterTailorId) query.set("masterTailorId", filters.masterTailorId);
     if (filters.status) query.set("status", filters.status);
     if (filters.bucket) query.set("bucket", filters.bucket);
+    if (filters.createdFrom) query.set("createdFrom", filters.createdFrom);
+    if (filters.dueOn) query.set("dueOn", filters.dueOn);
     if (filters.limit !== undefined) query.set("limit", String(filters.limit));
     if (filters.offset !== undefined) query.set("offset", String(filters.offset));
     return apiFetch(`/orders?${query.toString()}`);

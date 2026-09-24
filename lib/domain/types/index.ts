@@ -85,6 +85,12 @@ export interface Order {
 }
 
 /**
+ * A row of GET /orders: an Order without `images` (lists never show photos, so
+ * the API skips loading and signing them). Open the order for its images.
+ */
+export type OrderListItem = Omit<Order, "images">;
+
+/**
  * GET /orders/delivery-load -- orders due per day (shop-wide), plus the
  * thresholds the calendar colours by. A day missing from `days` has 0.
  */

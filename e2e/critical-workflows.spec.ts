@@ -76,7 +76,7 @@ test.describe.serial("critical workflows", () => {
     // First of the 4 upload slots -- a hidden <input type="file">, no click needed to reveal it.
     await page.locator('input[type="file"]').first().setInputFiles(SAMPLE_IMAGE);
 
-    await page.getByRole("button", { name: "✦ Create Product Order" }).click();
+    await page.getByRole("button", { name: "Create Product Order" }).click();
     await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/, { timeout: 15_000 });
     orderId = page.url().split("/orders/")[1]!;
 

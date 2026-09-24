@@ -11,6 +11,7 @@ import { Select } from "../../../components/ui/Select";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { Pager } from "../../../components/ui/Pager";
 import { Icon } from "../../../components/ui/Icon";
+import { CountUp } from "../../../components/ui/CountUp";
 
 type StatusFilter = "" | "working" | "idle";
 
@@ -181,7 +182,7 @@ export function TeamStatusCard() {
                 aria-busy={loading}
               >
                 <table className="w-full text-sm">
-                  <thead className="hidden bg-app-bg/60 text-left text-[11px] font-semibold tracking-wide text-text-muted uppercase sm:table-header-group">
+                  <thead className="hidden bg-app-bg/60 text-left text-[11px] font-semibold text-text-muted sm:table-header-group">
                     <tr>
                       <th className="px-4 py-2.5">Name</th>
                       <th className="px-4 py-2.5">Status</th>
@@ -190,7 +191,7 @@ export function TeamStatusCard() {
                       <th className="px-4 py-2.5">Last seen</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-light">
+                  <tbody className="rows-in divide-y divide-border-light">
                     {data.staff.map((s) => (
                       <tr key={s.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 sm:table-row sm:p-0">
                         <td className="min-w-0 flex-1 sm:px-4 sm:py-3">
@@ -248,8 +249,10 @@ function SummaryTile({
         active ? "border-primary/40 bg-primary-bg" : "border-border-light bg-card hover:bg-app-bg"
       }`}
     >
-      <p className="text-[11px] font-semibold tracking-wide text-text-muted uppercase">{label}</p>
-      <p className={`mt-0.5 font-serif text-2xl font-bold tabular-nums ${tone}`}>{value}</p>
+      <p className="text-[11px] font-semibold text-text-muted">{label}</p>
+      <p className={`figure mt-1 text-[26px] leading-none ${tone}`}>
+        <CountUp to={value} />
+      </p>
     </button>
   );
 }

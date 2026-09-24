@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { OrderImage } from "../../../lib/domain";
+import { Icon } from "../../../components/ui/Icon";
 
 /**
  * Reference-image gallery for the order detail page. Built to be
@@ -27,11 +28,11 @@ export function ImageGallery({ images }: { images: OrderImage[] }) {
           href={img.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="relative block aspect-square min-w-0 overflow-hidden rounded-app-sm border border-border bg-primary-bg/40"
+          className="relative block aspect-square min-w-0 overflow-hidden rounded-app-sm border border-border bg-app-bg/70"
         >
           {failed[img.id] ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-text-muted">
-              <span className="text-xl">🖼️</span>
+              <Icon name="image" size={20} />
               <span className="text-[10px]">Image {img.slot}</span>
             </div>
           ) : (

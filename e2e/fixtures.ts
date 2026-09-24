@@ -42,7 +42,9 @@ export async function loginAsOwner(): Promise<string> {
   return accessToken;
 }
 
-export async function createFixtureStaff(ownerToken: string, role: "designer" | "master_tailor", label: string): Promise<FixtureUser> {
+export type FixtureRole = "designer" | "master_tailor" | "accountant" | "production_manager" | "worker" | "owner_manager";
+
+export async function createFixtureStaff(ownerToken: string, role: FixtureRole, label: string): Promise<FixtureUser> {
   const stamp = Date.now();
   const email = `e2e-${role}-${stamp}-${Math.random().toString(36).slice(2, 6)}@needleeye.test`;
   const { userId, password } = await apiRequest<{ userId: string; password: string }>("/users", {
@@ -65,4 +67,9 @@ export async function createFixtureStaff(ownerToken: string, role: "designer" | 
 export function uniqueDueDate(startYear = 2040): string {
   const day = Math.floor(Date.now() / 1000) % 3650;
   return new Date(Date.UTC(startYear, 0, 1) + day * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** POST/GET against the API as someone, for test setup. */
+export async function api<T>(token: string, path: string, init: RequestInit = {}): Promise<T> {
+  return apiRequest<T>(path, { ...init, token });
 }

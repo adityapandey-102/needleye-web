@@ -8,6 +8,7 @@ import {
   GRANULAR_STATUSES,
   granularLabel,
   isPositiveMoney,
+  toDateInputValue,
   moneyGreaterThan,
   PAYMENT_METHODS,
   type CreateOrderInput,
@@ -23,6 +24,7 @@ import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
 import { Select, Textarea } from "../../../components/ui/Select";
 import { RadioGroup } from "../../../components/ui/RadioGroup";
+import { Icon } from "../../../components/ui/Icon";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { ImageUploadGrid, type ImageSlotState } from "./ImageUploadGrid";
 import { ProductCategoryPicker } from "./ProductCategoryPicker";
@@ -54,8 +56,12 @@ type FormState = {
   advanceMethod: PaymentMethod;
 };
 
+/**
+ * Today on the user's own calendar. (toISOString() is UTC, which in India is
+ * a day behind until 05:30 -- a new order's booking date defaulted to yesterday.)
+ */
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return toDateInputValue(new Date());
 }
 
 function emptyForm(): FormState {
@@ -549,8 +555,8 @@ export function OrderForm({
                 value={form.handWork ? "yes" : "no"}
                 onChange={(v) => set("handWork", v === "yes")}
                 options={[
-                  { value: "yes", label: "✋ Yes" },
-                  { value: "no", label: "✕ No" },
+                  { value: "yes", label: "Yes", icon: "hand" },
+                  { value: "no", label: "No", icon: "x" },
                 ]}
               />
             </div>
@@ -562,8 +568,8 @@ export function OrderForm({
                 value={form.machineWork ? "yes" : "no"}
                 onChange={(v) => set("machineWork", v === "yes")}
                 options={[
-                  { value: "yes", label: "⚙️ Yes" },
-                  { value: "no", label: "✕ No" },
+                  { value: "yes", label: "Yes", icon: "cog" },
+                  { value: "no", label: "No", icon: "x" },
                 ]}
               />
             </div>
@@ -580,8 +586,8 @@ export function OrderForm({
               value={form.purchaseRequired ? "yes" : "no"}
               onChange={(v) => set("purchaseRequired", v === "yes")}
               options={[
-                { value: "yes", label: "🛍️ Yes" },
-                { value: "no", label: "✕ No" },
+                { value: "yes", label: "Yes", icon: "cart" },
+                { value: "no", label: "No", icon: "x" },
               ]}
             />
           </CardBody>
@@ -724,7 +730,15 @@ export function OrderForm({
           Cancel
         </Button>
         <Button type="submit" disabled={submitting || (!canEditContentFields && !canEditPricingFields)}>
-          {submitting ? "Saving…" : mode === "create" ? "✦ Create Product Order" : "Save Changes"}
+          {submitting ? (
+            "Saving…"
+          ) : mode === "create" ? (
+            <>
+              <Icon name="sparkles" size={16} /> Create Product Order
+            </>
+          ) : (
+            "Save Changes"
+          )}
         </Button>
       </div>
     </form>

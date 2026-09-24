@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatCurrency, formatDateOnly, getPaymentDue, type Order } from "../../../lib/domain";
+import { formatCurrency, formatDateOnly, getPaymentDue, type OrderListItem } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
 import { Card, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { StatusPill } from "../../../components/ui/StatusPill";
+import { Icon } from "../../../components/ui/Icon";
 
 const PAGE_SIZE = 20;
 
@@ -24,7 +25,7 @@ const TABS = [
  */
 export function PendingPaymentsClient() {
   const [bucket, setBucket] = useState<string>("pending_payment");
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -100,7 +101,7 @@ export function PendingPaymentsClient() {
         ) : (
           <table className="w-full min-w-[900px] text-sm">
             <thead>
-              <tr className="border-b border-border-light bg-primary-bg/40 text-left text-xs text-text-muted uppercase">
+              <tr className="border-b border-border bg-primary-bg/70 text-left text-xs font-semibold text-primary/85">
                 <th className="px-4 py-2.5 font-medium">Order ID</th>
                 <th className="px-4 py-2.5 font-medium">Customer</th>
                 <th className="px-4 py-2.5 font-medium">Total</th>
@@ -111,7 +112,7 @@ export function PendingPaymentsClient() {
                 <th className="px-4 py-2.5 font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="rows-in">
               {orders.map((order) => {
                 const due = getPaymentDue({
                   totalAmount: order.totalAmount,
@@ -120,8 +121,8 @@ export function PendingPaymentsClient() {
                   nextPaymentDate: order.nextPaymentDate,
                 });
                 return (
-                  <tr key={order.id} className="border-b border-border-light last:border-0">
-                    <td className="px-4 py-2.5 font-semibold text-text-primary">{order.orderNumber}</td>
+                  <tr key={order.id} className="border-b border-border-light transition-colors last:border-0 hover:bg-primary-bg/30">
+                    <td className="px-4 py-2.5 font-medium whitespace-nowrap text-text-primary">{order.orderNumber}</td>
                     <td className="px-4 py-2.5">{order.customerName}</td>
                     <td className="px-4 py-2.5 text-text-secondary">{formatCurrency(order.totalAmount ?? 0)}</td>
                     <td className="px-4 py-2.5 text-text-secondary">{formatCurrency(order.amountPaid ?? 0)}</td>
@@ -155,10 +156,12 @@ export function PendingPaymentsClient() {
           </span>
           <div className="flex gap-2">
             <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={page === 0} onClick={() => setPage((p) => Math.max(p - 1, 0))}>
-              ← Prev
+              <Icon name="chevron-right" size={14} className="rotate-180" />
+              Prev
             </Button>
             <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={!hasNextPage} onClick={() => setPage((p) => p + 1)}>
-              Next →
+              Next
+              <Icon name="chevron-right" size={14} />
             </Button>
           </div>
         </div>

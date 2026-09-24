@@ -30,7 +30,7 @@ export function ResetPasswordForm() {
   if (sent) {
     return (
       <div className="text-center">
-        <h1 className="font-serif text-lg font-bold text-text-primary">Check your email</h1>
+        <h1 className="font-serif text-[26px] leading-tight text-text-primary">Check your email</h1>
         <p className="mt-2 text-sm text-text-secondary">
           If an account exists for {email}, a password reset link has been sent.
         </p>
@@ -41,7 +41,7 @@ export function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <h1 className="font-serif text-lg font-bold text-text-primary">Reset password</h1>
+        <h1 className="font-serif text-[26px] leading-tight text-text-primary">Reset password</h1>
         <p className="text-xs text-text-muted">We&apos;ll email you a link to set a new password.</p>
       </div>
 

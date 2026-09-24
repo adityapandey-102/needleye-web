@@ -31,7 +31,7 @@ export function OrderQrCode({ path }: { path: string }) {
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="rounded-app-sm border border-border bg-white p-3">
-        {url ? <QRCodeSVG value={url} size={140} /> : <div className="h-35 w-35 animate-pulse rounded bg-primary-bg/40" />}
+        {url ? <QRCodeSVG value={url} size={140} /> : <div className="h-35 w-35 animate-pulse rounded bg-app-bg/70" />}
       </div>
       <p className="text-center text-[11px] text-text-muted">Scan to open this order. Login required.</p>
     </div>

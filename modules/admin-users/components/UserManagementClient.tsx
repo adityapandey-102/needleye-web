@@ -100,7 +100,7 @@ export default function UserManagementClient() {
     <div className="mx-auto max-w-5xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-xl font-bold text-text-primary">User Management</h1>
+          <h1 className="page-title">User Management</h1>
           <p className="text-sm text-text-muted">Create staff accounts and manage roles. Owner/Manager only.</p>
         </div>
         <Button onClick={() => setCreateOpen((v) => !v)}>
@@ -118,16 +118,17 @@ export default function UserManagementClient() {
         <form onSubmit={handleCreate} className="mb-6 rounded-app-lg border border-border bg-card p-5 shadow-app">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <FieldLabel required>Full name</FieldLabel>
-              <Input required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              <FieldLabel required htmlFor="new-user-name">Full name</FieldLabel>
+              <Input id="new-user-name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
             </div>
             <div>
-              <FieldLabel required>Email</FieldLabel>
-              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <FieldLabel required htmlFor="new-user-email">Email</FieldLabel>
+              <Input id="new-user-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div>
-              <FieldLabel required>Role</FieldLabel>
+              <FieldLabel required htmlFor="new-user-role">Role</FieldLabel>
               <select
+                id="new-user-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as Role)}
                 className="w-full rounded-app-sm border border-border bg-card px-3 py-2.5 text-sm text-text-primary outline-none focus:border-primary"
@@ -218,7 +219,7 @@ export default function UserManagementClient() {
             <div className="hidden overflow-x-auto lg:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border-light bg-primary-bg/40 text-left text-xs text-text-muted uppercase">
+                  <tr className="border-b border-border bg-primary-bg/70 text-left text-xs font-semibold text-primary/85">
                     <th className="px-4 py-2.5 font-medium">Name</th>
                     <th className="px-4 py-2.5 font-medium">Email</th>
                     <th className="px-4 py-2.5 font-medium">Role</th>
@@ -226,7 +227,7 @@ export default function UserManagementClient() {
                     <th className="px-4 py-2.5 font-medium"></th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="rows-in">
                   {users.map((u) => (
                     <tr key={u.id} className="border-b border-border-light last:border-0 hover:bg-primary-bg/20">
                       <td className="px-4 py-2.5 font-medium text-text-primary">{u.fullName}</td>

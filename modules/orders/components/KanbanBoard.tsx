@@ -14,7 +14,7 @@ import {
   stageIndex,
   toCanonicalStage,
   type CanonicalStage,
-  type Order,
+  type OrderListItem,
   type Role,
 } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
@@ -31,7 +31,7 @@ export function KanbanBoard({
   orders: initialOrders,
   role,
 }: {
-  orders: Order[];
+  orders: OrderListItem[];
   role: Role;
 }) {
   const [orders, setOrders] = useState(initialOrders);
@@ -116,7 +116,7 @@ function KanbanColumn({
 }: {
   stage: CanonicalStage;
   label: string;
-  orders: Order[];
+  orders: OrderListItem[];
   draggable: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
@@ -141,7 +141,7 @@ function KanbanColumn({
   );
 }
 
-function KanbanCard({ order, draggable }: { order: Order; draggable: boolean }) {
+function KanbanCard({ order, draggable }: { order: OrderListItem; draggable: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: order.id, disabled: !draggable });
   const timeline = getTimelineSummary(order);
 

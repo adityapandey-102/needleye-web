@@ -81,7 +81,7 @@ modules/
     components/                 # LoginForm (with a show/hide password toggle), RegisterForm, ResetPasswordForm, UpdatePasswordForm
     api/authApi.ts                # every HTTP call the Auth module makes -- login/logout/qrLogin also own writing/clearing the session cookies
   orders/
-    components/                 # OrderForm (create+edit, advance at booking), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 43 categories / 6 collections, browse or debounced search), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
+    components/                 # OrderForm (create+edit, advance at booking), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
@@ -132,6 +132,33 @@ brand mark. The file also defines the motion system (`animate-rise`,
 (Button, Card, StatusPill, inputs) consume these tokens, so restyling is
 centralized -- pages don't hardcode colours.
 
+**Type:** *Playfair Display* (semibold) for page titles, card titles and
+names; *Plus Jakarta Sans* (high legibility) for everything else. Muted and
+secondary text colours meet WCAG AA contrast on the sand background (muted
+4.7:1, secondary 8.8:1). **Numbers never use the serif**: serif digits and
+commas are hard to read at a glance.
+Every headline figure (counts, money, dates, KPIs) uses the `.figure` class:
+sans, semibold, tabular. The gold dashed "tacking stitch" (`.stitch-rule`,
+and the rule under `.page-title`) is the one signature flourish.
+
+**Motion** (all in `globals.css`, all switched off by `prefers-reduced-motion`):
+- `.stagger-in` makes children rise in one after another (dashboard cells,
+  card columns, ledger entries).
+- `.rows-in` fades a new page of table rows in.
+- `.grow-x` fills progress and share bars from the left.
+- `.current-pulse` makes the current production stage breathe.
+- `.lift` gives clickable cards a slight hover rise.
+- Buttons press in on click.
+- `components/ui/CountUp.tsx` counts figures up on first view and always
+  settles on the exact value (for money, the caller passes the formatted
+  string as `final`, so the motion can never show a wrong amount).
+
+**Cards:** the `CardHeader` icon sits in a brand-tinted badge (burgundy, or gold
+for dates and timelines): one colour family, not a rainbow. Order-page
+key/value rows (`InfoRow`) carry an icon and hairline dividers. Long text sits
+in a soft inset panel, and empty notes show muted and italic. The order page
+hero and the dashboard money band sit on the brand burgundy with gold accents.
+
 **Responsiveness is mobile/tablet-first** (most staff are on phones/tablets):
 the sidebar collapses to a drawer behind a glass header that carries the brand
 for context, filter bars stack, and wide data tables render as **stacked cards
@@ -142,9 +169,12 @@ below `lg`** (see `OrdersListClient`) instead of forcing horizontal scroll.
 burgundy "N" monogram, so the UI is never broken. The displayed wordmark is
 **"Needleye · by Sakina Ahmed"**.
 
-**Icons:** `components/ui/Icon.tsx` is a self-contained set of premium line
-icons (inlined Feather/Lucide-style SVG paths, no runtime dependency) that
-render in `currentColor`. Because the app historically labelled things with
+**Icons:** `components/ui/Icon.tsx` wraps **Lucide** (`lucide-react`), a
+professional, consistent line-icon family. Only the ~55 icons named in its
+`ICONS` map are imported, so the rest is tree-shaken (the whole set costs about
+4 KB). Icons render in `currentColor`. No emoji or text glyphs are used as
+icons in the UI (Yes/No options, buttons, empty and error states all use
+Lucide). Because the app historically labelled things with
 emoji, `Icon` also resolves an **emoji → its line icon** via an internal map,
 so `CardHeader`, the sidebar nav, and the stat cards upgrade every icon at once
 just by passing their existing emoji string; an unmapped emoji falls back to
@@ -369,7 +399,7 @@ hand-rolled overlay.
 ### Product category picker
 
 `ProductCategoryPicker` replaces the category `<select>` on the order form --
-43 categories in 6 collections is too many for a dropdown. It opens a
+47 categories in 6 collections is too many for a dropdown. It opens a
 catalogue dialog: browse a collection from the rail (chips on a phone), or
 search everything. Search (`lib/domain/utils/productCategorySearch.ts`, unit
 tested) ignores case, spaces, and punctuation ("jumpsuit" finds "Jump Suit"),
@@ -384,8 +414,37 @@ above it -- then Up/Down move, Enter picks, Escape closes.
 The catalogue itself is `lib/domain/constants/productCategories.ts`, mirroring
 needleye-api's. **Never change an existing `value`** -- orders store it; labels
 are display-only. Values are correctly spelled even where a label keeps the
-business's spelling ("Devided Skirt" -> `divided_skirt`), and Mens/Kids values
-are prefixed so the repeated labels "Shirt" and "Pant" stay distinct.
+business's spelling ("Plazo" -> `palazzo`), and Mens/Kids values are prefixed
+so the repeated labels "Shirt", "Pant" and "Skirt" stay distinct. Outside the
+picker (order page, sticker) `productCategoryDisplayName()` adds the collection
+to a repeated label: "Shirt (Mens Wear)", "Skirt (Lower Body)".
+
+### Dashboard delivery calendar (owner and production manager)
+
+The Orders dashboard has a **Delivery Calendar** button, visible to the owner
+and the production manager only. It opens the same `DeliveryCalendar` as the
+order form, in **browse mode** (`mode="browse"`):
+- it reaches **3 months back** (to review overdue days) and 6 months ahead;
+- **any day can be clicked**, including past and full days;
+- a click shows **that day's orders** (`DeliveryDayList`) inside the same
+  dialog: order number, customer, category, stage, designer and master, each
+  linking to the order, 20 per page, with a Back button.
+
+The list is fetched for that day only (`GET /orders?dueOn=YYYY-MM-DD`). Pick
+mode in the order form is unchanged. Day cells carry `data-date` for tests.
+E2E: `e2e/delivery-calendar-dashboard.spec.ts`.
+
+### Kanban board
+
+The Kanban view (All Orders, then Kanban) shows only orders **booked in the last
+2 months**, **50 at a time**, newest first, with the same Prev/Next pager as the
+table. A note above the board gives the start date. The server does the
+window and the paging (`GET /orders?createdFrom=<today minus 2 months>&limit=50&offset=…`),
+so the board never loads more than 50 orders. Search and the designer/master
+filters still apply. Older orders are in Table view. The constants are
+`KANBAN_PAGE_SIZE` and `KANBAN_WINDOW_MONTHS` in `OrdersListClient`. E2E:
+`e2e/more-workflows.spec.ts` checks the request, the window, the page size and
+paging.
 
 ### Reports (owner only)
 

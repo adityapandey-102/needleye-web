@@ -61,8 +61,9 @@ export function ImageUploadGrid({
                       onRemove(slot);
                     }}
                     className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-label={`Remove image ${slot}`}
                   >
-                    ✕
+                    <Icon name="x" size={13} strokeWidth={2.25} />
                   </button>
                 )}
               </>

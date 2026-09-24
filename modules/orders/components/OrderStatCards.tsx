@@ -5,19 +5,13 @@ import Link from "next/link";
 import { formatCurrency, hasCapability, type OrderStats, type Role } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
 import { Icon, type IconName } from "../../../components/ui/Icon";
-
-const ICON_TONE_CLASSES = {
-  purple: "bg-primary-bg text-primary ring-primary/10",
-  amber: "bg-warning-bg text-warning ring-warning/10",
-  green: "bg-success-bg text-success ring-success/10",
-  pink: "bg-accent-bg text-accent ring-accent/15",
-  red: "bg-error-bg text-error ring-error/15",
-} as const;
+import { CountUp } from "../../../components/ui/CountUp";
 
 interface StatCardConfig {
   href: string;
   icon: string;
-  tone: keyof typeof ICON_TONE_CLASSES;
+  /** Kept in the card list for meaning; the ledger strip colours only the caption. */
+  tone: "purple" | "amber" | "green" | "pink" | "red";
   value: number;
   label: string;
   caption: string;
@@ -85,7 +79,9 @@ export function OrderStatCards({ role }: { role: Role }) {
 
   return (
     <div className="mb-6">
-      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
+      {/* One ledger strip, divided by hairlines (the 1px gap shows the border
+          colour behind the cells) -- not a grid of separate boxed cards. */}
+      <div className="stagger-in grid grid-cols-2 gap-px overflow-hidden rounded-app-lg border border-border bg-border-light shadow-app sm:grid-cols-4">
         {cards.map((card, i) => (
           <StatCard key={card.label} {...card} index={i} />
         ))}
@@ -96,47 +92,55 @@ export function OrderStatCards({ role }: { role: Role }) {
           anyone with only payments:read) see just the actionable Pending
           Payments count, not the revenue totals. */}
       {canSeePayments && (
-        <div className={`mt-3.5 grid grid-cols-1 gap-3 ${canSeeRevenue ? "sm:grid-cols-3" : ""}`}>
+        <div
+          className={`stagger-in card-accent-top gradient-primary mt-3 grid grid-cols-1 gap-px overflow-hidden rounded-app-lg shadow-app-md ${canSeeRevenue ? "sm:grid-cols-3" : ""}`}
+        >
           {canSeeRevenue && (
             <>
-              <MetricCard href="/revenue" label="Collected Revenue" value={formatCurrency(stats.collectedRevenue)} icon="wallet" tone="burgundy" />
-              <MetricCard href="/orders/pending-payments" label="Outstanding Revenue" value={formatCurrency(stats.outstandingRevenue)} icon="trending-up" tone="gold" />
+              <MetricCard href="/revenue" label="Collected Revenue" value={formatCurrency(stats.collectedRevenue)} countTo={Number(stats.collectedRevenue)} money icon="wallet" tone="burgundy" />
+              <MetricCard href="/orders/pending-payments" label="Outstanding Revenue" value={formatCurrency(stats.outstandingRevenue)} countTo={Number(stats.outstandingRevenue)} money icon="trending-up" tone="gold" />
             </>
           )}
-          <MetricCard href="/orders/pending-payments" label="Pending Payments" value={stats.pendingPayments!} icon="card" tone="plum" />
+          <MetricCard href="/orders/pending-payments" label="Pending Payments" value={String(stats.pendingPayments!)} countTo={stats.pendingPayments!} icon="card" tone="plum" />
         </div>
       )}
     </div>
   );
 }
 
-function StatCard({ href, icon, tone, value, label, caption, captionTone, index }: StatCardConfig & { index: number }) {
+/**
+ * One cell of the ledger strip: label with a small ink icon, the figure in the
+ * display face, and the caption (coloured only when it carries meaning --
+ * overdue, urgent, completed). `tone` / `index` are kept for the card config
+ * but no longer paint the cell.
+ */
+function StatCard({ href, icon, value, label, caption, captionTone }: StatCardConfig & { index: number }) {
   const captionClass =
     captionTone === "success" ? "text-success" : captionTone === "error" ? "text-error" : "text-text-muted";
   return (
     <Link
       href={href}
-      style={{ animationDelay: `${index * 45}ms` }}
-      className="animate-rise group flex items-start gap-3 rounded-app-lg border border-border bg-card p-4 shadow-app transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-app-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+      className="group flex flex-col bg-card px-5 py-4 transition-colors duration-200 hover:bg-primary-bg/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:ring-inset"
     >
-      <div
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-app ring-1 ring-inset transition-transform duration-200 group-hover:scale-105 ${ICON_TONE_CLASSES[tone]}`}
-      >
-        <Icon emoji={icon} size={22} />
+      <div className="flex items-center gap-2 text-[13px] font-medium text-text-secondary">
+        <span className="flex h-7 w-7 items-center justify-center rounded-app bg-primary-bg text-primary transition-transform duration-200 group-hover:scale-110">
+          <Icon emoji={icon} size={15} />
+        </span>
+        {label}
       </div>
-      <div className="min-w-0">
-        <div className="text-2xl leading-tight font-extrabold text-text-primary tabular-nums">{value}</div>
-        <div className="mt-0.5 text-xs font-medium text-text-muted">{label}</div>
-        <div className={`mt-1 text-[11px] font-semibold ${captionClass}`}>{caption}</div>
+      <div className="figure mt-2.5 text-[30px] leading-none text-text-primary transition-colors group-hover:text-primary">
+        <CountUp to={value} />
       </div>
+      <div className={`mt-2 text-xs font-medium ${captionClass}`}>{caption}</div>
     </Link>
   );
 }
 
 const METRIC_TONES = {
-  burgundy: { card: "gradient-primary text-white", label: "text-white/70", chip: "bg-white/15 text-white ring-white/20" },
-  gold: { card: "gradient-gold text-primary-dark", label: "text-primary-dark/70", chip: "bg-white/25 text-primary-dark ring-black/10" },
-  plum: { card: "bg-primary-dark text-white", label: "text-white/60", chip: "bg-white/15 text-white ring-white/20" },
+  // The money band sits on the brand burgundy: collected in gold, the rest in white.
+  burgundy: { value: "text-gold-light" },
+  gold: { value: "text-white" },
+  plum: { value: "text-white" },
 } as const;
 
 function MetricCard({
@@ -145,32 +149,42 @@ function MetricCard({
   value,
   icon,
   tone,
+  countTo,
+  money = false,
 }: {
   href?: string;
   label: string;
-  value: string | number;
+  /** The exact, already-formatted text the figure settles on. */
+  value: string;
+  /** The same value as a number, for the count-up. */
+  countTo: number;
+  money?: boolean;
   icon: IconName;
   tone: keyof typeof METRIC_TONES;
 }) {
   const t = METRIC_TONES[tone];
   const inner = (
     <>
-      {/* Decorative sheen ring, echoing the reference dashboard's KPI tiles. */}
-      <div aria-hidden className="pointer-events-none absolute -top-8 -right-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-      <div aria-hidden className="pointer-events-none absolute -right-4 -bottom-8 h-20 w-20 rounded-full bg-black/10 blur-2xl" />
-      <div className="relative flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className={`text-[11px] font-bold tracking-wide uppercase ${t.label}`}>{label}</div>
-          <div className="mt-1 truncate text-2xl font-extrabold tabular-nums">{value}</div>
-        </div>
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-app ring-1 ring-inset ${t.chip}`}>
-          <Icon name={icon} size={22} />
-        </div>
+      <div className="flex items-center gap-2 text-[13px] font-medium text-white/75">
+        <span className="flex h-7 w-7 items-center justify-center rounded-app bg-white/10 text-gold-light ring-1 ring-inset ring-white/15 transition-transform duration-200 group-hover:scale-110">
+          <Icon name={icon} size={15} />
+        </span>
+        {label}
+      </div>
+      <div className={`figure mt-2.5 truncate text-[28px] leading-none ${t.value}`}>
+        <CountUp
+          to={countTo}
+          final={value}
+          format={(n) => (money ? "₹" + Math.round(n).toLocaleString("en-IN") : Math.round(n).toLocaleString("en-IN"))}
+        />
       </div>
     </>
   );
-  const base = `relative block overflow-hidden rounded-app-lg p-4 shadow-app-md transition-all duration-200 ${t.card}`;
-  const interactive = href ? " hover:-translate-y-0.5 hover:shadow-app-lg hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60" : "";
+  // Cells are transparent over the burgundy band; a faint divider separates them.
+  const base = "group block px-5 py-4 transition-colors duration-200 [&:not(:first-child)]:border-white/10 sm:[&:not(:first-child)]:border-l max-sm:[&:not(:first-child)]:border-t";
+  const interactive = href
+    ? " hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:ring-inset"
+    : "";
   return href ? (
     <Link href={href} className={base + interactive}>
       {inner}
@@ -182,9 +196,9 @@ function MetricCard({
 
 function StatCardsSkeleton() {
   return (
-    <div className="mb-6 grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-app-lg border border-border bg-border-light sm:grid-cols-4">
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-        <div key={i} className="skeleton h-22 rounded-app-lg border border-border-light" />
+        <div key={i} className="skeleton h-28" />
       ))}
     </div>
   );

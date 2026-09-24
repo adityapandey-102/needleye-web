@@ -101,7 +101,7 @@ export function StatusAdvancePrompt({
           <span className="rounded-full border border-border bg-card px-3 py-1 text-sm font-medium text-text-secondary">
             {granularLabel(currentStatus)}
           </span>
-          <span className="text-lg text-primary">→</span>
+          <Icon name="chevron-right" size={20} className="text-primary" />
           <span className="rounded-full px-3 py-1 text-sm font-bold text-white" style={{ background: "var(--color-success)" }}>
             {granularLabel(nextStatus)}
           </span>

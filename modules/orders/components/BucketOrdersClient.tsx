@@ -7,7 +7,7 @@ import {
   getTimelineSummary,
   granularLabel,
   hasCapability,
-  type Order,
+  type OrderListItem,
   type Role,
 } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
@@ -25,7 +25,7 @@ const PAGE_SIZE = 20;
  * (/orders/bucket/[bucket]).
  */
 export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Role }) {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -78,7 +78,7 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
         ) : (
           <table className="w-full min-w-[860px] text-sm">
             <thead>
-              <tr className="border-b border-border-light bg-primary-bg/40 text-left text-xs text-text-muted uppercase">
+              <tr className="border-b border-border bg-primary-bg/70 text-left text-xs font-semibold text-primary/85">
                 <th className="px-4 py-2.5 font-medium">Order ID</th>
                 <th className="px-4 py-2.5 font-medium">Customer</th>
                 <th className="px-4 py-2.5 font-medium">Designer</th>
@@ -89,12 +89,12 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
                 <th className="px-4 py-2.5 font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="rows-in">
               {orders.map((order) => {
                 const timeline = getTimelineSummary(order);
                 return (
-                  <tr key={order.id} className="border-b border-border-light last:border-0">
-                    <td className="px-4 py-2.5 font-semibold text-text-primary">{order.orderNumber}</td>
+                  <tr key={order.id} className="border-b border-border-light transition-colors last:border-0 hover:bg-primary-bg/30">
+                    <td className="px-4 py-2.5 font-medium whitespace-nowrap text-text-primary">{order.orderNumber}</td>
                     <td className="px-4 py-2.5">{order.customerName}</td>
                     <td className="px-4 py-2.5 text-text-secondary">{order.designerName ?? "—"}</td>
                     <td className="px-4 py-2.5">

@@ -89,15 +89,13 @@ export function StaffReportClient() {
       <Card accent>
         <CardHeader icon="bar-chart" iconTone="gold" title="Staff Weekly Report" subtitle="Choose a team to review" />
         <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {(["designer", "master_tailor"] as StaffRole[]).map((r, i) => (
+          {(["designer", "master_tailor"] as StaffRole[]).map((r) => (
             <button
               key={r}
               onClick={() => setRole(r)}
-              style={{ animationDelay: `${i * 70}ms` }}
-              className="group animate-rise relative flex items-center gap-4 overflow-hidden rounded-app-lg border border-border bg-card p-5 text-left shadow-app transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-app-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+              className="group relative flex items-center gap-4 overflow-hidden rounded-app-lg border border-border bg-card p-5 text-left transition-colors duration-150 hover:border-accent-light focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
             >
-              <div aria-hidden className="pointer-events-none absolute -top-8 -right-6 h-24 w-24 rounded-full bg-primary-bg/60 blur-2xl transition-opacity group-hover:opacity-100" />
-              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-app-lg bg-primary-bg text-primary ring-1 ring-inset ring-primary/10 transition-transform duration-200 group-hover:scale-105">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-app-lg bg-primary-bg text-primary ring-1 ring-inset ring-primary/10">
                 <Icon name={ROLE_ICON[r]} size={26} />
               </div>
               <div className="relative min-w-0 flex-1">
@@ -195,14 +193,14 @@ export function StaffReportClient() {
               action={monthPicker}
             />
             <CardBody className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatTile icon="package" label="Booked" value={report.summary.booked} tone="primary" index={0} />
-              <StatTile icon="hammer" label="Active" value={report.summary.active} tone="amber" index={1} />
-              <StatTile icon="needle" label="In Production" value={report.summary.inProduction} tone="blue" index={2} />
-              <StatTile icon="check" label="Completed" value={report.summary.completed} tone="success" index={3} />
-              <StatTile icon="clock" label="Overdue" value={report.summary.overdue} tone="error" index={4} />
-              <StatTile icon="alert" label="Urgent" value={report.summary.urgent} tone="error" index={5} />
-              <StatTile icon="card" label="Payments Pending" value={report.summary.paymentPendingCount} tone="error" index={6} />
-              <StatTile icon="wallet" label="Pending Amount" value={formatCurrency(report.summary.paymentPendingAmount)} tone="error" index={7} />
+              <StatTile icon="package" label="Booked" value={report.summary.booked} tone="primary" />
+              <StatTile icon="hammer" label="Active" value={report.summary.active} tone="amber" />
+              <StatTile icon="needle" label="In Production" value={report.summary.inProduction} tone="blue" />
+              <StatTile icon="check" label="Completed" value={report.summary.completed} tone="success" />
+              <StatTile icon="clock" label="Overdue" value={report.summary.overdue} tone="error" />
+              <StatTile icon="alert" label="Urgent" value={report.summary.urgent} tone="error" />
+              <StatTile icon="card" label="Payments Pending" value={report.summary.paymentPendingCount} tone="error" />
+              <StatTile icon="wallet" label="Pending Amount" value={formatCurrency(report.summary.paymentPendingAmount)} tone="error" />
             </CardBody>
           </Card>
 
@@ -241,19 +239,16 @@ function StatTile({
   label,
   value,
   tone,
-  index = 0,
 }: {
   icon: IconName;
   label: string;
   value: string | number;
   tone: keyof typeof TONES;
-  index?: number;
 }) {
   const t = TONES[tone]!;
   return (
     <div
-      style={{ animationDelay: `${index * 40}ms` }}
-      className="animate-rise flex items-center gap-3 rounded-app-lg border border-border-light bg-card p-3 shadow-app transition-all duration-200 hover:-translate-y-0.5 hover:shadow-app-md"
+      className="flex items-center gap-3 rounded-app-lg border border-border-light bg-card p-3"
     >
       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-app ring-1 ring-inset ${t.chip}`}>
         <Icon name={icon} size={18} />

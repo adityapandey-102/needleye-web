@@ -137,7 +137,7 @@ export function UserDetailClient({ initialUser, currentUserId }: { initialUser: 
     <div className="mx-auto max-w-4xl">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-xl font-bold text-text-primary">{user.fullName}</h1>
+          <h1 className="page-title">{user.fullName}</h1>
           <p className="text-sm text-text-muted">{ROLE_LABELS[user.role]} · {user.email}</p>
         </div>
         <Link href="/admin/users">

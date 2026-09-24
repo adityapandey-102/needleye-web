@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { formatDateOnly, PRODUCT_CATEGORIES, type Order } from "../../../lib/domain";
+import { formatDateOnly, productCategoryDisplayName, type Order } from "../../../lib/domain";
 import { Button } from "../../../components/ui/Button";
 
 /** Physical sticker dimensions -- printed, then stuck on the order's processing box. */
@@ -28,7 +28,8 @@ const LABEL_H = "2.75in";
  * just this sticker -- the app chrome (sidebar/header) is already `print:hidden`.
  */
 export function CustomerLabel({ order }: { order: Order }) {
-  const category = PRODUCT_CATEGORIES.find((c) => c.value === order.productCategory);
+  // "Shirt (Mens Wear)" for labels that repeat across collections.
+  const categoryName = productCategoryDisplayName(order.productCategory);
   // Encode an absolute URL from the origin the label is printed from (LAN IP,
   // localhost, or prod domain) so the printed QR resolves for staff scanning on
   // that same network -- not a fixed env host. Computed after mount (client-only).
@@ -97,7 +98,7 @@ export function CustomerLabel({ order }: { order: Order }) {
               <Field label="Master Tailor" value={order.masterTailorName ?? "—"} grow />
             </Row>
             <Row>
-              <Field label="Product Category" value={category?.label ?? order.productCategory} grow />
+              <Field label="Product Category" value={categoryName} grow />
               <div className="flex shrink-0 items-end gap-[0.12in] pb-px">
                 <Check label="Hand Work" on={order.handWork} />
                 <Check label="Machine Work" on={order.machineWork} />

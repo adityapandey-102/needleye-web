@@ -1,3 +1,4 @@
+import { Icon, type IconName } from "./Icon";
 export function RadioGroup<T extends string>({
   name,
   value,
@@ -9,7 +10,8 @@ export function RadioGroup<T extends string>({
   name: string;
   value: T | "";
   onChange: (value: T) => void;
-  options: { value: T; label: string }[];
+  /** `icon`: an optional Lucide icon shown before the label. */
+  options: { value: T; label: string; icon?: IconName }[];
   disabled?: boolean;
   column?: boolean;
 }) {
@@ -35,6 +37,7 @@ export function RadioGroup<T extends string>({
               onChange={() => onChange(option.value)}
               className="accent-[var(--color-primary)]"
             />
+            {option.icon && <Icon name={option.icon} size={15} className={selected ? "text-primary" : "text-text-muted"} />}
             {option.label}
           </label>
         );

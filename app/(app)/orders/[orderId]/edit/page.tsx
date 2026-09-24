@@ -29,7 +29,7 @@ export default async function EditOrderPage({ params }: { params: Promise<{ orde
   return (
     <div className="mx-auto max-w-6xl">
       <div className="mb-5">
-        <h1 className="font-serif text-xl font-bold text-text-primary">Edit Order {order.orderNumber}</h1>
+        <h1 className="page-title">Edit Order {order.orderNumber}</h1>
         <p className="text-sm text-text-muted">{order.customerName}</p>
       </div>
       <OrderForm

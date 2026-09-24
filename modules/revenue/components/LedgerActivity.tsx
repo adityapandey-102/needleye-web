@@ -6,6 +6,7 @@ import { ordersApi } from "../../orders/api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
+import { Icon } from "../../../components/ui/Icon";
 
 /** How many events per page. */
 const PAGE_SIZE = 15;
@@ -148,7 +149,7 @@ export function LedgerActivity() {
         {/* Cascading filters: granularity → year → (month) → (week). */}
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-text-muted uppercase">View by</label>
+            <label className="mb-1 block text-[11px] font-medium text-text-muted">View by</label>
             <div className="inline-flex rounded-app-sm border border-border p-0.5">
               {(["year", "month", "week"] as Granularity[]).map((g) => (
                 <button
@@ -166,7 +167,7 @@ export function LedgerActivity() {
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-text-muted uppercase">Year</label>
+            <label className="mb-1 block text-[11px] font-medium text-text-muted">Year</label>
             <Select className="w-auto" value={year} onChange={(e) => changeYear(Number(e.target.value))}>
               {years.map((y) => (
                 <option key={y} value={y}>
@@ -178,7 +179,7 @@ export function LedgerActivity() {
 
           {granularity !== "year" && (
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-text-muted uppercase">Month</label>
+              <label className="mb-1 block text-[11px] font-medium text-text-muted">Month</label>
               <Select className="w-auto" value={month} onChange={(e) => changeMonth(Number(e.target.value))}>
                 {MONTH_NAMES.map((name, i) => (
                   <option key={name} value={i + 1}>
@@ -191,7 +192,7 @@ export function LedgerActivity() {
 
           {granularity === "week" && (
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-text-muted uppercase">Week</label>
+              <label className="mb-1 block text-[11px] font-medium text-text-muted">Week</label>
               <Select className="w-auto" value={safeWeekIndex} onChange={(e) => changeWeek(Number(e.target.value))}>
                 {weeks.map((w, i) => (
                   <option key={w.from} value={i}>
@@ -213,7 +214,7 @@ export function LedgerActivity() {
         ) : loading && !data ? (
           <div className="space-y-2">
             {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-11 animate-pulse rounded-app-sm bg-primary-bg/40" />
+              <div key={i} className="h-11 animate-pulse rounded-app-sm bg-app-bg/70" />
             ))}
           </div>
         ) : events.length === 0 ? (
@@ -223,7 +224,7 @@ export function LedgerActivity() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-140 text-sm">
                 <thead>
-                  <tr className="border-b border-border-light text-left text-xs text-text-muted uppercase">
+                  <tr className="border-b border-border-light text-left text-xs text-text-muted">
                     <th className="py-2 pr-4 font-medium">When</th>
                     <th className="py-2 pr-4 font-medium">Who</th>
                     <th className="py-2 pr-4 font-medium">Action</th>
@@ -231,9 +232,9 @@ export function LedgerActivity() {
                     <th className="py-2 font-medium">Change</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="rows-in">
                   {events.map((ev) => (
-                    <tr key={ev.id} className="border-b border-border-light last:border-0">
+                    <tr key={ev.id} className="border-b border-border-light transition-colors last:border-0 hover:bg-primary-bg/30">
                       <td className="py-2.5 pr-4 whitespace-nowrap text-text-secondary">{formatDate(ev.at)}</td>
                       <td className="py-2.5 pr-4 font-medium text-text-primary">{ev.actorName ?? "—"}</td>
                       <td className="py-2.5 pr-4">
@@ -257,10 +258,12 @@ export function LedgerActivity() {
               </span>
               <div className="flex gap-2">
                 <Button variant="outline" className="px-3 py-1 text-xs" disabled={!canPrev} onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}>
-                  ← Prev
+                  <Icon name="chevron-right" size={14} className="rotate-180" />
+                  Prev
                 </Button>
                 <Button variant="outline" className="px-3 py-1 text-xs" disabled={!canNext} onClick={() => setOffset((o) => o + PAGE_SIZE)}>
-                  Next →
+                  Next
+                  <Icon name="chevron-right" size={14} />
                 </Button>
               </div>
             </div>

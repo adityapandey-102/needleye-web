@@ -1,13 +1,15 @@
 /**
- * The product catalogue: 43 categories in 6 collections. Mirror of
+ * The product catalogue: 47 categories in 6 collections. Mirror of
  * needleye-api's src/domain/product-categories.ts -- kept identical (the API's
  * zod enum is the real validation; the database no longer checks this column).
  *
  * NEVER change or remove an existing `value` -- it's what every order row
  * stores. Labels are display-only and can change freely. Values are correctly
  * spelled even where a label keeps the business's own spelling
- * ("Devided Skirt" -> `divided_skirt`). Mens/Kids values carry a `mens_` /
- * `kids_` prefix, which keeps the two repeated labels ("Shirt", "Pant") distinct.
+ * ("Plazo" -> `palazzo`). Mens/Kids values carry a `mens_` / `kids_` prefix,
+ * which keeps the repeated labels ("Shirt", "Pant", "Skirt") distinct -- and
+ * productCategoryDisplayName() adds the collection wherever a label is shown
+ * on its own.
  */
 export const PRODUCT_CATEGORY_GROUPS = [
   { value: "upper_body", label: "Upper Body" },
@@ -31,6 +33,7 @@ export const PRODUCT_CATEGORIES = [
   { value: "hw_blouse_skirt", label: "HW Blouse Skirt", group: "upper_body" },
   { value: "short_kurta", label: "Short Kurta", group: "upper_body" },
   { value: "pakistani_kurta", label: "Pakistani Kurta", group: "upper_body" },
+  { value: "custom_upper_body", label: "Custom Upper Body", group: "upper_body" },
   // Full Body
   { value: "anarkali", label: "Anarkali", group: "full_body" },
   { value: "gown", label: "Gown", group: "full_body" },
@@ -44,7 +47,7 @@ export const PRODUCT_CATEGORIES = [
   // Lower Body
   { value: "skirt", label: "Skirt", group: "lower_body" },
   { value: "half_saree", label: "Half Saree", group: "lower_body" },
-  { value: "divided_skirt", label: "Devided Skirt", group: "lower_body" },
+  { value: "divided_skirt", label: "Divided Skirt", group: "lower_body" },
   { value: "palazzo", label: "Plazo", group: "lower_body" },
   { value: "pant", label: "Pant", group: "lower_body" },
   { value: "sharara", label: "Sharara", group: "lower_body" },
@@ -52,9 +55,11 @@ export const PRODUCT_CATEGORIES = [
   { value: "drape_skirt", label: "Drape Skirt", group: "lower_body" },
   { value: "mermaid_skirt", label: "Mermaid Skirt", group: "lower_body" },
   { value: "petticoat", label: "Peticoat", group: "lower_body" },
+  { value: "custom_lower_body", label: "Custom Lower Body", group: "lower_body" },
   // Mens Wear
   { value: "mens_shirt", label: "Shirt", group: "mens_wear" },
   { value: "mens_pant", label: "Pant", group: "mens_wear" },
+  { value: "mens_skirt", label: "Skirt", group: "mens_wear" },
   { value: "mens_shalwar", label: "Shalwar", group: "mens_wear" },
   { value: "mens_blazer", label: "Blazer", group: "mens_wear" },
   { value: "mens_waist_coat", label: "Waist Coat", group: "mens_wear" },
@@ -66,6 +71,7 @@ export const PRODUCT_CATEGORIES = [
   { value: "mens_panchay", label: "Panchay", group: "mens_wear" },
   { value: "mens_shalya", label: "Shalya", group: "mens_wear" },
   { value: "mens_indo_western", label: "Indo Western", group: "mens_wear" },
+  { value: "mens_custom", label: "Custom Mens Wear", group: "mens_wear" },
   // Kids Wear
   { value: "kids_girls_custom", label: "Custom Kid Wear-Girls", group: "kids_girls" },
   { value: "kids_boys_custom", label: "Custom Kid Wear-Boys", group: "kids_boys" },
@@ -83,6 +89,23 @@ export const PRODUCT_CATEGORY_VALUES = PRODUCT_CATEGORIES.map((c) => c.value) as
 /** Display label for a stored category value; falls back to the raw value for anything unknown. */
 export function productCategoryLabel(value: string): string {
   return PRODUCT_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
+
+/** Labels used by more than one category ("Shirt", "Pant", "Skirt"). */
+const REPEATED_LABELS = new Set(
+  PRODUCT_CATEGORIES.map((c) => c.label).filter((label, i, all) => all.indexOf(label) !== i),
+);
+
+/**
+ * The name to show for a stored category OUTSIDE the picker (order page,
+ * sticker): the label, plus its collection when that label exists in more
+ * than one collection -- "Shirt (Mens Wear)" vs "Shirt (Upper Body)". Unique
+ * labels are shown as-is ("Saree").
+ */
+export function productCategoryDisplayName(value: string): string {
+  const entry = PRODUCT_CATEGORIES.find((c) => c.value === value);
+  if (!entry) return value;
+  return REPEATED_LABELS.has(entry.label) ? `${entry.label} (${productCategoryGroupLabel(entry.group)})` : entry.label;
 }
 
 /** The collection a category belongs to, or undefined for an unknown value. */

@@ -51,7 +51,7 @@ function AuthCallbackContent() {
       <div className="w-full max-w-sm rounded-app-lg border border-border bg-card p-6 text-center shadow-app-md">
         {error ? (
           <>
-            <h1 className="font-serif text-lg font-bold text-text-primary">Link expired</h1>
+            <h1 className="font-serif text-[26px] leading-tight text-text-primary">Link expired</h1>
             <p className="mt-2 text-sm text-text-secondary">{error}</p>
           </>
         ) : (

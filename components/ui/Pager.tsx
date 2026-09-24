@@ -1,4 +1,5 @@
 import { Button } from "./Button";
+import { Icon } from "./Icon";
 
 /**
  * "Showing 21–40 of 132  [← Prev] [Next →]" for any server-paginated list.
@@ -34,10 +35,12 @@ export function Pager({
           disabled={page === 0}
           onClick={() => onPageChange(Math.max(page - 1, 0))}
         >
-          ← Prev
+          <Icon name="chevron-right" size={14} className="rotate-180" />
+          Prev
         </Button>
         <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={end >= total} onClick={() => onPageChange(page + 1)}>
-          Next →
+          Next
+          <Icon name="chevron-right" size={14} />
         </Button>
       </div>
     </div>

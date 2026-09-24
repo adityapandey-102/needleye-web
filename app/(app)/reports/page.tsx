@@ -33,22 +33,17 @@ export default async function ReportsHomePage() {
   return (
     <div>
       <div className="mb-5">
-        <h1 className="font-serif text-xl font-bold text-text-primary">Reports</h1>
+        <h1 className="page-title">Reports</h1>
         <p className="text-sm text-text-muted">Your team at a glance. Pick a report to open it.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {REPORTS.map((r, i) => (
+        {REPORTS.map((r) => (
           <Link
             key={r.href}
             href={r.href}
-            style={{ animationDelay: `${i * 70}ms` }}
-            className="group animate-rise relative flex flex-col gap-4 overflow-hidden rounded-app-lg border border-border bg-card p-6 shadow-app transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-app-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+            className="group relative flex flex-col gap-4 overflow-hidden rounded-app-lg border border-border bg-card p-6 transition-colors duration-150 hover:border-accent-light focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
           >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -top-10 -right-8 h-28 w-28 rounded-full bg-primary-bg/60 blur-2xl"
-            />
-            <div className="relative flex h-12 w-12 items-center justify-center rounded-app-lg bg-primary-bg text-primary ring-1 ring-inset ring-primary/10 transition-transform duration-200 group-hover:scale-105">
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-app-lg bg-primary-bg text-primary ring-1 ring-inset ring-primary/10">
               <Icon name={r.icon} size={24} />
             </div>
             <div className="relative flex-1">

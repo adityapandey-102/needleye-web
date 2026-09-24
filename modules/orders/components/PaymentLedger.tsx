@@ -22,12 +22,13 @@ import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
 import { Select } from "../../../components/ui/Select";
 import { useToast } from "../../../components/ui/Toast";
 import { useConfirm } from "../../../components/ui/ConfirmDialog";
+import { Icon } from "../../../components/ui/Icon";
 
 const TONE_CLASSES: Record<string, string> = {
   green: "border-green-200 bg-green-50 text-green-800",
   amber: "border-amber-200 bg-amber-50 text-amber-800",
   red: "border-red-200 bg-red-50 text-red-800",
-  gray: "border-border-light bg-primary-bg/40 text-text-secondary",
+  gray: "border-border-light bg-app-bg/70 text-text-secondary",
 };
 
 interface PaymentLedgerProps {
@@ -196,18 +197,27 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
       />
       <CardBody className="flex flex-col gap-3">
         {/* Summary: outstanding + payment-due status (#2) */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <div className="rounded-app-sm border border-border-light px-3 py-2">
-            <div className="text-[10px] uppercase tracking-wide text-text-muted">Outstanding</div>
-            <div className="text-sm font-semibold text-text-primary">{formatCurrency(due.outstanding)}</div>
+        <div className="stagger-in grid grid-cols-2 gap-2">
+          <div className="rounded-app border border-border-light bg-app-bg/50 px-3 py-2.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
+              <Icon name="wallet" size={13} className="text-primary/70" />
+              Outstanding
+            </div>
+            <div className="figure mt-1 text-[16px] text-text-primary">{formatCurrency(due.outstanding)}</div>
           </div>
-          <div className="rounded-app-sm border border-border-light px-3 py-2">
-            <div className="text-[10px] uppercase tracking-wide text-text-muted">Paid</div>
-            <div className="text-sm font-semibold text-text-primary">{formatCurrency(paid)}</div>
+          <div className="rounded-app border border-border-light bg-app-bg/50 px-3 py-2.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
+              <Icon name="check-circle" size={13} className="text-success" />
+              Paid
+            </div>
+            <div className="figure mt-1 text-[16px] text-text-primary">{formatCurrency(paid)}</div>
           </div>
-          <div className={`rounded-app-sm border px-3 py-2 ${TONE_CLASSES[due.tone]}`}>
-            <div className="text-[10px] uppercase tracking-wide opacity-80">Payment Status</div>
-            <div className="text-sm font-semibold">{due.label}</div>
+          <div className={`col-span-2 rounded-app border px-3 py-2.5 ${TONE_CLASSES[due.tone]}`}>
+            <div className="flex items-center gap-1.5 text-[11px] font-medium opacity-80">
+              <Icon name="calendar-clock" size={13} />
+              Payment Status
+            </div>
+            <div className="mt-1 text-sm font-semibold">{due.label}</div>
             <div className="text-[11px]">
               {orderFields.nextPaymentDate && due.status !== "paid"
                 ? `${formatDateOnly(orderFields.nextPaymentDate)} · ${due.daysLabel}`
@@ -226,13 +236,19 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
             </button>
           </div>
         ) : payments.length === 0 ? (
-          <p className="text-xs text-text-muted">No payments recorded yet.</p>
+          <p className="rounded-app border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">No payments recorded yet.</p>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="stagger-in flex flex-col gap-2">
             {payments.map((p) => (
-              <div key={p.id} className="flex items-center justify-between rounded-app-sm border border-border-light px-3 py-2 text-sm">
-                <div>
-                  <div className="font-medium text-text-primary">{formatCurrency(p.amount)}</div>
+              <div
+                key={p.id}
+                className="flex items-center justify-between gap-3 rounded-app border border-border-light bg-card px-3 py-2.5 text-sm transition-colors hover:border-primary/20 hover:bg-primary-bg/20"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success-bg text-success">
+                  <Icon name="receipt" size={16} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="figure text-[15px] text-text-primary">{formatCurrency(p.amount)}</div>
                   <div className="text-[11px] text-text-muted">
                     {PAYMENT_METHODS.find((m) => m.value === p.method)?.label ?? p.method} · {formatDateOnly(p.paidAt)}
                     {p.recordedByName ? ` · ${p.recordedByName}` : ""}

@@ -28,7 +28,7 @@ describe("searchProductCategories", () => {
     const upper = searchProductCategories("upper");
     expect(upper).toHaveLength(1);
     expect(upper[0]?.group).toBe("upper_body");
-    expect(upper[0]?.categories).toHaveLength(9);
+    expect(upper[0]?.categories).toHaveLength(10);
   });
 
   it("ranks labels that START with the query first WITHIN a collection; collections keep their order", () => {
@@ -36,7 +36,7 @@ describe("searchProductCategories", () => {
     // cursor), so Upper Body's "HW Blouse Skirt" still precedes Lower Body. But
     // inside Lower Body, "Skirt" (starts with it) leads the ones that contain it.
     const groups = searchProductCategories("skirt");
-    expect(groups.map((g) => g.group)).toEqual(["upper_body", "lower_body"]);
+    expect(groups.map((g) => g.group)).toEqual(["upper_body", "lower_body", "mens_wear"]);
     const lower = groups.find((g) => g.group === "lower_body")!.categories.map((c) => c.value);
     expect(lower[0]).toBe("skirt");
     expect(lower).toEqual(["skirt", "divided_skirt", "drape_skirt", "mermaid_skirt"]);

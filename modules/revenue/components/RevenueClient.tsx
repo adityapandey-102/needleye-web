@@ -79,23 +79,24 @@ export function RevenueClient() {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-5">
-        <h1 className="font-serif text-xl font-bold text-text-primary">Revenue &amp; Ledger</h1>
+        <h1 className="page-title">Revenue &amp; Ledger</h1>
         <p className="text-sm text-text-muted">
           Collected and outstanding revenue across all orders, with a monthly accounting-cycle breakdown.
         </p>
       </div>
 
       {/* Financial summary -- all-time collected/outstanding + open payments. */}
-      <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+      {/* Same ledger strip as the Orders dashboard: one panel, hairline-divided. */}
+      <div className="mb-5 grid grid-cols-1 gap-px overflow-hidden rounded-app-lg border border-border bg-border-light sm:grid-cols-3">
         <SummaryCard label="Collected Revenue" value={formatCurrency(stats?.collectedRevenue)} tone="success" loading={loading && !stats} />
         <SummaryCard label="Outstanding Revenue" value={formatCurrency(stats?.outstandingRevenue)} tone="warning" loading={loading && !stats} />
         <Link
           href="/orders/pending-payments"
-          className="rounded-app-lg border border-border bg-card p-4 shadow-app transition-shadow hover:shadow-app-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="bg-card px-5 py-4 transition-colors hover:bg-[#fbfaf8] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
         >
-          <div className="text-[11px] font-bold tracking-wide text-text-muted uppercase">Pending Payments</div>
-          <div className="mt-1 text-2xl font-extrabold text-text-primary">{loading && !stats ? "—" : (stats?.pendingPayments ?? 0)}</div>
-          <div className="mt-1 text-[11px] font-semibold text-primary">View orders needing collection →</div>
+          <div className="text-[13px] text-text-secondary">Pending Payments</div>
+          <div className="mt-2 text-[26px] leading-none font-medium tracking-tight text-text-primary">{loading && !stats ? "—" : (stats?.pendingPayments ?? 0)}</div>
+          <div className="mt-2 text-xs font-medium text-primary">View orders needing collection <Icon name="chevron-right" size={13} className="inline -mt-px" /></div>
         </Link>
       </div>
 
@@ -116,7 +117,7 @@ export function RevenueClient() {
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div className="flex flex-wrap items-end gap-3">
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-text-muted uppercase">From year</label>
+                <label className="mb-1 block text-[11px] font-medium text-text-muted">From year</label>
                 <Select className="w-auto" value={fromYear} onChange={(e) => changeFrom(Number(e.target.value))}>
                   {years.map((y) => (
                     <option key={y} value={y}>
@@ -126,7 +127,7 @@ export function RevenueClient() {
                 </Select>
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-text-muted uppercase">To year</label>
+                <label className="mb-1 block text-[11px] font-medium text-text-muted">To year</label>
                 <Select className="w-auto" value={toYear} onChange={(e) => changeTo(Number(e.target.value))}>
                   {years.map((y) => (
                     <option key={y} value={y}>
@@ -170,7 +171,7 @@ export function RevenueClient() {
           ) : loading ? (
             <div className="space-y-2">
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-8 animate-pulse rounded-app-sm bg-primary-bg/40" />
+                <div key={i} className="h-8 animate-pulse rounded-app-sm bg-app-bg/70" />
               ))}
             </div>
           ) : periods.length === 0 ? (
@@ -179,23 +180,23 @@ export function RevenueClient() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-105 text-sm">
                 <thead>
-                  <tr className="border-b border-border-light text-left text-xs text-text-muted uppercase">
+                  <tr className="border-b border-border-light text-left text-xs text-text-muted">
                     <th className="py-2 pr-4 font-medium">Period</th>
                     <th className="py-2 pr-4 font-medium">Collected</th>
                     <th className="hidden py-2 pr-4 font-medium sm:table-cell">Payments</th>
                     <th className="py-2 font-medium">Share</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="rows-in">
                   {/* Most recent first for at-a-glance reading. */}
                   {[...periods].reverse().map((p) => (
-                    <tr key={p.periodStart} className="border-b border-border-light last:border-0">
+                    <tr key={p.periodStart} className="border-b border-border-light transition-colors last:border-0 hover:bg-primary-bg/30">
                       <td className="py-2.5 pr-4 font-medium text-text-primary">{periodLabel(p.periodStart, report!.cycleStartDay)}</td>
                       <td className="py-2.5 pr-4 font-semibold text-text-primary">{formatCurrency(p.collected)}</td>
                       <td className="hidden py-2.5 pr-4 text-text-secondary sm:table-cell">{p.paymentCount}</td>
                       <td className="py-2.5">
                         <div className="h-2 w-full max-w-40 overflow-hidden rounded-full bg-primary-bg/60">
-                          <div className="h-full rounded-full bg-success" style={{ width: `${Math.round((money(p.collected).toNumber() / maxCollected) * 100)}%` }} />
+                          <div className="grow-x h-full rounded-full bg-success" style={{ width: `${Math.round((money(p.collected).toNumber() / maxCollected) * 100)}%` }} />
                         </div>
                       </td>
                     </tr>
@@ -226,9 +227,9 @@ function SummaryCard({
 }) {
   const valueClass = tone === "success" ? "text-success" : "text-warning";
   return (
-    <div className="rounded-app-lg border border-border bg-card p-4 shadow-app">
-      <div className="text-[11px] font-bold tracking-wide text-text-muted uppercase">{label}</div>
-      <div className={`mt-1 text-2xl font-extrabold ${valueClass}`}>{loading ? "—" : value}</div>
+    <div className="bg-card px-5 py-4">
+      <div className="text-[13px] text-text-secondary">{label}</div>
+      <div className={`mt-2 text-[26px] leading-none font-medium tracking-tight ${valueClass}`}>{loading ? "—" : value}</div>
     </div>
   );
 }

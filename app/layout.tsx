@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import { ToastProvider } from "../components/ui/Toast";
 import { ConfirmProvider } from "../components/ui/ConfirmDialog";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+// Plus Jakarta Sans: the working face -- open, high-legibility letterforms and
+// clear figures at small sizes (labels, tables, forms, all numbers).
+const body = Plus_Jakarta_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+// Playfair Display: the couture display face for titles and names -- sturdier
+// strokes than a Didone, so headings stay crisp on every screen.
+const display = Playfair_Display({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -27,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable} h-full antialiased`}>
+    <html lang="en" className={`${body.variable} ${display.variable} h-full antialiased`}>
       <body className="min-h-full font-sans text-[14px] leading-relaxed">
         <ToastProvider>
           <ConfirmProvider>{children}</ConfirmProvider>

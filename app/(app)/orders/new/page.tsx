@@ -13,7 +13,7 @@ export default async function NewOrderPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <div className="mb-5">
-        <h1 className="font-serif text-xl font-bold text-text-primary">Create New Product Order</h1>
+        <h1 className="page-title">Create New Product Order</h1>
         <p className="text-sm text-text-muted">Orders › New Order</p>
       </div>
       <OrderForm
