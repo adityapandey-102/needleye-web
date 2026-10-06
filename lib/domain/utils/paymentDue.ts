@@ -16,7 +16,8 @@ export function remainingOutstanding(totalAmount: MoneyLike, amountPaid: MoneyLi
 export function derivePaymentStatus(paymentsSum: MoneyLike, totalAmount: MoneyLike): PaymentStatus {
   const paid = money(paymentsSum);
   const total = money(totalAmount);
-  if (total.lessThanOrEqualTo(0) || paid.lessThanOrEqualTo(0)) return "unpaid";
+  if (total.lessThanOrEqualTo(0)) return "fully_paid"; // free work: nothing to collect
+  if (paid.lessThanOrEqualTo(0)) return "unpaid";
   if (paid.greaterThanOrEqualTo(total)) return "fully_paid";
   return "advance_paid";
 }

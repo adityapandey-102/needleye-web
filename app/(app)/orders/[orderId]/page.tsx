@@ -31,11 +31,14 @@ export default async function OrderDetailPage({
   const isAssignedMasterTailor = profile.role === "master_tailor" && order.masterTailorId === profile.id;
   const contentScope = getCapabilityScope(profile.role, "orders:edit:customer_product_fields");
   const pricingScope = getCapabilityScope(profile.role, "orders:edit:pricing_assignment");
+  const totalScope = getCapabilityScope(profile.role, "orders:edit:total");
   const canEdit =
     contentScope === true ||
     pricingScope === true ||
+    totalScope === true ||
     (contentScope === "assigned" && isAssignedDesigner) ||
-    (pricingScope === "assigned" && isAssignedDesigner);
+    (pricingScope === "assigned" && isAssignedDesigner) ||
+    (totalScope === "assigned" && isAssignedDesigner);
 
   // Payment visibility is scope-aware: owner/accountant on any order; a designer
   // only on their OWN orders; master/worker/PM never.

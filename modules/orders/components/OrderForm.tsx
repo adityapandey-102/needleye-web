@@ -117,7 +117,10 @@ interface OrderFormProps {
   mode: "create" | "edit";
   order?: Order;
   canEditCustomerProduct: boolean;
+  /** Reassigning the designer / master tailor (owner only). */
   canEditPricing: boolean;
+  /** Changing the total (owner, or the order's own designer). Edit mode only; create can always set it. */
+  canEditTotal?: boolean;
   currentUserId: string;
   currentUserRole: Role;
 }
@@ -127,6 +130,7 @@ export function OrderForm({
   order,
   canEditCustomerProduct,
   canEditPricing,
+  canEditTotal = false,
   currentUserId,
   currentUserRole,
 }: OrderFormProps) {
@@ -174,6 +178,7 @@ export function OrderForm({
   }, [stagedPreviews]);
 
   const canEditPricingFields = mode === "create" || canEditPricing;
+  const canEditTotalField = mode === "create" || canEditTotal;
   const canEditContentFields = mode === "create" || canEditCustomerProduct;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -346,7 +351,7 @@ export function OrderForm({
         specialNotes: form.specialNotes,
       });
     }
-    if (canEditPricingFields) {
+    if (canEditTotalField) {
       const newTotal = form.totalAmount === "" ? "0.00" : form.totalAmount;
       // Mirror the API's invariant: the total can't drop below what's already
       // been collected (that would make the order "overpaid"). Reduce the
@@ -356,8 +361,10 @@ export function OrderForm({
         setErrors({ totalAmount: `Total can't be below the ${formatCurrency(alreadyPaid)} already collected — reduce a payment in the ledger first.` });
         return;
       }
+      editable.totalAmount = newTotal;
+    }
+    if (canEditPricingFields) {
       Object.assign(editable, {
-        totalAmount: newTotal,
         designerId: form.designerId,
         masterTailorId: form.masterTailorId,
       });
@@ -601,14 +608,19 @@ export function OrderForm({
               <Input
                 type="number"
                 min={0}
-                disabled={!canEditPricingFields}
+                disabled={!canEditTotalField}
                 value={form.totalAmount}
                 onChange={(e) => set("totalAmount", e.target.value)}
                 placeholder="e.g. 25000"
               />
               <FieldError>{errors.totalAmount}</FieldError>
-              {!canEditPricingFields && (
-                <p className="mt-1 text-[11px] text-text-muted">Only Owner/Manager can change pricing.</p>
+              {!canEditTotalField && (
+                <p className="mt-1 text-[11px] text-text-muted">
+                  Only the Owner/Manager or this order&rsquo;s designer can change the total.
+                </p>
+              )}
+              {canEditTotalField && (
+                <p className="mt-1 text-[11px] text-text-muted">₹0 means free work (nothing to collect); you can set the price later.</p>
               )}
               {mode === "edit" && (
                 <p className="mt-1 text-[11px] text-text-muted">
@@ -729,7 +741,7 @@ export function OrderForm({
         <Button type="button" variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button type="submit" disabled={submitting || (!canEditContentFields && !canEditPricingFields)}>
+        <Button type="submit" disabled={submitting || (!canEditContentFields && !canEditPricingFields && !canEditTotalField)}>
           {submitting ? (
             "Saving…"
           ) : mode === "create" ? (

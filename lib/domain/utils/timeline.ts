@@ -1,14 +1,29 @@
 import { diffDays, parseDateOnly, pluralize, startOfDay } from "./date";
 import type { TimelineSummary } from "../types";
 
-/** Ported verbatim from prototype/script.js getTimelineSummary(). */
+/**
+ * Ported from prototype/script.js getTimelineSummary(). A delivered order has
+ * no deadline left to track, so it reads DELIVERED -- never OVERDUE / ON TRACK
+ * (matches the API, whose overdue/urgent buckets also exclude delivered).
+ */
 export function getTimelineSummary(order: {
   dueDate?: string | null;
   bookingDate?: string | null;
+  productionStatus?: string | null;
 }): TimelineSummary {
   const dueDate = parseDateOnly(order?.dueDate);
   const bookingDate = parseDateOnly(order?.bookingDate);
   const today = startOfDay(new Date());
+
+  if (order?.productionStatus === "delivered") {
+    return {
+      statusLabel: "DELIVERED",
+      tone: "green",
+      daysRemainingLabel: "Delivered",
+      orderAgeLabel: bookingDate ? formatDaysLabel(Math.max(diffDays(today, bookingDate), 0), "Day") : "N/A",
+      remainingDays: null,
+    };
+  }
 
   if (!dueDate) {
     return {

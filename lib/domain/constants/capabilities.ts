@@ -5,6 +5,7 @@ export const CAPABILITIES = [
   "orders:read",
   "orders:edit:customer_product_fields",
   "orders:edit:pricing_assignment",
+  "orders:edit:total",
   // Production-flow stage tiers (see orderStatus.ts STAGE_CAPABILITY). Which
   // roles may move an order INTO a stage depends only on the stage's tier --
   // NOT on whether the order is assigned to them (the shop-floor model: whoever
@@ -58,9 +59,19 @@ export const CAPABILITY_MATRIX: Record<Capability, Record<Role, CapabilityScope>
     production_manager: true,
     worker: false,
   },
+  // Reassigning the designer / master tailor: owner only.
   "orders:edit:pricing_assignment": {
     owner_manager: true,
     designer: false,
+    master_tailor: false,
+    accountant: false,
+    production_manager: false,
+    worker: false,
+  },
+  // The order total: owner on any order; a designer on their OWN orders.
+  "orders:edit:total": {
+    owner_manager: true,
+    designer: "assigned",
     master_tailor: false,
     accountant: false,
     production_manager: false,

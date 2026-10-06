@@ -197,7 +197,7 @@ export interface LedgerEventsResult {
 }
 
 export interface TimelineSummary {
-  statusLabel: "ON TRACK" | "DUE SOON" | "URGENT" | "OVERDUE" | "N/A";
+  statusLabel: "ON TRACK" | "DUE SOON" | "URGENT" | "OVERDUE" | "DELIVERED" | "N/A";
   tone: "green" | "amber" | "red" | "dark-red" | "gray";
   daysRemainingLabel: string;
   orderAgeLabel: string;

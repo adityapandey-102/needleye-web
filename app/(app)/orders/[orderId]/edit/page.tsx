@@ -18,11 +18,13 @@ export default async function EditOrderPage({ params }: { params: Promise<{ orde
 
   const contentScope = getCapabilityScope(profile.role, "orders:edit:customer_product_fields");
   const pricingScope = getCapabilityScope(profile.role, "orders:edit:pricing_assignment");
+  const totalScope = getCapabilityScope(profile.role, "orders:edit:total");
 
   const canEditCustomerProduct = contentScope === true || (contentScope === "assigned" && isAssignedDesigner);
   const canEditPricing = pricingScope === true || (pricingScope === "assigned" && isAssignedDesigner);
+  const canEditTotal = totalScope === true || (totalScope === "assigned" && isAssignedDesigner);
 
-  if (!canEditCustomerProduct && !canEditPricing) {
+  if (!canEditCustomerProduct && !canEditPricing && !canEditTotal) {
     redirect(`/orders/${orderId}`);
   }
 
@@ -37,6 +39,7 @@ export default async function EditOrderPage({ params }: { params: Promise<{ orde
         order={order}
         canEditCustomerProduct={canEditCustomerProduct}
         canEditPricing={canEditPricing}
+        canEditTotal={canEditTotal}
         currentUserId={profile.id}
         currentUserRole={profile.role}
       />

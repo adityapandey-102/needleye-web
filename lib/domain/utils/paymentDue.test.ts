@@ -14,7 +14,7 @@ describe("derivePaymentStatus", () => {
     expect(derivePaymentStatus(2000, 5000)).toBe("advance_paid");
     expect(derivePaymentStatus(5000, 5000)).toBe("fully_paid");
     expect(derivePaymentStatus(6000, 5000)).toBe("fully_paid"); // never over
-    expect(derivePaymentStatus(0, 0)).toBe("unpaid"); // zero-total order
+    expect(derivePaymentStatus(0, 0)).toBe("fully_paid"); // zero-total order: free work, nothing to collect
   });
 });
 

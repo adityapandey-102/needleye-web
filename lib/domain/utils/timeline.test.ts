@@ -47,4 +47,20 @@ describe("getTimelineSummary", () => {
     expect(summary.daysRemainingLabel).toBe("5 Days Overdue");
     vi.useRealTimers();
   });
+
+  it("reads DELIVERED for a delivered order -- never OVERDUE (past due) or ON TRACK (future due)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-10T00:00:00"));
+    for (const dueDate of ["2026-03-05", "2026-03-25", null]) {
+      const summary = getTimelineSummary({ dueDate, bookingDate: "2026-03-01", productionStatus: "delivered" });
+      expect(summary.statusLabel, String(dueDate)).toBe("DELIVERED");
+      expect(summary.tone).toBe("green");
+      expect(summary.daysRemainingLabel).toBe("Delivered");
+      expect(summary.remainingDays).toBeNull();
+      expect(summary.orderAgeLabel).toBe("9 Days");
+    }
+    // Any other stage still counts down as before.
+    expect(getTimelineSummary({ dueDate: "2026-03-05", productionStatus: "quality_check" }).statusLabel).toBe("OVERDUE");
+    vi.useRealTimers();
+  });
 });

@@ -14,7 +14,7 @@ export interface BucketMeta {
 export const BUCKET_META: Record<string, BucketMeta> = {
   active: { title: "Active Orders", subtitle: "Not yet delivered" },
   production: { title: "In Production", subtitle: "Cutting → Quality Check" },
-  completed: { title: "Completed Orders", subtitle: "Ready for delivery or delivered" },
+  completed: { title: "Completed Orders", subtitle: "Delivered to the customer" },
   ready: { title: "Ready for Delivery", subtitle: "Finished, awaiting handover" },
   delivered: { title: "Delivered Orders", subtitle: "Handed over to the customer" },
   overdue: { title: "Overdue Orders", subtitle: "Past their delivery due date" },
