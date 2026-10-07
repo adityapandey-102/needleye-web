@@ -147,10 +147,9 @@ test.describe.serial("leads", () => {
     await expect(page.getByRole("option", { name: "Saree", exact: true })).toBeVisible();
     await categorySearch.press("Enter");
     await page.locator("select").filter({ has: page.locator('option[value=""]:text("Select Status")') }).selectOption("design_pending");
-    await page.getByPlaceholder("e.g. 25000").fill("60000");
     await page.getByRole("button", { name: "Create Product Order" }).click();
-    await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/, { timeout: 15_000 });
-    const orderUrl = page.url();
+    await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+\?pricing=1$/, { timeout: 15_000 });
+    const orderUrl = page.url().split("?")[0]!;
 
     await page.goto("/leads?x=1");
     await page.getByLabel("Filter by stage").selectOption("converted");

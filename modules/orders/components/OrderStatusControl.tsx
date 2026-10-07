@@ -13,6 +13,7 @@ import { ordersApi } from "../api/ordersApi";
 import { Select } from "../../../components/ui/Select";
 import { useToast } from "../../../components/ui/Toast";
 import { useConfirm } from "../../../components/ui/ConfirmDialog";
+import { isApiErrorCode } from "../../../lib/api/client";
 
 /**
  * A quick single-order status changer -- the other way to move an order along
@@ -24,14 +25,25 @@ import { useConfirm } from "../../../components/ui/ConfirmDialog";
  * current stage is always shown (selected) so the control never misrepresents
  * state.
  */
+/** The "Set the order total first" popup (ADR 0008) -- shared with the Kanban board and the scan prompt. */
+export const PRICE_REQUIRED_DIALOG = {
+  title: "Set the order total first",
+  body: "This order has no price yet, so it can't be marked Delivered. Ask its designer, the Owner or the Accountant to set the order total — then it can be delivered.",
+  confirmLabel: "OK",
+  cancelLabel: "Close",
+};
+
 export function OrderStatusControl({
   orderId,
   currentStatus,
   role,
+  priceSet = true,
 }: {
   orderId: string;
   currentStatus: GranularStatus;
   role: Role;
+  /** False while the order has no price -- Delivered is then refused up front. */
+  priceSet?: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -47,6 +59,12 @@ export function OrderStatusControl({
   async function handleChange(next: GranularStatus) {
     const previous = value;
     if (next === previous) return;
+    // Delivered needs a price: explain instead of asking to confirm a move the API will refuse.
+    if (next === "delivered" && !priceSet) {
+      await confirm(PRICE_REQUIRED_DIALOG);
+      setValue(previous);
+      return;
+    }
     // Reflect the selection while we ask, so the dropdown matches the question.
     setValue(next);
 
@@ -68,10 +86,14 @@ export function OrderStatusControl({
       showToast(`Status updated to ${granularLabel(next)}.`, "success");
       router.refresh();
     } catch (err) {
+      setValue(previous);
+      if (isApiErrorCode(err, "ORDER_PRICE_REQUIRED")) {
+        await confirm(PRICE_REQUIRED_DIALOG);
+        return;
+      }
       const message = err instanceof Error ? err.message : "Failed to update status";
       setError(message);
       showToast(message, "error");
-      setValue(previous);
     } finally {
       setSaving(false);
     }

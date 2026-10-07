@@ -5,7 +5,9 @@ export const CAPABILITIES = [
   "orders:read",
   "orders:edit:customer_product_fields",
   "orders:edit:pricing_assignment",
-  "orders:edit:total",
+  // Pricing (ADR 0008): set = first price; adjust = raise or discount (with a reason).
+  "orders:price:set",
+  "orders:price:adjust",
   // Production-flow stage tiers (see orderStatus.ts STAGE_CAPABILITY). Which
   // roles may move an order INTO a stage depends only on the stage's tier --
   // NOT on whether the order is assigned to them (the shop-floor model: whoever
@@ -14,7 +16,8 @@ export const CAPABILITIES = [
   "orders:status:pm_received", //     Production Manager Received
   "orders:status:production", //      Falls/Kutchu ... Finishing
   "orders:status:finalization", //    Quality Check / Trail, Alteration, Delivered
-  "payments:manage",
+  "payments:manage", // record a payment
+  "payments:correct", // edit / delete a payment (before delivery only)
   "payments:read",
   "reports:financial",
   "reports:staff",
@@ -71,12 +74,21 @@ export const CAPABILITY_MATRIX: Record<Capability, Record<Role, CapabilityScope>
     production_manager: false,
     worker: false,
   },
-  // The order total: owner on any order; a designer on their OWN orders.
-  "orders:edit:total": {
+  // First price: owner, accountant, a designer on their OWN orders.
+  "orders:price:set": {
     owner_manager: true,
     designer: "assigned",
     master_tailor: false,
-    accountant: false,
+    accountant: true,
+    production_manager: false,
+    worker: false,
+  },
+  // Raise / discount once priced: owner and accountant only.
+  "orders:price:adjust": {
+    owner_manager: true,
+    designer: false,
+    master_tailor: false,
+    accountant: true,
     production_manager: false,
     worker: false,
   },
@@ -116,6 +128,15 @@ export const CAPABILITY_MATRIX: Record<Capability, Record<Role, CapabilityScope>
   "payments:manage": {
     owner_manager: true,
     designer: "assigned",
+    master_tailor: false,
+    accountant: true,
+    production_manager: false,
+    worker: false,
+  },
+  // Editing / deleting a recorded payment: owner and accountant, before delivery.
+  "payments:correct": {
+    owner_manager: true,
+    designer: false,
     master_tailor: false,
     accountant: true,
     production_manager: false,

@@ -81,7 +81,7 @@ modules/
     components/                 # LoginForm (with a show/hide password toggle), RegisterForm, ResetPasswordForm, UpdatePasswordForm
     api/authApi.ts                # every HTTP call the Auth module makes -- login/logout/qrLogin also own writing/clearing the session cookies
   orders/
-    components/                 # OrderForm (create+edit, advance at booking), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
+    components/                 # OrderForm (create+edit; no price -- pricing comes after saving), PricingCard + PricingDialog (Add pricing now? / set / raise / discount with the double-check alert, price history), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
@@ -294,17 +294,37 @@ payment-status summary correct after an order edit + settling payment.
 `canManage` is computed in
 `app/(app)/orders/[orderId]/page.tsx` from the `payments:manage` capability
 + the assigned-designer check -- the same pattern already used for
-`canEdit`. Add/remove are real API calls (`paymentsApi.add`/`.remove`)
+`canEdit`; `canCorrect` (Remove) from `payments:correct` -- owner and
+accountant only, and hidden once the order is delivered (payments are then
+final). An unpriced order shows "Set the order's price first" instead of the
+record form. Add/remove are real API calls (`paymentsApi.add`/`.remove`)
 against `needleye-api`'s ledger endpoints, which enforce the actual RBAC
-scoping -- this component's `canManage` prop only controls whether the
-add/remove controls render, not whether the write is allowed.
+scoping -- these props only control whether the controls render, not whether
+the write is allowed.
+
+### Pricing (needleye-api ADR 0008)
+
+The order form has **no price**. Saving a new order lands on
+`/orders/[id]?pricing=1`, where `PricingCard` asks **"Add pricing now?"** →
+`PricingDialog` (the total) → **"Record a payment?"** (opens the ledger's record
+form). Typing a total shows an animated **"Please be double sure this total is
+correct: ₹X (amount in words)"** alert (`amountInWords`, Indian lakh/crore;
+`.price-alert` in `globals.css`, off under reduced motion) with the rule: the
+total can be raised (with a reason) or lowered only as a discount, by the Owner
+or Accountant, never below what's collected; delivered locks it. The card then
+shows the total, **Raise price** / **Give discount** for the Owner and
+Accountant until delivery, and the price history. The dialogs render through
+`components/ui/Portal` -- inside the animated card column a fixed overlay was
+trapped under the next card. Delivered without a price opens **"Set the order
+total first"** (`PRICE_REQUIRED_DIALOG`) from the status menu, the Kanban board
+and the scan prompt (`order.priceSet` is sent to every role); the API refuses it
+anyway (`ORDER_PRICE_REQUIRED`).
 
 **Payment status is derived, never chosen.** The order form has no
 payment-status picker: `payment_status` is computed by the API from the
 ledger (unpaid → advance_paid → fully_paid), so it can't drift. Instead:
-- **Advance at booking** -- the create form has an optional "Advance Paid"
-  amount + method; on submit, the order is created and the advance is recorded
-  as the first ledger entry (`paymentsApi.add`), which derives the status.
+- **Advance after pricing** -- the pricing flow's last step opens the ledger's
+  record form for the advance (there is no advance on the order form any more).
 - **Rescheduling on record** -- when recording a payment that won't settle the
   balance, `PaymentLedger` asks for the next payment date and passes it to the
   API, which reschedules the order (fixing a stale "Due Today" after a same-day
@@ -312,19 +332,19 @@ ledger (unpaid → advance_paid → fully_paid), so it can't drift. Instead:
 - **Due tracking + overpaid guard (both directions)** --
   `lib/domain/utils/paymentDue.ts` derives Upcoming / Due&nbsp;Today / Overdue
   (with a day count) from `nextPaymentDate` + outstanding. The record form
-  blocks a payment exceeding the outstanding balance, and the edit form blocks
-  lowering an order's total below what's already been collected -- so the
-  ledger can never exceed the total (no "overpaid" order, which keeps collected
-  revenue accurate). The API enforces both for real (`PAYMENT_EXCEEDS_TOTAL` /
-  `ORDER_TOTAL_BELOW_PAID`); `derivePaymentStatus` mirrors the status rule for
-  immediate UI feedback.
+  blocks a payment exceeding the outstanding balance, and the discount dialog
+  blocks going below what's already been collected -- so the ledger can never
+  exceed the total (no "overpaid" order, which keeps collected revenue
+  accurate). The API enforces both for real (`PAYMENT_EXCEEDS_TOTAL` /
+  `ORDER_TOTAL_BELOW_PAID`); `derivePaymentStatus` mirrors the status rule
+  (incl. `not_priced`) for immediate UI feedback.
 
 ### Dashboard navigation & revenue reporting
 
 `OrderStatCards.tsx` (self-fetching, on `/orders`) renders the summary as
 clickable cards -- Total, This Month, Active, In Production, **Ready for
 Delivery** (in Ready now), **Delivered** (this month only, not all time),
-Overdue, Urgent -- each opening a **dedicated focused page** (not the full
+Overdue, Urgent, and **Price Not Set** (roles that see prices) -- each opening a **dedicated focused page** (not the full
 orders list): most link to `/orders/bucket/[bucket]` (`BucketOrdersClient`,
 just the filtered table + pagination, no dashboard stats), while the payment
 cards link to `/orders/pending-payments` (`PendingPaymentsClient`) -- a

@@ -79,3 +79,11 @@ describe("getPaymentDue", () => {
     expect(getPaymentDue({ totalAmount: 100, amountPaid: 0, nextPaymentDate: "2026-03-02" }).daysLabel).toBe("1 day left");
   });
 });
+
+describe("not priced yet (ADR 0008)", () => {
+  it("nothing is due and nothing can be paid until the order has a price", () => {
+    expect(derivePaymentStatus("0.00", null)).toBe("not_priced");
+    const due = getPaymentDue({ totalAmount: null, amountPaid: "0.00", paymentStatus: "not_priced", nextPaymentDate: "2020-01-01" });
+    expect(due).toMatchObject({ status: "not_priced", label: "Price not set", outstanding: "0.00" });
+  });
+});

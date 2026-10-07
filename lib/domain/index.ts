@@ -21,6 +21,7 @@ export * from "./utils/money";
 export * from "./utils/currency";
 export * from "./utils/timeline";
 export * from "./utils/paymentDue";
+export * from "./utils/amountInWords";
 export * from "./utils/revenue";
 export * from "./utils/ledgerExport";
 export * from "./utils/orderStatusPermissions";

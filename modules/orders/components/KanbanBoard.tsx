@@ -20,6 +20,9 @@ import {
 import { ordersApi } from "../api/ordersApi";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { useToast } from "../../../components/ui/Toast";
+import { useConfirm } from "../../../components/ui/ConfirmDialog";
+import { isApiErrorCode } from "../../../lib/api/client";
+import { PRICE_REQUIRED_DIALOG } from "./OrderStatusControl";
 
 /**
  * The production board (one column per stage), grouped by toCanonicalStage(order.productionStatus)
@@ -36,6 +39,7 @@ export function KanbanBoard({
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const canDragAtAll =
     hasCapability(role, "orders:status:design") ||
     hasCapability(role, "orders:status:pm_received") ||
@@ -64,6 +68,10 @@ export function KanbanBoard({
     // from Ready. The API enforces this too; reject the drop up front for
     // instant feedback.
     const refusal = stageMoveRefusal(order.productionStatus, targetGranular);
+    if (!refusal && targetGranular === "delivered" && !order.priceSet) {
+      await confirm(PRICE_REQUIRED_DIALOG);
+      return;
+    }
     if (refusal === "deliver_requires_ready") {
       showToast(`An order can only be delivered once it's Ready -- move it to "Ready" first.`, "error");
       return;
@@ -91,6 +99,10 @@ export function KanbanBoard({
       showToast(`${order.orderNumber} moved to ${canonicalLabel(targetStage)}.`, "success");
     } catch (err) {
       setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, productionStatus: previousStatus } : o)));
+      if (isApiErrorCode(err, "ORDER_PRICE_REQUIRED")) {
+        await confirm(PRICE_REQUIRED_DIALOG);
+        return;
+      }
       showToast(err instanceof Error ? err.message : "Failed to update status", "error");
     }
   }

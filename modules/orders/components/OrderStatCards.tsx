@@ -75,12 +75,18 @@ export function OrderStatCards({ role }: { role: Role }) {
     { href: "/orders/bucket/urgent", icon: "⚠️", tone: "amber", value: stats.urgent, label: "Urgent", caption: "Due within 3 days", captionTone: "error" },
   ];
   // Pending Payments isn't repeated here: the payments band below already shows it.
+  // "Price not set" (ADR 0008) is for the roles that can see prices.
+  if (canSeePayments) {
+    cards.push({ href: "/orders/bucket/not_priced", icon: "🧾", tone: "amber", value: stats.notPriced ?? 0, label: "Price Not Set", caption: "Needs a price", captionTone: "error" });
+  }
 
   return (
     <div className="mb-6">
       {/* One ledger strip, divided by hairlines (the 1px gap shows the border
           colour behind the cells) -- not a grid of separate boxed cards. */}
-      <div className="stagger-in grid grid-cols-2 gap-px overflow-hidden rounded-app-lg border border-border bg-border-light shadow-app sm:grid-cols-4">
+      <div
+        className={`stagger-in grid grid-cols-2 gap-px overflow-hidden rounded-app-lg border border-border bg-border-light shadow-app ${cards.length % 4 === 0 ? "sm:grid-cols-4" : "sm:grid-cols-3 lg:grid-cols-5"}`}
+      >
         {cards.map((card, i) => (
           <StatCard key={card.label} {...card} index={i} />
         ))}

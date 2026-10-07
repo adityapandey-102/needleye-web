@@ -67,10 +67,13 @@ export interface Order {
   purchaseRequired: boolean;
   /** Absent when the API strips it server-side for a role without payments:read (master_tailor) -- not just hidden in the UI. */
   paymentStatus?: PaymentStatus;
-  // Money as 2dp strings (see lib/domain/utils/money.ts).
-  totalAmount?: string;
+  // Money as 2dp strings (see lib/domain/utils/money.ts). totalAmount and
+  // outstanding are null while the order has no price (ADR 0008).
+  totalAmount?: string | null;
   amountPaid?: string;
-  outstanding?: string;
+  outstanding?: string | null;
+  /** Whether the order has a price -- sent to EVERY role (it's not an amount). */
+  priceSet: boolean;
   productionStatus: GranularStatus;
   designerInstructions: string | null;
   specialNotes: string | null;
@@ -116,9 +119,27 @@ export interface OrderStats {
   urgent: number;
   /** Absent entirely (not zero) when the API strips it server-side for a role without payments:read (master_tailor). */
   pendingPayments?: number;
+  /** Orders with no price yet. Absent like pendingPayments. */
+  notPriced?: number;
   // Money as 2dp strings.
   collectedRevenue?: string;
   outstandingRevenue?: string;
+}
+
+export type PriceChangeKind = "set" | "raise" | "discount";
+
+/** One row of an order's price history (GET /orders/:id/price-history). */
+export interface PriceChange {
+  id: string;
+  orderId: string;
+  kind: PriceChangeKind;
+  previousTotal: string | null;
+  newTotal: string;
+  collected: string;
+  reason: string | null;
+  changedBy: string | null;
+  changedByName: string | null;
+  createdAt: string;
 }
 
 /** One accounting period's collected revenue, from GET /orders/revenue. */

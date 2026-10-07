@@ -96,7 +96,7 @@ test.describe.serial("delivery capacity", () => {
     );
 
     await page.getByRole("button", { name: "Create Product Order" }).click();
-    await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+\?pricing=1$/, { timeout: 15_000 });
     await expect(page.getByText(customerName).first()).toBeVisible();
   });
 

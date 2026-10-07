@@ -6,6 +6,8 @@ import {
   formatDateOnly,
   getTimelineSummary,
   granularLabel,
+  paymentStatusLabel,
+  paymentStatusTone,
   hasCapability,
   type OrderListItem,
   type Role,
@@ -106,10 +108,7 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
                     </td>
                     {canSeePayment && (
                       <td className="px-4 py-2.5">
-                        <StatusPill
-                          label={(order.paymentStatus ?? "").replace("_", " ")}
-                          tone={order.paymentStatus === "fully_paid" ? "green" : "amber"}
-                        />
+                        <StatusPill label={paymentStatusLabel(order.paymentStatus)} tone={paymentStatusTone(order.paymentStatus)} />
                       </td>
                     )}
                     <td className="px-4 py-2.5">

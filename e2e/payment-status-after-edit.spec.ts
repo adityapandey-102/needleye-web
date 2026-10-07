@@ -13,7 +13,7 @@ const OWNER_PASSWORD = process.env.E2E_OWNER_PASSWORD ?? "";
  * settling payment it could still show an outstanding balance. The ledger now
  * self-fetches the order, so its total/paid/status are always consistent.
  */
-test.describe.serial("payment status stays correct after editing the total", () => {
+test.describe.serial("payment status stays correct after the price changes", () => {
   let page: Page;
   let orderId = "";
 
@@ -54,17 +54,26 @@ test.describe.serial("payment status stays correct after editing the total", () 
     await page.close();
   });
 
-  test("reduce the total via edit, then a settling payment shows Fully Paid", async () => {
+  test("a discount (with a reason) down to ₹500, then a settling payment shows Fully Paid", async () => {
     // Visit the detail page first (populates the client router cache with the
     // ₹1000 order -- the exact condition that used to leave the ledger stale).
     await page.goto(`/orders/${orderId}`);
 
-    // Edit the total down to ₹500 (owner-only pricing field).
+    // The edit form no longer touches the price (ADR 0008)...
     await page.getByRole("link", { name: "Edit Order" }).click();
     await expect(page).toHaveURL(new RegExp(`/orders/${orderId}/edit$`));
-    await page.getByPlaceholder("e.g. 25000").fill("500");
-    await page.getByRole("button", { name: "Save Changes" }).click();
-    await expect(page).toHaveURL(new RegExp(`/orders/${orderId}$`));
+    await expect(page.getByPlaceholder("e.g. 25000")).toHaveCount(0);
+    await page.goBack();
+
+    // ...the owner gives a discount from the order page instead.
+    await page.getByRole("button", { name: "Give discount" }).click();
+    const dialog = page.getByRole("dialog", { name: "Give a discount" });
+    await dialog.getByLabel(/New total/).fill("500");
+    await dialog.getByLabel("Reason").fill("Regression fixture discount");
+    await expect(dialog.getByRole("alert")).toContainText("Five hundred rupees");
+    await dialog.getByRole("button", { name: /Give discount/ }).click();
+    await expect(page.getByText("Discount given: ₹500.")).toBeVisible();
+    await expect(page.getByText("“Regression fixture discount”")).toBeVisible();
 
     // Record a payment that fully settles the (new) ₹500 total.
     await page.getByRole("button", { name: "+ Record payment" }).click();

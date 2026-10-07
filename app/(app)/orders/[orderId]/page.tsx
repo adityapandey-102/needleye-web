@@ -8,13 +8,16 @@ export default async function OrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ orderId: string }>;
-  searchParams: Promise<{ scan?: string }>;
+  searchParams: Promise<{ scan?: string; pricing?: string }>;
 }) {
   const { orderId } = await params;
   // A QR scan opens this page with `?scan=1`; opening it from the dashboard,
   // search, or table has no such param. Only the scan flow shows the proactive
   // "product received for X" status popup (see StatusAdvancePrompt).
-  const viaScan = (await searchParams).scan === "1";
+  const query = await searchParams;
+  const viaScan = query.scan === "1";
+  // Right after creating an order, the form lands here with ?pricing=1 to ask "Add pricing now?" (ADR 0008).
+  const askPricing = query.pricing === "1";
 
   const [{ profile }, { order }] = await Promise.all([
     apiFetchServer("/auth/me"),
@@ -31,14 +34,17 @@ export default async function OrderDetailPage({
   const isAssignedMasterTailor = profile.role === "master_tailor" && order.masterTailorId === profile.id;
   const contentScope = getCapabilityScope(profile.role, "orders:edit:customer_product_fields");
   const pricingScope = getCapabilityScope(profile.role, "orders:edit:pricing_assignment");
-  const totalScope = getCapabilityScope(profile.role, "orders:edit:total");
   const canEdit =
     contentScope === true ||
     pricingScope === true ||
-    totalScope === true ||
     (contentScope === "assigned" && isAssignedDesigner) ||
-    (pricingScope === "assigned" && isAssignedDesigner) ||
-    (totalScope === "assigned" && isAssignedDesigner);
+    (pricingScope === "assigned" && isAssignedDesigner);
+
+  // Pricing (ADR 0008): the first price -- owner, accountant, the order's own
+  // designer; raise / discount -- owner and accountant. The API re-checks.
+  const priceSetScope = getCapabilityScope(profile.role, "orders:price:set");
+  const canSetPrice = priceSetScope === true || (priceSetScope === "assigned" && isAssignedDesigner);
+  const canAdjustPrice = getCapabilityScope(profile.role, "orders:price:adjust") === true;
 
   // Payment visibility is scope-aware: owner/accountant on any order; a designer
   // only on their OWN orders; master/worker/PM never.
@@ -46,6 +52,8 @@ export default async function OrderDetailPage({
   const canSeePayment = paymentsReadScope === true || (paymentsReadScope === "assigned" && isAssignedDesigner);
   const paymentsManageScope = getCapabilityScope(profile.role, "payments:manage");
   const canManagePayments = paymentsManageScope === true || (paymentsManageScope === "assigned" && isAssignedDesigner);
+  // Editing / deleting a payment: owner and accountant only (and only before delivery).
+  const canCorrectPayments = getCapabilityScope(profile.role, "payments:correct") === true;
 
   // Status changes are gated purely by role tier (no assignment) -- whoever
   // receives the garment on the floor can advance it. The specific stages a
@@ -77,6 +85,10 @@ export default async function OrderDetailPage({
       canEdit={canEdit}
       canSeePayment={canSeePayment}
       canManagePayments={canManagePayments}
+      canCorrectPayments={canCorrectPayments}
+      canSetPrice={canSetPrice}
+      canAdjustPrice={canAdjustPrice}
+      askPricing={askPricing}
       canChangeStatus={canChangeStatus}
     />
   );

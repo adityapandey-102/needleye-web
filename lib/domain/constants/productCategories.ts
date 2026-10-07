@@ -124,12 +124,23 @@ export function productCategoryGroupLabel(group: ProductCategoryGroup): string {
  * derived outcomes, kept as a labelled list only for display.
  */
 export const PAYMENT_STATUSES = [
+  { value: "not_priced", label: "Price not set" },
   { value: "unpaid", label: "Unpaid" },
   { value: "advance_paid", label: "Advance Paid" },
   { value: "fully_paid", label: "Fully Paid" },
 ] as const;
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]["value"];
+
+/** "Price not set" / "Advance Paid" ... for a pill; the raw value if unknown. */
+export function paymentStatusLabel(status: string | null | undefined): string {
+  return PAYMENT_STATUSES.find((p) => p.value === status)?.label ?? status ?? "";
+}
+
+/** Pill colour: settled green, not priced grey, still owing amber. */
+export function paymentStatusTone(status: string | null | undefined): "green" | "gray" | "amber" {
+  return status === "fully_paid" ? "green" : status === "not_priced" ? "gray" : "amber";
+}
 
 export const PAYMENT_STATUS_VALUES = PAYMENT_STATUSES.map((p) => p.value) as [
   PaymentStatus,

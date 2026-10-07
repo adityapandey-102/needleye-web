@@ -4,21 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createOrderSchema,
-  formatCurrency,
   GRANULAR_STATUSES,
   granularLabel,
-  isPositiveMoney,
   toDateInputValue,
-  moneyGreaterThan,
-  PAYMENT_METHODS,
   type CreateOrderInput,
   type Order,
-  type PaymentMethod,
   type Role,
 } from "../../../lib/domain";
 import { useTeamMembers } from "../hooks/useTeamMembers";
 import { ordersApi } from "../api/ordersApi";
-import { paymentsApi } from "../../payments/api/paymentsApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
@@ -46,14 +40,10 @@ type FormState = {
   handWork: boolean;
   machineWork: boolean;
   purchaseRequired: boolean;
-  totalAmount: string;
   nextPaymentDate: string;
   productionStatus: string;
   designerInstructions: string;
   specialNotes: string;
-  /** Optional advance collected at booking (create only) -- recorded as the first ledger entry. */
-  advanceAmount: string;
-  advanceMethod: PaymentMethod;
 };
 
 /**
@@ -78,13 +68,10 @@ function emptyForm(): FormState {
     handWork: false,
     machineWork: false,
     purchaseRequired: false,
-    totalAmount: "",
     nextPaymentDate: "",
     productionStatus: "",
     designerInstructions: "",
     specialNotes: "",
-    advanceAmount: "",
-    advanceMethod: PAYMENT_METHODS[0]!.value,
   };
 }
 
@@ -102,14 +89,10 @@ function formFromOrder(order: Order): FormState {
     handWork: order.handWork,
     machineWork: order.machineWork,
     purchaseRequired: order.purchaseRequired,
-    totalAmount: String(order.totalAmount ?? ""),
     nextPaymentDate: order.nextPaymentDate ?? "",
     productionStatus: order.productionStatus,
     designerInstructions: order.designerInstructions ?? "",
     specialNotes: order.specialNotes ?? "",
-    // Advance is a create-only field; on edit, payments are managed via the ledger.
-    advanceAmount: "",
-    advanceMethod: PAYMENT_METHODS[0]!.value,
   };
 }
 
@@ -119,8 +102,6 @@ interface OrderFormProps {
   canEditCustomerProduct: boolean;
   /** Reassigning the designer / master tailor (owner only). */
   canEditPricing: boolean;
-  /** Changing the total (owner, or the order's own designer). Edit mode only; create can always set it. */
-  canEditTotal?: boolean;
   currentUserId: string;
   currentUserRole: Role;
   /** Create mode: "this order is for that lead" -- pre-fills the customer and converts the lead when saved. */
@@ -132,7 +113,6 @@ export function OrderForm({
   order,
   canEditCustomerProduct,
   canEditPricing,
-  canEditTotal = false,
   currentUserId,
   currentUserRole,
   fromLead,
@@ -186,7 +166,6 @@ export function OrderForm({
   }, [stagedPreviews]);
 
   const canEditPricingFields = mode === "create" || canEditPricing;
-  const canEditTotalField = mode === "create" || canEditTotal;
   const canEditContentFields = mode === "create" || canEditCustomerProduct;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -247,7 +226,7 @@ export function OrderForm({
       handWork: form.handWork,
       machineWork: form.machineWork,
       purchaseRequired: form.purchaseRequired,
-      totalAmount: form.totalAmount === "" ? "0.00" : form.totalAmount,
+      // No total: a new order is priced right after saving (ADR 0008).
       nextPaymentDate: form.nextPaymentDate || null,
       productionStatus: (form.productionStatus || undefined) as CreateOrderInput["productionStatus"] | undefined,
       designerInstructions: form.designerInstructions || undefined,
@@ -273,15 +252,6 @@ export function OrderForm({
         setErrors(fieldErrors);
         return;
       }
-      // Validate an optional advance against the order total before creating,
-      // so the derived status ends up right and the API's overpayment guard
-      // isn't hit after the order already exists.
-      const advance = form.advanceAmount === "" ? "0.00" : form.advanceAmount;
-      const total = form.totalAmount === "" ? "0.00" : form.totalAmount;
-      if (isPositiveMoney(advance) && moneyGreaterThan(advance, total)) {
-        setErrors({ advanceAmount: `Advance can't exceed the total (${formatCurrency(total)}).` });
-        return;
-      }
       setErrors({});
       setSubmitting(true);
 
@@ -304,22 +274,11 @@ export function OrderForm({
         return;
       }
 
-      // Step 2: the order now EXISTS. The advance + image uploads are follow-up
-      // writes -- if any fails we must NOT strand the user on the create form
-      // (re-submitting would create a duplicate order). Navigate to the order
-      // regardless and surface a warning so they can finish it from there.
+      // Step 2: the order now EXISTS. Image uploads are follow-up writes -- if
+      // any fails we must NOT strand the user on the create form (re-submitting
+      // would create a duplicate order). Navigate to the order regardless and
+      // surface a warning so they can finish it from there.
       const warnings: string[] = [];
-      if (isPositiveMoney(advance)) {
-        try {
-          await paymentsApi.add(createdId, {
-            amount: advance,
-            method: form.advanceMethod,
-            nextPaymentDate: moneyGreaterThan(total, advance) ? form.nextPaymentDate || null : null,
-          });
-        } catch {
-          warnings.push("the advance payment wasn't recorded — add it from the payment ledger");
-        }
-      }
 
       const uploads = (Object.entries(stagedFiles) as [string, File | undefined][]).filter(([, file]) => file);
       const results = await Promise.allSettled(
@@ -334,7 +293,8 @@ export function OrderForm({
       } else {
         showToast("Order created successfully.", "success");
       }
-      router.push(`/orders/${createdId}`);
+      // ?pricing=1 opens the "Add pricing now?" step on the order page (ADR 0008).
+      router.push(`/orders/${createdId}?pricing=1`);
       router.refresh();
       setSubmitting(false);
       return;
@@ -359,18 +319,6 @@ export function OrderForm({
         designerInstructions: form.designerInstructions,
         specialNotes: form.specialNotes,
       });
-    }
-    if (canEditTotalField) {
-      const newTotal = form.totalAmount === "" ? "0.00" : form.totalAmount;
-      // Mirror the API's invariant: the total can't drop below what's already
-      // been collected (that would make the order "overpaid"). Reduce the
-      // payment in the ledger first. The API enforces this for real.
-      const alreadyPaid = order.amountPaid ?? "0.00";
-      if (moneyGreaterThan(alreadyPaid, newTotal)) {
-        setErrors({ totalAmount: `Total can't be below the ${formatCurrency(alreadyPaid)} already collected — reduce a payment in the ledger first.` });
-        return;
-      }
-      editable.totalAmount = newTotal;
     }
     if (canEditPricingFields) {
       Object.assign(editable, {
@@ -617,84 +565,40 @@ export function OrderForm({
           </CardBody>
         </Card>
 
-        <Card>
-          <CardHeader icon="💳" iconTone="green" title="Payment" subtitle={mode === "create" ? "Total, advance & schedule" : "Total & schedule"} />
-          <CardBody className="flex flex-col gap-3.5">
-            <div>
-              <FieldLabel>Total Amount (₹)</FieldLabel>
-              <Input
-                type="number"
-                min={0}
-                disabled={!canEditTotalField}
-                value={form.totalAmount}
-                onChange={(e) => set("totalAmount", e.target.value)}
-                placeholder="e.g. 25000"
-              />
-              <FieldError>{errors.totalAmount}</FieldError>
-              {!canEditTotalField && (
-                <p className="mt-1 text-[11px] text-text-muted">
-                  Only the Owner/Manager or this order&rsquo;s designer can change the total.
-                </p>
-              )}
-              {canEditTotalField && (
-                <p className="mt-1 text-[11px] text-text-muted">₹0 means free work (nothing to collect); you can set the price later.</p>
-              )}
-              {mode === "edit" && (
-                <p className="mt-1 text-[11px] text-text-muted">
-                  Payment status is derived from the ledger. Record payments on the order&rsquo;s Payment Ledger.
-                </p>
-              )}
-            </div>
-
-            {/* Optional advance collected at booking -- recorded as the first
-                ledger entry, which derives the payment status. Create only. */}
-            {mode === "create" && (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <FieldLabel>Advance Paid (₹)</FieldLabel>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={form.advanceAmount}
-                      onChange={(e) => set("advanceAmount", e.target.value)}
-                      placeholder="Optional"
-                    />
-                    <FieldError>{errors.advanceAmount}</FieldError>
-                  </div>
-                  <div>
-                    <FieldLabel>Advance Method</FieldLabel>
-                    <Select
-                      disabled={form.advanceAmount === ""}
-                      value={form.advanceMethod}
-                      onChange={(e) => set("advanceMethod", e.target.value as PaymentMethod)}
-                    >
-                      {PAYMENT_METHODS.map((m) => (
-                        <option key={m.value} value={m.value}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-                <p className="text-[11px] text-text-muted">
-                  Leave the advance blank for an unpaid order. Enter the full total to mark it fully paid.
-                </p>
-              </>
-            )}
-
-            <div>
-              <FieldLabel>Next Payment Date</FieldLabel>
-              <Input
-                type="date"
-                disabled={!canEditContentFields}
-                value={form.nextPaymentDate}
-                onChange={(e) => set("nextPaymentDate", e.target.value)}
-              />
-              <p className="mt-1 text-[11px] text-text-muted">When the next payment is expected (for due tracking). Optional.</p>
-            </div>
-          </CardBody>
-        </Card>
+        {/* Pricing is not part of the form (ADR 0008): a new order is priced
+            right after saving, and a price only ever changes on the order page
+            (Set price / Raise price / Give discount). */}
+        {mode === "create" ? (
+          <Card>
+            <CardHeader icon="💳" iconTone="green" title="Pricing" subtitle="Comes next" />
+            <CardBody className="flex flex-col gap-2 text-sm text-text-secondary">
+              <p>
+                Save the order first. You&rsquo;ll then be asked to <span className="font-semibold text-text-primary">add the price</span>,
+                and after that any advance and the next payment date.
+              </p>
+              <p className="text-[11px] text-text-muted">Not sure of the price yet? Skip it &mdash; the order shows &ldquo;Price not set&rdquo; until it&rsquo;s priced. It can&rsquo;t take payments or be delivered before that.</p>
+            </CardBody>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader icon="💳" iconTone="green" title="Payment Schedule" subtitle="Next expected payment" />
+            <CardBody className="flex flex-col gap-3.5">
+              <div>
+                <FieldLabel>Next Payment Date</FieldLabel>
+                <Input
+                  type="date"
+                  disabled={!canEditContentFields}
+                  value={form.nextPaymentDate}
+                  onChange={(e) => set("nextPaymentDate", e.target.value)}
+                />
+                <p className="mt-1 text-[11px] text-text-muted">When the next payment is expected (for due tracking). Optional.</p>
+              </div>
+              <p className="text-[11px] text-text-muted">
+                The price changes on the order page (Set price, Raise price, Give discount); payments on its Payment Ledger.
+              </p>
+            </CardBody>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr]">
@@ -758,7 +662,7 @@ export function OrderForm({
         <Button type="button" variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button type="submit" disabled={submitting || (!canEditContentFields && !canEditPricingFields && !canEditTotalField)}>
+        <Button type="submit" disabled={submitting || (!canEditContentFields && !canEditPricingFields)}>
           {submitting ? (
             "Saving…"
           ) : mode === "create" ? (

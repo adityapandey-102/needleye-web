@@ -11,6 +11,8 @@ import {
   longDateLabel,
   getTimelineSummary,
   granularLabel,
+  paymentStatusLabel,
+  paymentStatusTone,
   hasCapability,
   type OrderListItem,
   type Role,
@@ -47,6 +49,7 @@ const BUCKET_LABELS: Record<string, string> = {
   delivered: "Delivered",
   delivered_this_month: "Delivered this month",
   pending_payment: "Pending payments",
+  not_priced: "Price not set",
   overdue: "Overdue (past due date)",
   urgent: "Urgent (due within 3 days)",
   this_month: "Booked this month",
@@ -254,10 +257,7 @@ export function OrdersListClient({
                       <StatusPill label={granularLabel(order.productionStatus)} />
                       <StatusPill label={timeline.statusLabel} tone={timeline.tone} />
                       {canSeePayment && order.paymentStatus && (
-                        <StatusPill
-                          label={order.paymentStatus.replace("_", " ")}
-                          tone={order.paymentStatus === "fully_paid" ? "green" : "amber"}
-                        />
+                        <StatusPill label={paymentStatusLabel(order.paymentStatus)} tone={paymentStatusTone(order.paymentStatus)} />
                       )}
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-muted">
@@ -310,7 +310,7 @@ export function OrdersListClient({
                       </td>
                       {canSeePayment && (
                         <td className="px-4 py-2.5">
-                          <StatusPill label={(order.paymentStatus ?? "").replace("_", " ")} tone={order.paymentStatus === "fully_paid" ? "green" : "amber"} />
+                          <StatusPill label={paymentStatusLabel(order.paymentStatus)} tone={paymentStatusTone(order.paymentStatus)} />
                         </td>
                       )}
                       <td className="px-4 py-2.5">

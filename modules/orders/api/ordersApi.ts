@@ -8,6 +8,7 @@ import type {
   OrderListItem,
   OrderStats,
   OrderStatusHistoryEntry,
+  PriceChange,
   RevenueReport,
   StaffReport,
   UpdateOrderInput,
@@ -73,6 +74,18 @@ export const ordersApi = {
 
   history(orderId: string): Promise<{ history: OrderStatusHistoryEntry[] }> {
     return apiFetch(`/orders/${orderId}/history`);
+  },
+
+  /** Set the first price, raise it, or give a discount -- the server decides which from the order's state (ADR 0008). */
+  changePrice(orderId: string, totalAmount: string, reason?: string): Promise<{ order: Order; change: PriceChange }> {
+    return apiFetch(`/orders/${orderId}/price`, {
+      method: "PUT",
+      body: JSON.stringify(reason ? { totalAmount, reason } : { totalAmount }),
+    });
+  },
+
+  priceHistory(orderId: string): Promise<{ history: PriceChange[] }> {
+    return apiFetch(`/orders/${orderId}/price-history`);
   },
 
   stats(): Promise<OrderStats> {

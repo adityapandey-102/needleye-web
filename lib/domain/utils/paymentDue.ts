@@ -13,7 +13,8 @@ export function remainingOutstanding(totalAmount: MoneyLike, amountPaid: MoneyLi
  * previewing status while entering an advance at order creation); the API is
  * the real authority. Exact (decimal.js), so it matches the server exactly.
  */
-export function derivePaymentStatus(paymentsSum: MoneyLike, totalAmount: MoneyLike): PaymentStatus {
+export function derivePaymentStatus(paymentsSum: MoneyLike, totalAmount: MoneyLike | null): PaymentStatus {
+  if (totalAmount === null) return "not_priced";
   const paid = money(paymentsSum);
   const total = money(totalAmount);
   if (total.lessThanOrEqualTo(0)) return "fully_paid"; // free work: nothing to collect
@@ -22,7 +23,7 @@ export function derivePaymentStatus(paymentsSum: MoneyLike, totalAmount: MoneyLi
   return "advance_paid";
 }
 
-export type PaymentDueStatus = "paid" | "no_date" | "upcoming" | "due_today" | "overdue";
+export type PaymentDueStatus = "not_priced" | "paid" | "no_date" | "upcoming" | "due_today" | "overdue";
 
 export interface PaymentDueInfo {
   status: PaymentDueStatus;
@@ -44,11 +45,15 @@ export interface PaymentDueInfo {
  * date is "no_date"; otherwise it's overdue / due today / upcoming with a day count.
  */
 export function getPaymentDue(input: {
-  totalAmount?: MoneyLike;
+  totalAmount?: MoneyLike | null;
   amountPaid?: MoneyLike;
   paymentStatus?: string | null;
   nextPaymentDate?: string | null;
 }): PaymentDueInfo {
+  // No price yet: nothing is due, and nothing can be paid (ADR 0008).
+  if (input.paymentStatus === "not_priced" || input.totalAmount === null) {
+    return { status: "not_priced", label: "Price not set", tone: "gray", days: null, daysLabel: "Price the order first", outstanding: "0.00" };
+  }
   const outstanding = remainingOutstanding(input.totalAmount, input.amountPaid);
 
   if (input.paymentStatus === "fully_paid" || !money(outstanding).greaterThan(0)) {

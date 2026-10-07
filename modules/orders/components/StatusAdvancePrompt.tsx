@@ -8,6 +8,8 @@ import { Button } from "../../../components/ui/Button";
 import { Icon } from "../../../components/ui/Icon";
 import { useToast } from "../../../components/ui/Toast";
 import { useConfirm } from "../../../components/ui/ConfirmDialog";
+import { isApiErrorCode } from "../../../lib/api/client";
+import { PRICE_REQUIRED_DIALOG } from "./OrderStatusControl";
 
 /**
  * Shown ONLY when an order is opened via its QR scan (the parent renders this
@@ -22,10 +24,13 @@ export function StatusAdvancePrompt({
   orderId,
   currentStatus,
   role,
+  priceSet = true,
 }: {
   orderId: string;
   currentStatus: GranularStatus;
   role: Role;
+  /** False while the order has no price -- Delivered then explains instead of trying (ADR 0008). */
+  priceSet?: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -54,6 +59,11 @@ export function StatusAdvancePrompt({
 
   async function advance() {
     if (!nextStatus) return;
+    if (nextStatus === "delivered" && !priceSet) {
+      dismiss();
+      await confirm(PRICE_REQUIRED_DIALOG);
+      return;
+    }
     const ok = await confirm({
       title: `Move to ${granularLabel(nextStatus)}?`,
       body: `Confirm this order has moved from “${granularLabel(currentStatus)}” to “${granularLabel(nextStatus)}”. This is recorded in the order's status history and can't be undone.`,
@@ -69,6 +79,11 @@ export function StatusAdvancePrompt({
       dismiss();
       router.refresh();
     } catch (err) {
+      if (isApiErrorCode(err, "ORDER_PRICE_REQUIRED")) {
+        dismiss();
+        await confirm(PRICE_REQUIRED_DIALOG);
+        return;
+      }
       showToast(err instanceof Error ? err.message : "Failed to update status", "error");
     } finally {
       setSaving(false);

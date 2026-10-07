@@ -23,6 +23,7 @@ import { Select } from "../../../components/ui/Select";
 import { useToast } from "../../../components/ui/Toast";
 import { useConfirm } from "../../../components/ui/ConfirmDialog";
 import { Icon } from "../../../components/ui/Icon";
+import { OPEN_PAYMENT_FORM_EVENT } from "./PricingCard";
 
 const TONE_CLASSES: Record<string, string> = {
   green: "border-green-200 bg-green-50 text-green-800",
@@ -33,9 +34,12 @@ const TONE_CLASSES: Record<string, string> = {
 
 interface PaymentLedgerProps {
   orderId: string;
+  /** Record payments (owner, accountant, the order's own designer). */
   canManage: boolean;
-  /** Order's total (2dp money string), and its payment schedule -- for the outstanding + due-status summary and overpayment guard. */
-  orderTotal: string;
+  /** Remove a payment (owner, accountant) -- only before the order is delivered (ADR 0008). */
+  canCorrect?: boolean;
+  /** Order's total (2dp money string; null = not priced yet), and its payment schedule -- for the outstanding + due-status summary and overpayment guard. */
+  orderTotal: string | null;
   paymentStatus: string | null;
   nextPaymentDate: string | null;
 }
@@ -46,7 +50,7 @@ interface PaymentLedgerProps {
  * blocks recording more than the outstanding amount (overpayment) on the
  * client -- the API enforces the same rule server-side (PAYMENT_EXCEEDS_TOTAL).
  */
-export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, nextPaymentDate }: PaymentLedgerProps) {
+export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTotal, paymentStatus, nextPaymentDate }: PaymentLedgerProps) {
   const { showToast } = useToast();
   const confirm = useConfirm();
   const router = useRouter();
@@ -55,7 +59,7 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
   // total / status / due-date the summary reads are ALWAYS consistent with the
   // payments -- never a stale server-component prop (which can lag after an
   // order edit or another payment). The props seed the first paint only.
-  const [orderFields, setOrderFields] = useState({ totalAmount: orderTotal, paymentStatus, nextPaymentDate });
+  const [orderFields, setOrderFields] = useState({ totalAmount: orderTotal, paymentStatus, nextPaymentDate, productionStatus: "" });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,9 +79,10 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
       const [list, { order }] = await Promise.all([paymentsApi.list(orderId), ordersApi.get(orderId)]);
       setPayments(list.payments);
       setOrderFields({
-        totalAmount: order.totalAmount ?? "0.00",
+        totalAmount: order.totalAmount ?? null,
         paymentStatus: order.paymentStatus ?? null,
         nextPaymentDate: order.nextPaymentDate,
+        productionStatus: order.productionStatus,
       });
       setError(null);
     } catch (err) {
@@ -95,9 +100,10 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
         if (!cancelled) {
           setPayments(list.payments);
           setOrderFields({
-            totalAmount: order.totalAmount ?? "0.00",
+            totalAmount: order.totalAmount ?? null,
             paymentStatus: order.paymentStatus ?? null,
             nextPaymentDate: order.nextPaymentDate,
+            productionStatus: order.productionStatus,
           });
           setError(null);
         }
@@ -112,7 +118,17 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
+  }, [orderId, orderTotal]);
+
+  // The pricing flow's last step ("Record a payment?") opens the form here.
+  useEffect(() => {
+    const open = () => setFormOpen(true);
+    window.addEventListener(OPEN_PAYMENT_FORM_EVENT, open);
+    return () => window.removeEventListener(OPEN_PAYMENT_FORM_EVENT, open);
+  }, []);
+
+  const notPriced = orderFields.totalAmount === null;
+  const delivered = orderFields.productionStatus === "delivered";
 
   const paid = addMoney(...payments.map((p) => p.amount));
   const due = getPaymentDue({
@@ -188,141 +204,154 @@ export function PaymentLedger({ orderId, canManage, orderTotal, paymentStatus, n
   }
 
   return (
-    <Card>
-      <CardHeader
-        icon="💳"
-        iconTone="green"
-        title="Payment Ledger"
-        subtitle={`${payments.length} ${payments.length === 1 ? "entry" : "entries"} · ${formatCurrency(paid)} recorded`}
-      />
-      <CardBody className="flex flex-col gap-3">
-        {/* Summary: outstanding + payment-due status (#2) */}
-        <div className="stagger-in grid grid-cols-2 gap-2">
-          <div className="rounded-app border border-border-light bg-app-bg/50 px-3 py-2.5">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
-              <Icon name="wallet" size={13} className="text-primary/70" />
-              Outstanding
+    // The id is the target the pricing flow scrolls to ("Record a payment?").
+    <div id="payment-ledger" className="scroll-mt-20">
+      <Card>
+        <CardHeader
+          icon="💳"
+          iconTone="green"
+          title="Payment Ledger"
+          subtitle={`${payments.length} ${payments.length === 1 ? "entry" : "entries"} · ${formatCurrency(paid)} recorded`}
+        />
+        <CardBody className="flex flex-col gap-3">
+          {/* Summary: outstanding + payment-due status (#2) */}
+          <div className="stagger-in grid grid-cols-2 gap-2">
+            <div className="rounded-app border border-border-light bg-app-bg/50 px-3 py-2.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
+                <Icon name="wallet" size={13} className="text-primary/70" />
+                Outstanding
+              </div>
+              <div className="figure mt-1 text-[16px] text-text-primary">{formatCurrency(due.outstanding)}</div>
             </div>
-            <div className="figure mt-1 text-[16px] text-text-primary">{formatCurrency(due.outstanding)}</div>
+            <div className="rounded-app border border-border-light bg-app-bg/50 px-3 py-2.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
+                <Icon name="check-circle" size={13} className="text-success" />
+                Paid
+              </div>
+              <div className="figure mt-1 text-[16px] text-text-primary">{formatCurrency(paid)}</div>
+            </div>
+            <div className={`col-span-2 rounded-app border px-3 py-2.5 ${TONE_CLASSES[due.tone]}`}>
+              <div className="flex items-center gap-1.5 text-[11px] font-medium opacity-80">
+                <Icon name="calendar-clock" size={13} />
+                Payment Status
+              </div>
+              <div className="mt-1 text-sm font-semibold">{due.label}</div>
+              <div className="text-[11px]">
+                {orderFields.nextPaymentDate && due.status !== "paid"
+                  ? `${formatDateOnly(orderFields.nextPaymentDate)} · ${due.daysLabel}`
+                  : due.daysLabel}
+              </div>
+            </div>
           </div>
-          <div className="rounded-app border border-border-light bg-app-bg/50 px-3 py-2.5">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
-              <Icon name="check-circle" size={13} className="text-success" />
-              Paid
-            </div>
-            <div className="figure mt-1 text-[16px] text-text-primary">{formatCurrency(paid)}</div>
-          </div>
-          <div className={`col-span-2 rounded-app border px-3 py-2.5 ${TONE_CLASSES[due.tone]}`}>
-            <div className="flex items-center gap-1.5 text-[11px] font-medium opacity-80">
-              <Icon name="calendar-clock" size={13} />
-              Payment Status
-            </div>
-            <div className="mt-1 text-sm font-semibold">{due.label}</div>
-            <div className="text-[11px]">
-              {orderFields.nextPaymentDate && due.status !== "paid"
-                ? `${formatDateOnly(orderFields.nextPaymentDate)} · ${due.daysLabel}`
-                : due.daysLabel}
-            </div>
-          </div>
-        </div>
 
-        {loading ? (
-          <p className="text-xs text-text-muted">Loading…</p>
-        ) : error ? (
-          <div className="flex items-center justify-between rounded-app-sm border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-            <span>{error}</span>
-            <button onClick={() => void load()} className="font-medium underline print:hidden">
-              Retry
-            </button>
-          </div>
-        ) : payments.length === 0 ? (
-          <p className="rounded-app border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">No payments recorded yet.</p>
-        ) : (
-          <div className="stagger-in flex flex-col gap-2">
-            {payments.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between gap-3 rounded-app border border-border-light bg-card px-3 py-2.5 text-sm transition-colors hover:border-primary/20 hover:bg-primary-bg/20"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success-bg text-success">
-                  <Icon name="receipt" size={16} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="figure text-[15px] text-text-primary">{formatCurrency(p.amount)}</div>
-                  <div className="text-[11px] text-text-muted">
-                    {PAYMENT_METHODS.find((m) => m.value === p.method)?.label ?? p.method} · {formatDateOnly(p.paidAt)}
-                    {p.recordedByName ? ` · ${p.recordedByName}` : ""}
-                  </div>
-                  {p.notes && <div className="mt-0.5 text-[11px] text-text-muted italic">{p.notes}</div>}
-                </div>
-                {canManage && (
-                  <button onClick={() => void handleDelete(p.id)} className="text-xs text-error hover:underline print:hidden">
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {canManage &&
-          isPositiveMoney(due.outstanding) &&
-          (formOpen ? (
-            <form onSubmit={handleAdd} className="mt-2 flex flex-col gap-2 rounded-app-sm border border-border-light p-3 print:hidden">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <FieldLabel required>Amount</FieldLabel>
-                  <Input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    max={due.outstanding}
-                    required
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-                  <p className="mt-1 text-[11px] text-text-muted">Outstanding: {formatCurrency(due.outstanding)}</p>
-                </div>
-                <div>
-                  <FieldLabel required>Method</FieldLabel>
-                  <Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
-                    {PAYMENT_METHODS.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <FieldLabel>Notes</FieldLabel>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
-              </div>
-              {/* If this payment won't settle the balance, capture when the next
-                  one is expected -- keeps the due tracking accurate. */}
-              {moneyGreaterThan(due.outstanding, amount) && (
-                <div>
-                  <FieldLabel>Next Payment Date</FieldLabel>
-                  <Input type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
-                  <p className="mt-1 text-[11px] text-text-muted">A balance will remain after this payment. When is the next one expected?</p>
-                </div>
-              )}
-              <FieldError>{formError}</FieldError>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={saving} className="px-3 py-1.5 text-xs">
-                  {saving ? "Saving…" : "Record payment"}
-                </Button>
-                <Button type="button" variant="outline" className="px-3 py-1.5 text-xs" onClick={() => setFormOpen(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
+          {loading ? (
+            <p className="text-xs text-text-muted">Loading…</p>
+          ) : error ? (
+            <div className="flex items-center justify-between rounded-app-sm border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+              <span>{error}</span>
+              <button onClick={() => void load()} className="font-medium underline print:hidden">
+                Retry
+              </button>
+            </div>
+          ) : payments.length === 0 ? (
+            <p className="rounded-app border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">No payments recorded yet.</p>
           ) : (
-            <Button variant="outline" className="mt-1 px-3 py-1.5 text-xs print:hidden" onClick={() => setFormOpen(true)}>
-              + Record payment
-            </Button>
-          ))}
-      </CardBody>
-    </Card>
+            <div className="stagger-in flex flex-col gap-2">
+              {payments.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 rounded-app border border-border-light bg-card px-3 py-2.5 text-sm transition-colors hover:border-primary/20 hover:bg-primary-bg/20"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success-bg text-success">
+                    <Icon name="receipt" size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="figure text-[15px] text-text-primary">{formatCurrency(p.amount)}</div>
+                    <div className="text-[11px] text-text-muted">
+                      {PAYMENT_METHODS.find((m) => m.value === p.method)?.label ?? p.method} · {formatDateOnly(p.paidAt)}
+                      {p.recordedByName ? ` · ${p.recordedByName}` : ""}
+                    </div>
+                    {p.notes && <div className="mt-0.5 text-[11px] text-text-muted italic">{p.notes}</div>}
+                  </div>
+                  {canCorrect && !delivered && (
+                    <button onClick={() => void handleDelete(p.id)} className="text-xs text-error hover:underline print:hidden">
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {notPriced && (
+            <p className="rounded-app border border-dashed border-amber-300 bg-amber-50/60 px-3 py-2 text-xs text-amber-900">
+              Set the order&rsquo;s price first &mdash; then payments can be recorded.
+            </p>
+          )}
+          {delivered && payments.length > 0 && (
+            <p className="text-[11px] text-text-muted">Delivered &mdash; recorded payments are final and can&rsquo;t be edited or removed.</p>
+          )}
+
+          {canManage &&
+            !notPriced &&
+            isPositiveMoney(due.outstanding) &&
+            (formOpen ? (
+              <form onSubmit={handleAdd} className="mt-2 flex flex-col gap-2 rounded-app-sm border border-border-light p-3 print:hidden">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <FieldLabel required>Amount</FieldLabel>
+                    <Input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      max={due.outstanding}
+                      required
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                    />
+                    <p className="mt-1 text-[11px] text-text-muted">Outstanding: {formatCurrency(due.outstanding)}</p>
+                  </div>
+                  <div>
+                    <FieldLabel required>Method</FieldLabel>
+                    <Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+                      {PAYMENT_METHODS.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel>Notes</FieldLabel>
+                  <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
+                </div>
+                {/* If this payment won't settle the balance, capture when the next
+                    one is expected -- keeps the due tracking accurate. */}
+                {moneyGreaterThan(due.outstanding, amount) && (
+                  <div>
+                    <FieldLabel>Next Payment Date</FieldLabel>
+                    <Input type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
+                    <p className="mt-1 text-[11px] text-text-muted">A balance will remain after this payment. When is the next one expected?</p>
+                  </div>
+                )}
+                <FieldError>{formError}</FieldError>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={saving} className="px-3 py-1.5 text-xs">
+                    {saving ? "Saving…" : "Record payment"}
+                  </Button>
+                  <Button type="button" variant="outline" className="px-3 py-1.5 text-xs" onClick={() => setFormOpen(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <Button variant="outline" className="mt-1 px-3 py-1.5 text-xs print:hidden" onClick={() => setFormOpen(true)}>
+                + Record payment
+              </Button>
+            ))}
+        </CardBody>
+      </Card>
+    </div>
   );
 }

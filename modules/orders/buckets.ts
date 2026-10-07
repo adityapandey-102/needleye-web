@@ -21,6 +21,7 @@ export const BUCKET_META: Record<string, BucketMeta> = {
   overdue: { title: "Overdue Orders", subtitle: "Past their delivery due date" },
   urgent: { title: "Urgent Orders", subtitle: "Due within the next 3 days" },
   this_month: { title: "Booked This Month", subtitle: "Orders created this calendar month" },
+  not_priced: { title: "Price Not Set", subtitle: "Orders still waiting for their price — they can't take payments or be delivered" },
 };
 
 export function bucketMeta(bucket: string): BucketMeta {

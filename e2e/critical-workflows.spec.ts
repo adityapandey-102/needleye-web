@@ -68,21 +68,38 @@ test.describe.serial("critical workflows", () => {
     await page.getByPlaceholder("Measurements, design references, fabric type, embellishments, color preferences...").fill(
       "Created by the Playwright critical-workflow suite.",
     );
-    // A total is required before any payment can be recorded (the ledger's
-    // overpayment guard rejects paying against a ₹0 order). Payment status is
-    // now derived from the ledger -- there is no status radio to pick.
-    await page.getByPlaceholder("e.g. 25000").fill("25000");
+    // No price on the form (ADR 0008): it's asked for right after saving.
+    await expect(page.getByPlaceholder("e.g. 25000")).toHaveCount(0);
 
     // First of the 4 upload slots -- a hidden <input type="file">, no click needed to reveal it.
     await page.locator('input[type="file"]').first().setInputFiles(SAMPLE_IMAGE);
 
     await page.getByRole("button", { name: "Create Product Order" }).click();
-    await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/, { timeout: 15_000 });
-    orderId = page.url().split("/orders/")[1]!;
+    await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+\?pricing=1$/, { timeout: 15_000 });
+    orderId = page.url().split("/orders/")[1]!.split("?")[0]!;
 
     await expect(page.getByText(customerName).first()).toBeVisible();
     // Confirms the staged file actually made it through ordersApi.uploadImage after order creation.
     await expect(page.locator('img[alt="Reference 1"]')).toBeVisible();
+  });
+
+  test("right after saving: Add pricing now? -> the double-check alert -> the price -> Record a payment?", async () => {
+    await page.getByRole("dialog", { name: "Add pricing now?" }).getByRole("button", { name: "Add pricing" }).click();
+    const pricing = page.getByRole("dialog", { name: "Set the order price" });
+    await pricing.getByLabel(/Order total/).fill("25000");
+    // The animated double-check alert reads the amount back in words.
+    const alert = pricing.getByRole("alert");
+    await expect(alert).toContainText("Please be double sure this total is correct");
+    await expect(alert).toContainText("Twenty-five thousand rupees");
+    await expect(alert).toContainText("Once the order is delivered, the price is locked.");
+    await pricing.getByRole("button", { name: /Save price/ }).click();
+
+    await expect(page.getByText("Price set: ₹25,000.")).toBeVisible();
+    await page.getByRole("dialog", { name: "Record a payment?" }).getByRole("button", { name: "Not now" }).click();
+    await expect(page).toHaveURL(new RegExp(`/orders/${orderId}$`));
+    // The order's own designer set its first price; they can't change it afterwards.
+    await expect(page.getByRole("button", { name: "Raise price" })).toHaveCount(0);
+    await expect(page.getByText("Price set", { exact: true })).toBeVisible(); // the price history row
   });
 
   test("search orders finds the new order by bill number", async () => {

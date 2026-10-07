@@ -17,6 +17,7 @@ import { StatusPill } from "../../../components/ui/StatusPill";
 import { Icon, type IconName } from "../../../components/ui/Icon";
 import { OrderQrCode } from "./OrderQrCode";
 import { PaymentLedger } from "./PaymentLedger";
+import { PricingCard } from "./PricingCard";
 import { ImageGallery } from "./ImageGallery";
 import { OrderTimeline } from "./OrderTimeline";
 import { OrderStatusTracker } from "./OrderStatusTracker";
@@ -46,6 +47,10 @@ export function OrderDetailView({
   canEdit,
   canSeePayment,
   canManagePayments,
+  canCorrectPayments = false,
+  canSetPrice = false,
+  canAdjustPrice = false,
+  askPricing = false,
   canChangeStatus,
 }: {
   order: Order;
@@ -56,6 +61,14 @@ export function OrderDetailView({
   canEdit: boolean;
   canSeePayment: boolean;
   canManagePayments: boolean;
+  /** Edit / delete a recorded payment (owner, accountant) -- before delivery only. */
+  canCorrectPayments?: boolean;
+  /** Give the order its first price (owner, accountant, its own designer). */
+  canSetPrice?: boolean;
+  /** Raise / discount the price (owner, accountant). */
+  canAdjustPrice?: boolean;
+  /** Opened right after creating the order: ask "Add pricing now?". */
+  askPricing?: boolean;
   /** Whether the viewer's role can change the production stage at all (tier-based). */
   canChangeStatus: boolean;
 }) {
@@ -66,17 +79,20 @@ export function OrderDetailView({
 
   // Payment progress (visual bar) — only meaningful when the caller can see money.
   // Money stays as 2dp strings; arithmetic goes through the money helpers.
+  // No price yet (ADR 0008): the money figures read "Price not set", not ₹0.
+  const priced = order.totalAmount !== null && order.totalAmount !== undefined;
   const total = order.totalAmount ?? "0.00";
   const outstanding = order.outstanding ?? "0.00";
-  const paid = subtractMoney(total, outstanding);
-  const paidPct = Math.round(paidFraction(paid, total) * 100);
+  const paid = order.amountPaid ?? subtractMoney(total, outstanding);
+  const paidPct = priced ? Math.round(paidFraction(paid, total) * 100) : 0;
+  const delivered = order.productionStatus === "delivered";
 
   return (
     <div className="mx-auto max-w-6xl">
       {/* Only when reached via a QR scan: prompt whoever received the garment to
           advance the stage ("Product received for X"). Silent otherwise. */}
       {viaScan && canChangeStatus && (
-        <StatusAdvancePrompt orderId={order.id} currentStatus={order.productionStatus} role={role} />
+        <StatusAdvancePrompt orderId={order.id} currentStatus={order.productionStatus} role={role} priceSet={order.priceSet} />
       )}
 
       {/* Action row (kept on the light background, above the hero). */}
@@ -125,8 +141,8 @@ export function OrderDetailView({
             <HeroStat icon="hourglass" label="Timeline" value={timeline.daysRemainingLabel} />
             {canSeePayment ? (
               <>
-                <HeroStat icon="rupee" label="Total" value={formatCurrency(total)} />
-                <HeroStat icon="wallet" label="Outstanding" value={formatCurrency(outstanding)} />
+                <HeroStat icon="rupee" label="Total" value={priced ? formatCurrency(total) : "Price not set"} />
+                <HeroStat icon="wallet" label="Outstanding" value={priced ? formatCurrency(outstanding) : "—"} />
               </>
             ) : (
               <>
@@ -224,7 +240,7 @@ export function OrderDetailView({
                 {canChangeStatus ? (
                   <>
                     <span className="print:hidden">
-                      <OrderStatusControl orderId={order.id} currentStatus={order.productionStatus} role={role} />
+                      <OrderStatusControl orderId={order.id} currentStatus={order.productionStatus} role={role} priceSet={order.priceSet} />
                     </span>
                     <span className="hidden print:inline">
                       <StatusPill label={granularLabel(order.productionStatus)} />
@@ -238,7 +254,10 @@ export function OrderDetailView({
                 <>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-muted">Payment</span>
-                    <StatusPill label={payment?.label ?? order.paymentStatus ?? ""} tone={order.paymentStatus === "fully_paid" ? "green" : "amber"} />
+                    <StatusPill
+                      label={payment?.label ?? order.paymentStatus ?? ""}
+                      tone={order.paymentStatus === "fully_paid" ? "green" : order.paymentStatus === "not_priced" ? "gray" : "amber"}
+                    />
                   </div>
                   {/* Visual paid-vs-total progress. */}
                   <div className="mt-1 rounded-app border border-border-light bg-app-bg/50 p-3">
@@ -256,8 +275,8 @@ export function OrderDetailView({
                     </div>
                   </div>
                   <div className="divide-y divide-border-light">
-                    <InfoRow icon="rupee" label="Total" value={formatCurrency(total)} figure />
-                    <InfoRow icon="wallet" label="Outstanding" value={formatCurrency(outstanding)} figure />
+                    <InfoRow icon="rupee" label="Total" value={priced ? formatCurrency(total) : "Price not set"} figure={priced} />
+                    <InfoRow icon="wallet" label="Outstanding" value={priced ? formatCurrency(outstanding) : "—"} figure={priced} />
                   </div>
                 </>
               ) : (
@@ -267,10 +286,23 @@ export function OrderDetailView({
           </Card>
 
           {canSeePayment && (
+            <PricingCard
+              orderId={order.id}
+              total={order.totalAmount ?? null}
+              collected={paid}
+              delivered={delivered}
+              canSet={canSetPrice}
+              canAdjust={canAdjustPrice}
+              askNow={askPricing}
+            />
+          )}
+
+          {canSeePayment && (
             <PaymentLedger
               orderId={order.id}
               canManage={canManagePayments}
-              orderTotal={order.totalAmount ?? "0.00"}
+              canCorrect={canCorrectPayments}
+              orderTotal={order.totalAmount ?? null}
               paymentStatus={order.paymentStatus ?? null}
               nextPaymentDate={order.nextPaymentDate}
             />

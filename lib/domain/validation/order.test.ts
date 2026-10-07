@@ -44,14 +44,14 @@ describe("createOrderSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("defaults handWork/machineWork/purchaseRequired/totalAmount when omitted", () => {
+  it("defaults handWork/machineWork/purchaseRequired when omitted, and leaves the total unset (priced later, ADR 0008)", () => {
     const result = createOrderSchema.safeParse(validOrder);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.handWork).toBe(false);
       expect(result.data.machineWork).toBe(false);
       expect(result.data.purchaseRequired).toBe(false);
-      expect(result.data.totalAmount).toBe("0.00");
+      expect(result.data.totalAmount).toBeUndefined();
     }
   });
 

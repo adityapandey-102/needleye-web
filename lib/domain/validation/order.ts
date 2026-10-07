@@ -25,7 +25,8 @@ export const createOrderSchema = z.object({
   // Payment status is DERIVED from the ledger by the API, never submitted. An
   // advance is recorded separately via the payments endpoint after creation.
   // Money crosses the wire as a 2dp string ("send money as text").
-  totalAmount: moneyField.default("0.00"),
+  // Not on the form any more: a new order is priced afterwards (ADR 0008).
+  totalAmount: moneyField.nullable().optional(),
   productionStatus: z.enum(GRANULAR_STATUS_VALUES, {
     errorMap: () => ({ message: "Please select current status" }),
   }),

@@ -109,6 +109,39 @@ test.describe.serial("more workflows", () => {
     await expect(page.getByRole("cell", { name: customerName })).toBeVisible();
   });
 
+  test("an unpriced order: Price Not Set card, no payments, and Delivered asks for the total first", async () => {
+    const unpricedName = `WF Unpriced ${Date.now()}`;
+    const { order } = await api<{ order: { id: string } }>(ownerToken, "/orders", {
+      method: "POST",
+      body: JSON.stringify({
+        customerName: unpricedName,
+        phone: "9123456711",
+        billNumber: `WF-NP-${Date.now()}`,
+        dueDate: uniqueDueDate(),
+        designerId: designer.id,
+        masterTailorId: master.id,
+        productCategory: "saree",
+        orderDetails: "Unpriced fixture",
+        productionStatus: "design_pending",
+      }),
+    });
+    await api(ownerToken, `/orders/${order.id}/status`, { method: "PATCH", body: JSON.stringify({ status: "ready" }) });
+
+    await page.goto("/orders");
+    await page.getByRole("link", { name: /Price Not Set/ }).click();
+    await expect(page).toHaveURL(/\/orders\/bucket\/not_priced/);
+    await expect(page.getByRole("cell", { name: unpricedName })).toBeVisible();
+
+    await page.goto(`/orders/${order.id}`);
+    await expect(page.getByText("Set the order’s price first")).toBeVisible();
+    await expect(page.getByRole("button", { name: "+ Record payment" })).toHaveCount(0);
+    await page.locator("select").filter({ has: page.locator('option[value="delivered"]') }).first().selectOption("delivered");
+    const dialog = page.getByRole("dialog", { name: "Set the order total first" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "OK" }).click();
+    await expect(page.getByText("Ready").first()).toBeVisible(); // still Ready
+  });
+
   test("Kanban: last 2 months only, 50 per page, and paging works", async () => {
     await page.goto("/orders");
     const boardLoad = page.waitForResponse((r) => r.url().includes("/orders?") && r.url().includes("createdFrom="));
