@@ -37,6 +37,8 @@ export const createOrderSchema = z.object({
    * API would refuse the full day with 409 DELIVERY_DAY_FULL.
    */
   confirmedWithProductionManager: z.boolean().optional(),
+  /** Not an order field: the lead this order converts (the API converts it in the same transaction). */
+  leadId: z.string().uuid().optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

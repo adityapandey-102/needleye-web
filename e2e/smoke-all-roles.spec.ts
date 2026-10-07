@@ -64,6 +64,7 @@ function pagesFor(role: FixtureRole | "owner"): Visit[] {
       { path: "/scan", allowed: true },
       { path: "/orders", allowed: false }, // workers land on /scan
       { path: `/orders/${orderId}`, allowed: true }, // reached by scanning an order's QR
+      { path: "/leads", allowed: false },
     ];
   }
   return [
@@ -80,6 +81,11 @@ function pagesFor(role: FixtureRole | "owner"): Visit[] {
     { path: "/reports/staff", allowed: owner },
     { path: "/reports/activity", allowed: owner },
     { path: "/admin/users", allowed: owner },
+    // Leads: the owner (every lead) and designers (their own); /leads/new is the owner's alone.
+    { path: "/leads", allowed: owner || role === "designer" },
+    { path: "/leads/new", allowed: owner },
+    // The public enquiry form opens for anyone, signed in or not.
+    { path: "/enquiry", allowed: true },
   ];
 }
 
@@ -145,7 +151,7 @@ test("phone size: the main pages render without errors", async ({ browser }) => 
   await signIn(page, OWNER_EMAIL, OWNER_PASSWORD);
   const problems: string[] = [];
   page.on("pageerror", (e) => problems.push(e.message));
-  for (const path of ["/orders", `/orders/${orderId}`, "/orders/new", "/reports/team", "/revenue"]) {
+  for (const path of ["/orders", `/orders/${orderId}`, "/orders/new", "/reports/team", "/revenue", "/leads", "/leads/new", "/enquiry"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle").catch(() => undefined);
     // Nothing may overflow sideways on a phone.

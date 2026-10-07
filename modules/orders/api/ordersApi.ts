@@ -3,6 +3,7 @@ import type {
   DeliveryLoad,
   GranularStatus,
   LedgerEventsResult,
+  LedgerExportResult,
   Order,
   OrderListItem,
   OrderStats,
@@ -111,6 +112,12 @@ export const ordersApi = {
       offset: String(params.offset),
     });
     return apiFetch(`/orders/ledger-events?${query.toString()}`);
+  },
+
+  /** Every ledger event of one week / one month, unpaged -- for Export CSV (the API refuses > 31 days). */
+  ledgerEventsExport(params: { from: string; to: string }): Promise<LedgerExportResult> {
+    const query = new URLSearchParams({ from: params.from, to: params.to });
+    return apiFetch(`/orders/ledger-events/export?${query.toString()}`);
   },
 
   uploadImage(orderId: string, slot: number, file: File): Promise<{ storagePath: string; url: string }> {

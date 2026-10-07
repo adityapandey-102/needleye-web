@@ -347,6 +347,15 @@ and the table pages through the matches (newest first), backed by
 `GET /orders/ledger-events`. Same `reports:financial` gate as the rest of the
 page.
 
+In **Month** or **Week** view, Ledger Activity has its own **Export CSV** and
+**Export PDF**: every row of that period (not just the visible page) with the
+table's columns plus a totals block, from `GET /orders/ledger-events/export`
+(which refuses more than 31 days -- there is no yearly export; the buttons hide
+in Year view). The CSV is built in the browser by `ledgerEventsToCsv`
+(`lib/domain/utils/ledgerExport.ts`, unit-tested; formula-looking text is
+defused for Excel); the PDF is the print page `/revenue/ledger-print`. Times
+are printed in the shop's timezone, which the export response carries.
+
 ### Print: order sheet & customer label
 
 Two print paths off an order's detail page: the existing full-order print
@@ -481,6 +490,64 @@ opens its own page, which has a "← Reports" back link:
 
 E2E: `e2e/reports.spec.ts` covers the three cards, the debounce (4 keystrokes
 → exactly 1 request), paging and access.
+
+### Leads (owner and designers)
+
+Its own sidebar section (**Customers -> Leads**); nothing about leads appears on
+the orders dashboard. Decisions: needleye-api `docs/adr/0007-leads-and-public-enquiry-form.md`.
+
+- **`/leads`** (`LeadsDashboard`): stage tiles that double as filters, an
+  urgent filter, debounced search (name / phone / lead number), a stage select,
+  and -- for the owner -- a designer filter, the **Designers** table (searched,
+  debounced, 10 a page via `GET /leads/designers`; a name filters All leads) and
+  **Copy enquiry form link**. All filtering and paging is in the API.
+- **Picking a designer** (the filter, Assign, the manual form) is the
+  `DesignerPicker` type-ahead -- debounced, at most 8 matches from
+  `/team-members?role=designer&q=&limit=8` -- never a dropdown of the whole team.
+- **`/leads/[leadId]`** (`LeadDetailView`): contact (call / WhatsApp), the
+  requirement, **only the actions the API says this person may take**
+  (`actions` in the response): Assign (owner), the next stages, and
+  **Converted**, which asks "Create an order for this lead?" and opens
+  `/orders/new?leadId=` pre-filled (with a banner); the lead becomes Converted
+  when that order is saved. Comments and history below.
+- **`/leads/new`** (owner): the manual lead form, with source and optional
+  assignment.
+- **The badge** (`LeadsBadgeProvider` in `AppShell`): the red count on the
+  sidebar's Leads item, on the **logo** in the phone header when the menu is
+  closed, in the tab title ("(3) Needleye") and on the installed app's icon
+  (Badging API). Refreshed on open / reopen (visibility) / reload, **every 10
+  minutes**, and right after an action that changes it (`notifyLeadsChanged`).
+- **Access:** `requireLeadsAccess` gates the pages (owner + designers; `/leads/new`
+  owner only); the API enforces the same on every call.
+
+### The public enquiry page (`/enquiry`, no login)
+
+`app/(public)/enquiry` -- a brand page for customers (`EnquiryLanding`): the
+logo and who Needleye is, the moving **garment rail** of designs, what Needleye
+makes, the four steps from enquiry to fitting, Instagram, and the form
+(`EnquiryForm`). `/enquiry` is in the session proxy's no-session list.
+
+- **Photos:** every image in `public/brand/` (file-name order; see the README
+  there) -- read on the server (`lib/brand/gallery.ts`), so adding photos needs
+  no code change. With none, woven fabric swatches stand in. The first 14 are
+  Needleye's own studio pieces from its previous website; `public/studio/` holds
+  the showroom photo for "Our studio".
+- **Site icon:** `app/icon.png`, `app/apple-icon.png`, `app/favicon.ico` -- the
+  logo's "N" emblem on the logo's sand colour (readable at tab size).
+- **Motion:** the rail is pure CSS transforms (`.rail-*` in `globals.css`) --
+  no JavaScript, two slow columns on desktop, one slim strip on phones, paused
+  on hover/touch, stopped by `prefers-reduced-motion`.
+- **The form** talks to the API with a plain `fetch` (`publicEnquiryApi`) -- no
+  session, no token. It carries the signed open-time token, a hidden honeypot
+  field, and the Turnstile widget only when the API reports a site key (off by
+  default). Every outcome shows a calm message; text is only ever rendered as
+  text.
+
+E2E: `e2e/leads.spec.ts` -- a customer's enquiry through the public form, the
+owner assigns, the designer's badge and Received, a comment, Converted into a
+pre-filled order, the manual lead + discard, and roles kept out.
+`smoke-all-roles` opens `/leads`, `/leads/new` and `/enquiry` for every role
+(and on a phone).
 
 ### Delivery due date & calendar
 

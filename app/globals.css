@@ -422,6 +422,72 @@ body {
   animation: shimmer 1.6s ease-in-out infinite;
 }
 
+/* ---- Enquiry page: the garment rail (public/brand photos gliding past) ----
+   Transform-only loops (GPU, no layout work), so they stay cheap on phones.
+   Each track holds its photos twice and travels exactly half its length, so
+   the loop is seamless. Hover / touch pauses it; reduced motion stops it. */
+.rail-up {
+  animation: rail-up 80s linear infinite;
+  will-change: transform;
+}
+.rail-down {
+  animation: rail-down 95s linear infinite;
+  will-change: transform;
+}
+.rail-strip {
+  animation: rail-strip 60s linear infinite;
+  will-change: transform;
+}
+.rail-hold:hover :is(.rail-up, .rail-down, .rail-strip),
+.rail-hold:active :is(.rail-up, .rail-down, .rail-strip) {
+  animation-play-state: paused;
+}
+@keyframes rail-up {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, -50%, 0); }
+}
+@keyframes rail-down {
+  from { transform: translate3d(0, -50%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes rail-strip {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+/* Fades the rail into the wine panel at its top and bottom edges. */
+.rail-fade-y {
+  mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+}
+.rail-fade-x {
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+/* Until real photos are in public/brand: woven "fabric swatch" tiles in the brand tones. */
+.swatch-silk {
+  background-color: #5c1528;
+  background-image:
+    repeating-linear-gradient(115deg, rgba(216, 191, 138, 0.18) 0 1px, transparent 1px 7px),
+    radial-gradient(120% 80% at 30% 20%, rgba(255, 255, 255, 0.12), transparent 60%);
+}
+.swatch-zari {
+  background-color: #7a1d34;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(216, 191, 138, 0.22) 0 2px, transparent 2px 10px),
+    repeating-linear-gradient(-45deg, rgba(216, 191, 138, 0.12) 0 1px, transparent 1px 10px);
+}
+.swatch-ivory {
+  background-color: #efe3cc;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(156, 123, 63, 0.12) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, rgba(156, 123, 63, 0.08) 0 1px, transparent 1px 5px);
+}
+.swatch-gold {
+  background-color: #9c7b3f;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(255, 244, 214, 0.35) 0 1.5px, transparent 2px),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.15), transparent 55%);
+  background-size: 12px 12px, 100% 100%;
+}
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
   *,

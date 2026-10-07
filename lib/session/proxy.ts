@@ -23,13 +23,19 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 const UNAUTHENTICATED_PATHS = ["/login", "/register", "/reset-password", "/auth/callback"];
 
 /**
+ * The customers' enquiry form -- open to anyone, signed in or not (staff can
+ * open it too, e.g. to check it), so it's in neither redirect list's way.
+ */
+const PUBLIC_ENQUIRY_PATH = "/enquiry";
+
+/**
  * Reachable without a session at all (superset of UNAUTHENTICATED_PATHS).
  * /qr-login is here but NOT in UNAUTHENTICATED_PATHS: scanning a Master
  * Tailor's QR is an explicit intent to switch identity, so an existing
  * session (e.g. a shop tablet still logged in as someone else) must not
  * bounce away before the page can process the token and switch sessions.
  */
-const NO_SESSION_REQUIRED_PATHS = [...UNAUTHENTICATED_PATHS, "/update-password", "/qr-login"];
+const NO_SESSION_REQUIRED_PATHS = [...UNAUTHENTICATED_PATHS, "/update-password", "/qr-login", PUBLIC_ENQUIRY_PATH];
 
 type Tokens = { accessToken: string; refreshToken: string };
 

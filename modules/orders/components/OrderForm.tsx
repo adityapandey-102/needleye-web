@@ -123,6 +123,8 @@ interface OrderFormProps {
   canEditTotal?: boolean;
   currentUserId: string;
   currentUserRole: Role;
+  /** Create mode: "this order is for that lead" -- pre-fills the customer and converts the lead when saved. */
+  fromLead?: { id: string; leadNumber: string; customerName: string; phone: string; requirement: string };
 }
 
 export function OrderForm({
@@ -133,6 +135,7 @@ export function OrderForm({
   canEditTotal = false,
   currentUserId,
   currentUserRole,
+  fromLead,
 }: OrderFormProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -140,7 +143,12 @@ export function OrderForm({
   const { members: masters } = useTeamMembers("master_tailor");
 
   const [form, setForm] = useState<FormState>(() => {
-    const base = order ? formFromOrder(order) : emptyForm();
+    const empty = emptyForm();
+    const base = order
+      ? formFromOrder(order)
+      : fromLead
+        ? { ...empty, customerName: fromLead.customerName, phone: fromLead.phone, orderDetails: fromLead.requirement }
+        : empty;
     // Pre-select the current user as designer when a Designer creates a new order.
     if (mode === "create" && currentUserRole === "designer") {
       return { ...base, designerId: currentUserId };
@@ -245,8 +253,9 @@ export function OrderForm({
       designerInstructions: form.designerInstructions || undefined,
       specialNotes: form.specialNotes || undefined,
       confirmedWithProductionManager: pmConfirmed || undefined,
+      leadId: mode === "create" ? fromLead?.id : undefined,
     }),
-    [form, pmConfirmed],
+    [form, pmConfirmed, mode, fromLead],
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -397,6 +406,14 @@ export function OrderForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 pb-24">
+      {mode === "create" && fromLead && (
+        <div className="flex items-center gap-2 rounded-app border border-gold/30 bg-gold-bg/60 px-4 py-3 text-sm text-text-primary">
+          <Icon name="inbox" size={16} className="text-gold" />
+          <span>
+            Creating an order for lead <span className="font-semibold">{fromLead.leadNumber}</span>. The lead becomes Converted when you save.
+          </span>
+        </div>
+      )}
       <Card>
         <CardHeader icon="📅" iconTone="amber" title="Order Timeline" subtitle="Booking and delivery schedule" />
         <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">

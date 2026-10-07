@@ -7,6 +7,7 @@ import { visibleNavSections } from "./nav-config";
 import { BrandMark } from "./BrandMark";
 import { Icon } from "../ui/Icon";
 import { authApi } from "../../modules/auth/api/authApi";
+import { BadgeBubble, useLeadsBadge } from "../../modules/leads/components/LeadsBadgeProvider";
 
 function initials(name: string) {
   return name
@@ -30,6 +31,7 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const sections = visibleNavSections(profile.role);
+  const { count: leadsBadge } = useLeadsBadge();
   // Highlight only the MOST specific matching link: on /orders/new that's
   // "Create New Order", not also "All Orders" (/orders is a prefix of it).
   const activeHref = sections
@@ -109,6 +111,7 @@ export function Sidebar({
                       className={isActive ? "text-gold-light" : "text-white/45 group-hover:text-white/80"}
                     />
                     {item.label}
+                    {item.badge === "leads" && <BadgeBubble count={leadsBadge} className="ml-auto" />}
                   </Link>
                 );
               })}

@@ -1,6 +1,7 @@
 import type { Role } from "../constants/roles";
 import type { GranularStatus } from "../constants/orderStatus";
 import type { ProductCategory, PaymentStatus, PaymentMethod } from "../constants/productCategories";
+import type { LeadSource, LeadStatus } from "../constants/leads";
 
 export interface Profile {
   id: string;
@@ -196,6 +197,11 @@ export interface LedgerEventsResult {
   to: string;
 }
 
+/** GET /orders/ledger-events/export -- one whole week/month, plus the shop timezone to show times in. */
+export interface LedgerExportResult extends LedgerEventsResult {
+  timeZone: string;
+}
+
 export interface TimelineSummary {
   statusLabel: "ON TRACK" | "DUE SOON" | "URGENT" | "OVERDUE" | "DELIVERED" | "N/A";
   tone: "green" | "amber" | "red" | "dark-red" | "gray";
@@ -264,4 +270,106 @@ export interface ActivityDay {
   total: number;
   limit: number;
   offset: number;
+}
+
+// -- Leads (GET/POST /leads*, the public enquiry form) -- docs: needleye-api docs/adr/0007 --
+
+export interface Lead {
+  id: string;
+  leadNumber: string;
+  customerName: string;
+  /** 10-digit Indian mobile. */
+  phone: string;
+  requirement: string;
+  source: LeadSource;
+  status: LeadStatus;
+  assignedTo: string | null;
+  assignedToName: string | null;
+  assignedAt: string | null;
+  /** A repeat enquiry not yet contacted. */
+  urgent: boolean;
+  enquiryCount: number;
+  firstEnquiryAt: string;
+  lastEnquiryAt: string;
+  /** YYYY-MM-DD while in follow-up. */
+  followUpOn: string | null;
+  lostReason: string | null;
+  convertedOrderId: string | null;
+  convertedOrderNumber: string | null;
+  createdBy: string | null;
+  createdByName: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeadComment {
+  id: string;
+  leadId: string;
+  authorId: string | null;
+  authorName: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface LeadEvent {
+  id: string;
+  leadId: string;
+  actorId: string | null;
+  /** Null = the public enquiry form. */
+  actorName: string | null;
+  kind: "created" | "enquiry_merged" | "assigned" | "status_changed" | "converted";
+  fromStatus: LeadStatus | null;
+  toStatus: LeadStatus | null;
+  assignedTo: string | null;
+  assignedToName: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+/** GET /leads/:id */
+export interface LeadDetail {
+  lead: Lead;
+  comments: LeadComment[];
+  events: LeadEvent[];
+  /** Owner only: other leads from the same phone. */
+  samePhone: Pick<Lead, "id" | "leadNumber" | "status" | "createdAt">[];
+  /** What the signed-in person may do next -- the page shows only these. */
+  actions: { nextStatuses: LeadStatus[]; canAssign: boolean; canConvert: boolean; canComment: boolean };
+}
+
+export interface LeadListResult {
+  leads: Lead[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface DesignerLeadStats {
+  designerId: string;
+  designerName: string;
+  open: number;
+  waiting: number;
+  converted: number;
+  lost: number;
+}
+
+/** GET /leads/summary */
+export interface LeadSummary {
+  byStatus: Record<LeadStatus, number>;
+  urgent: number;
+}
+
+/** GET /leads/designers -- one page of the owner's Designers table. */
+export interface DesignerStatsPage {
+  designers: DesignerLeadStats[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** A designer picked in a type-ahead (filter, assign). */
+export interface DesignerChoice {
+  id: string;
+  fullName: string;
 }

@@ -6,6 +6,8 @@ interface NavItem {
   icon: string;
   requires?: Capability;
   comingSoon?: boolean;
+  /** Shows a red count bubble (see modules/leads/components/LeadsBadgeProvider). */
+  badge?: "leads";
 }
 
 interface NavSection {
@@ -20,6 +22,11 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Create New Order", href: "/orders/new", icon: "✦", requires: "orders:create" },
       { label: "All Orders", href: "/orders", icon: "📋", requires: "orders:read" },
     ],
+  },
+  {
+    // Enquiries until they become orders: the owner sees every lead, a designer their own.
+    label: "Customers",
+    items: [{ label: "Leads", href: "/leads", icon: "inbox", requires: "leads:read", badge: "leads" }],
   },
   {
     label: "Production",

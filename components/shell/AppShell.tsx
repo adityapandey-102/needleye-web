@@ -2,14 +2,24 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import type { Profile } from "../../lib/domain";
+import { hasCapability, type Profile } from "../../lib/domain";
 import { Sidebar } from "./Sidebar";
 import { BrandMark } from "./BrandMark";
 import { Icon } from "../ui/Icon";
+import { BadgeBubble, LeadsBadgeProvider, useLeadsBadge } from "../../modules/leads/components/LeadsBadgeProvider";
 
 export function AppShell({ profile, children }: { profile: Profile; children: React.ReactNode }) {
+  return (
+    <LeadsBadgeProvider enabled={hasCapability(profile.role, "leads:read")}>
+      <Shell profile={profile}>{children}</Shell>
+    </LeadsBadgeProvider>
+  );
+}
+
+function Shell({ profile, children }: { profile: Profile; children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { count: leadsBadge } = useLeadsBadge();
 
   return (
     <div className="flex min-h-screen">
@@ -22,14 +32,18 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
           <button
             onClick={() => setSidebarOpen(true)}
             className="rounded-app p-2 text-text-secondary transition-colors hover:bg-app-bg"
-            aria-label="Open menu"
+            aria-label={leadsBadge > 0 ? `Open menu (${leadsBadge} new ${leadsBadge === 1 ? "lead" : "leads"})` : "Open menu"}
           >
             <Icon name="menu" size={20} />
           </button>
 
-          {/* Brand context for mobile/tablet, where the sidebar is hidden. */}
+          {/* Brand context for mobile/tablet, where the sidebar is hidden. With the
+              menu closed, the Leads count sits on the logo -- like an app icon's badge. */}
           <div className="flex items-center gap-2.5">
-            <BrandMark size={32} />
+            <span className="relative inline-flex">
+              <BrandMark size={32} />
+              <BadgeBubble count={leadsBadge} className="absolute -top-1.5 -right-2 ring-2 ring-card" />
+            </span>
             <span className="font-serif text-[18px] text-text-primary">Needleye</span>
           </div>
         </header>

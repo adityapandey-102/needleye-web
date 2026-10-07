@@ -60,6 +60,8 @@ test.describe.serial("delivery capacity", () => {
 
   test("a full day opens the dialog; proceeding with the PM's OK books it", async () => {
     await page.goto("/orders/new");
+    // Type only once the form is interactive -- typed before hydration, the date change is never seen.
+    await page.waitForLoadState("networkidle");
     await page.getByLabel("Delivery due date").fill(fullDay);
 
     const dialog = page.getByRole("dialog", { name: "This delivery date is fully booked" });
@@ -112,6 +114,8 @@ test.describe.serial("delivery capacity", () => {
     );
     try {
       await page.goto("/orders/new");
+      // Type only once the form is interactive -- typed before hydration, the date change is never seen.
+      await page.waitForLoadState("networkidle");
       await page.getByRole("button", { name: "Open the delivery calendar" }).click();
       const calendar = page.getByRole("dialog", { name: "Choose a delivery date" });
       const fullCell = calendar.getByRole("button", { name: /10 of 10 deliveries booked, fully booked/ });
@@ -135,6 +139,8 @@ test.describe.serial("delivery capacity", () => {
 
   test("Cancel clears the full date", async () => {
     await page.goto("/orders/new");
+    // Type only once the form is interactive -- typed before hydration, the date change is never seen.
+    await page.waitForLoadState("networkidle");
     const input = page.getByLabel("Delivery due date");
     await input.fill(fullDay);
     const dialog = page.getByRole("dialog", { name: "This delivery date is fully booked" });

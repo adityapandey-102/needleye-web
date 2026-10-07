@@ -124,9 +124,46 @@ test.describe.serial("more workflows", () => {
   test("Revenue: export CSV downloads a file", async () => {
     await page.goto("/revenue");
     const download = page.waitForEvent("download");
-    await page.getByRole("button", { name: /Export CSV/ }).click();
+    // The revenue statement's own button -- Ledger Activity (a named region below) has one too.
+    await page.getByRole("button", { name: /Export CSV/ }).first().click();
     const file = await download;
     expect(file.suggestedFilename()).toMatch(/^needleye-revenue-.*\.csv$/);
+  });
+
+  test("Ledger Activity: export this month as CSV and PDF; no export by year", async () => {
+    // A payment now, so this month's ledger has a row for our order.
+    await api(ownerToken, `/orders/${orderId}/payments`, { method: "POST", body: JSON.stringify({ amount: "300.00", method: "cash" }) });
+    const { order } = await api<{ order: { orderNumber: string } }>(ownerToken, `/orders/${orderId}`);
+
+    await page.goto("/revenue");
+    const ledger = page.getByRole("region", { name: "Ledger Activity" });
+    await expect(ledger.getByText(order.orderNumber).first()).toBeVisible(); // Month view is the default
+
+    // CSV: the whole month (every page), the table's columns, our row, the totals.
+    const download = page.waitForEvent("download");
+    await ledger.getByRole("button", { name: /Export CSV/ }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toMatch(/^needleye-ledger-\d{4}-\d{2}-01-to-\d{4}-\d{2}-\d{2}\.csv$/);
+    const csv = await (await import("node:fs/promises")).readFile((await file.path())!, "utf8");
+    expect(csv).toContain("When,Who,Action,Order,Amount,Method,Previous amount,Previous method,Effect on collected");
+    expect(csv).toMatch(new RegExp(`,Recorded,${order.orderNumber},300\\.00,Cash,,,300\\.00`));
+    expect(csv).toContain("Net change,,,");
+
+    // PDF: the printable page for the same month lists our payment.
+    const href = await ledger.getByRole("link").filter({ hasText: /Export PDF/ }).getAttribute("href");
+    expect(href).toMatch(/^\/revenue\/ledger-print\?from=\d{4}-\d{2}-01&to=/);
+    await page.goto(href!);
+    await expect(page.getByText("Ledger Activity").first()).toBeVisible();
+    await expect(page.getByText(order.orderNumber).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /Save as PDF/ })).toBeVisible();
+
+    // Week view exports too; Year view offers no export.
+    await page.goto("/revenue");
+    await ledger.getByRole("button", { name: "week" }).click();
+    await expect(ledger.getByRole("link").filter({ hasText: /Export PDF/ }).or(ledger.getByRole("button", { name: /Export PDF/ }))).toBeVisible();
+    await ledger.getByRole("button", { name: "year" }).click();
+    await expect(ledger.getByRole("button", { name: /Export CSV/ })).toHaveCount(0);
+    await expect(ledger.getByText("Choose Month or Week to export")).toBeVisible();
   });
 
   test("the printable sticker renders the order", async () => {

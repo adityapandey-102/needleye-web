@@ -1,8 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { formatCurrency, formatDate, PAYMENT_METHODS, type LedgerEvent, type LedgerEventsResult } from "../../../lib/domain";
+import {
+  formatCurrency,
+  formatDate,
+  ledgerEventsToCsv,
+  PAYMENT_METHODS,
+  type LedgerEvent,
+  type LedgerEventsResult,
+} from "../../../lib/domain";
 import { ordersApi } from "../../orders/api/ordersApi";
+import { downloadCsv } from "../export";
+import { useToast } from "../../../components/ui/Toast";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
@@ -75,6 +85,8 @@ export function LedgerActivity() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const { showToast } = useToast();
 
   const weeks = useMemo(() => weeksInMonth(year, month), [year, month]);
   // Keep the selected week valid when the month/year (and thus week list) changes.
@@ -130,6 +142,21 @@ export function LedgerActivity() {
     };
   }, [from, to, offset, reloadKey]);
 
+  // Exports cover ONE week or ONE month -- never a year (a year is large; the
+  // API refuses > 31 days too). The whole period, not just the visible page.
+  const canExport = granularity !== "year";
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const all = await ordersApi.ledgerEventsExport({ from, to });
+      downloadCsv(`needleye-ledger-${from}-to-${to}.csv`, ledgerEventsToCsv(all.events, { from, to, timeZone: all.timeZone }));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Couldn't export the ledger", "error");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const events = data?.events ?? [];
   const total = data?.total ?? 0;
   const showingFrom = total === 0 ? 0 : offset + 1;
@@ -138,7 +165,7 @@ export function LedgerActivity() {
   const canNext = offset + PAGE_SIZE < total;
 
   return (
-    <Card className="mt-5">
+    <Card className="mt-5" regionLabel="Ledger Activity">
       <CardHeader
         icon="🧾"
         iconTone="blue"
@@ -202,6 +229,34 @@ export function LedgerActivity() {
               </Select>
             </div>
           )}
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {canExport ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="px-3 py-1.5 text-xs"
+                  disabled={exporting || total === 0}
+                  onClick={() => void handleExportCsv()}
+                >
+                  <Icon name="download" size={14} /> {exporting ? "Exporting…" : "Export CSV"}
+                </Button>
+                {total === 0 ? (
+                  <Button variant="outline" className="px-3 py-1.5 text-xs" disabled>
+                    <Icon name="printer" size={14} /> Export PDF
+                  </Button>
+                ) : (
+                  <Link href={`/revenue/ledger-print?from=${from}&to=${to}`} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="px-3 py-1.5 text-xs">
+                      <Icon name="printer" size={14} /> Export PDF
+                    </Button>
+                  </Link>
+                )}
+              </>
+            ) : (
+              <span className="text-[11px] text-text-muted">Choose Month or Week to export</span>
+            )}
+          </div>
         </div>
 
         {error ? (

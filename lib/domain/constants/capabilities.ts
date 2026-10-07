@@ -19,6 +19,9 @@ export const CAPABILITIES = [
   "reports:financial",
   "reports:staff",
   "users:manage",
+  // Leads: read = see leads (designer: only their own); manage = add, assign, discard, any stage (owner).
+  "leads:read",
+  "leads:manage",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -143,6 +146,22 @@ export const CAPABILITY_MATRIX: Record<Capability, Record<Role, CapabilityScope>
     worker: false,
   },
   "users:manage": {
+    owner_manager: true,
+    designer: false,
+    master_tailor: false,
+    accountant: false,
+    production_manager: false,
+    worker: false,
+  },
+  "leads:read": {
+    owner_manager: true,
+    designer: "assigned",
+    master_tailor: false,
+    accountant: false,
+    production_manager: false,
+    worker: false,
+  },
+  "leads:manage": {
     owner_manager: true,
     designer: false,
     master_tailor: false,

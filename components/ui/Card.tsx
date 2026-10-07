@@ -6,6 +6,7 @@ export function Card({
   className = "",
   hover = false,
   accent = false,
+  regionLabel,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -13,15 +14,19 @@ export function Card({
   hover?: boolean;
   /** A gold hairline along the top -- reserved for the hero panel on a page. */
   accent?: boolean;
+  /** Makes the card a named landmark (<section aria-label>) -- for pages with several similar panels. */
+  regionLabel?: string;
 }) {
+  const Tag = regionLabel ? "section" : "div";
   return (
-    <div
+    <Tag
+      aria-label={regionLabel}
       className={`rounded-app-lg border border-border bg-card shadow-app print:border-neutral-300 print:shadow-none ${
         accent ? "card-accent-top" : ""
       } ${hover ? "lift hover:border-primary/25" : ""} ${className}`}
     >
       {children}
-    </div>
+    </Tag>
   );
 }
 
