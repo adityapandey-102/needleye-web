@@ -6,7 +6,6 @@ import {
   canTransition,
   GRANULAR_STATUSES,
   granularLabel,
-  stageIndex,
   type GranularStatus,
   type Role,
 } from "../../../lib/domain";
@@ -17,12 +16,13 @@ import { useConfirm } from "../../../components/ui/ConfirmDialog";
 
 /**
  * A quick single-order status changer -- the other way to move an order along
- * besides dragging its Kanban card. The flow is forward-only, so it only offers
- * stages *later* than the current one that the caller's role tier may set AND
- * reach without skipping a stage it can't set (e.g. a designer isn't offered
- * Falls/Kutchu from Design Approved, since that would jump PM Received). The API
- * re-checks all of it, plus concurrency. The current stage is always shown
- * (selected) so the control never misrepresents state.
+ * besides dragging its Kanban card. It offers only moves the flow allows
+ * (forward, plus Ready -> Alteration; Delivered only from Ready) that the
+ * caller's role tier may set AND reach without skipping a stage it can't set
+ * (e.g. a designer isn't offered Falls/Kutchu from Design Approved, since that
+ * would jump PM Received). The API re-checks all of it, plus concurrency. The
+ * current stage is always shown (selected) so the control never misrepresents
+ * state.
  */
 export function OrderStatusControl({
   orderId,
@@ -40,10 +40,7 @@ export function OrderStatusControl({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentIndex = stageIndex(currentStatus);
-  const options = GRANULAR_STATUSES.filter(
-    (s) => s.value === currentStatus || (stageIndex(s.value) > currentIndex && canTransition(role, currentStatus, s.value)),
-  );
+  const options = GRANULAR_STATUSES.filter((s) => s.value === currentStatus || canTransition(role, currentStatus, s.value));
 
   if (options.length <= 1) return null;
 

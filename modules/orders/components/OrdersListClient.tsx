@@ -41,10 +41,11 @@ const KANBAN_WINDOW_MONTHS = 2;
 /** Human labels for the dashboard buckets a summary card can deep-link into (?bucket=). */
 const BUCKET_LABELS: Record<string, string> = {
   active: "Active orders (not yet delivered)",
-  production: "In production (cutting → QC)",
-  completed: "Completed (ready / delivered)",
+  production: "In production (Falls / Kutchu → Alteration)",
+  completed: "Delivered (all time)",
   ready: "Ready for delivery",
   delivered: "Delivered",
+  delivered_this_month: "Delivered this month",
   pending_payment: "Pending payments",
   overdue: "Overdue (past due date)",
   urgent: "Urgent (due within 3 days)",

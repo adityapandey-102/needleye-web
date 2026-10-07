@@ -7,6 +7,20 @@ const RED = "var(--color-error)";
 
 type NodeState = { done: boolean; isCurrent: boolean; alarming: boolean };
 
+/**
+ * Alteration is a side loop (Ready -> Alteration -> Ready), not a step every
+ * order passes, so once an order is past it the node isn't ticked as done --
+ * the rail still runs green through it.
+ */
+function nodeState(stage: GranularStatus, i: number, currentIndex: number): NodeState {
+  const isCurrent = i === currentIndex;
+  return {
+    done: i < currentIndex && stage !== ALARMING_STATUS,
+    isCurrent,
+    alarming: isCurrent && stage === ALARMING_STATUS,
+  };
+}
+
 /** The circle's fill/border/glow, shared by the desktop bar and the mobile list. */
 function circleStyle({ done, isCurrent, alarming }: NodeState): React.CSSProperties {
   if (alarming) return { background: RED, borderColor: RED, color: "#fff" };
@@ -30,7 +44,7 @@ function labelClass({ done, isCurrent, alarming }: NodeState): string {
 }
 
 /**
- * The 14-stage production progress, forward-only.
+ * The 16-stage production progress (ADR 0008).
  *
  * - Desktop / tablet (>= sm): a connected, horizontal progress bar. A green
  *   line traces through the completed stages up to the current one; each stage
@@ -60,9 +74,9 @@ export function OrderStatusTracker({ status }: { status: GranularStatus }) {
           right and re-enters left (like wrapped text) instead of the rows
           reading as two separate bars. Works at any column count. */}
       <div className="hidden overflow-hidden sm:block">
-        <div className="grid grid-cols-5 gap-y-4 lg:grid-cols-7">
+        <div className="grid grid-cols-4 gap-y-4 lg:grid-cols-8">
           {CANONICAL_STAGES.map((stage, i) => {
-            const state: NodeState = { done: i < currentIndex, isCurrent: i === currentIndex, alarming: i === currentIndex && stage.value === ALARMING_STATUS };
+            const state = nodeState(stage.value, i, currentIndex);
             const isFirst = i === 0;
             const isLast = i === CANONICAL_STAGES.length - 1;
             const leftGreen = i <= currentIndex; // segment entering this node
@@ -128,7 +142,7 @@ export function OrderStatusTracker({ status }: { status: GranularStatus }) {
 
         <ol className="border-t border-border-light px-3 py-2">
           {CANONICAL_STAGES.map((stage, i) => {
-            const state: NodeState = { done: i < currentIndex, isCurrent: i === currentIndex, alarming: i === currentIndex && stage.value === ALARMING_STATUS };
+            const state = nodeState(stage.value, i, currentIndex);
             const topGreen = i <= currentIndex; // segment above this node
             const bottomGreen = i + 1 <= currentIndex; // segment below this node
             const isFirst = i === 0;

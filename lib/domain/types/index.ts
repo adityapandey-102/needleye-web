@@ -104,7 +104,12 @@ export interface DeliveryLoad {
 export interface OrderStats {
   total: number;
   active: number;
+  /** Every delivered order ever (deprecated in the API; the dashboard shows deliveredThisMonth). */
   completed: number;
+  /** Reached Delivered since the 1st of this month (shop timezone). */
+  deliveredThisMonth: number;
+  /** In Ready now -- finished, waiting for the customer. */
+  ready: number;
   thisMonth: number;
   inProduction: number;
   overdue: number;

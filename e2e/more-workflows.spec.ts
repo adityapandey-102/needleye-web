@@ -17,6 +17,7 @@ test.describe.serial("more workflows", () => {
   let designer: FixtureUser;
   let master: FixtureUser;
   let orderId = "";
+  const customerName = `WF Customer ${Date.now()}`;
 
   test.beforeAll(async ({ browser }) => {
     ownerToken = await loginAsOwner();
@@ -25,7 +26,7 @@ test.describe.serial("more workflows", () => {
     const { order } = await api<{ order: { id: string } }>(ownerToken, "/orders", {
       method: "POST",
       body: JSON.stringify({
-        customerName: `WF Customer ${Date.now()}`,
+        customerName,
         phone: "9123456708",
         billNumber: `WF-${Date.now()}`,
         dueDate: uniqueDueDate(),
@@ -66,6 +67,46 @@ test.describe.serial("more workflows", () => {
     const history = page.locator("div.rounded-app-lg").filter({ hasText: "Status History" }).last();
     await expect(history.locator("ol > li").first()).toContainText("Design Approved");
     await expect(history.locator("ol > li").nth(1)).toContainText("Design Pending");
+  });
+
+  test("Ready, the alteration loop, and Delivered only from Ready (with the dashboard cards)", async () => {
+    await api(ownerToken, `/orders/${orderId}/status`, { method: "PATCH", body: JSON.stringify({ status: "quality_check" }) });
+    const stageSelect = () => page.locator("select").filter({ has: page.locator('option[value="ready"]') }).first();
+    const moveTo = async (value: string, label: string) => {
+      await stageSelect().selectOption(value);
+      await page.getByRole("button", { name: `Change to ${label}` }).click();
+      await expect(page.getByText(`Status updated to ${label}.`)).toBeVisible();
+      await page.reload();
+    };
+
+    await page.goto(`/orders/${orderId}`);
+    // At QC: Ready is offered, Delivered isn't.
+    await expect(stageSelect().locator('option[value="delivered"]')).toHaveCount(0);
+    await moveTo("ready", "Ready");
+
+    // At Ready: the one way back (Alteration) and Delivered are both offered.
+    await expect(stageSelect().locator('option[value="alteration"]')).toHaveCount(1);
+    await expect(stageSelect().locator('option[value="delivered"]')).toHaveCount(1);
+    await moveTo("alteration", "Alteration");
+
+    // At Alteration: back to Ready only -- not straight to Delivered.
+    await expect(stageSelect().locator('option[value="delivered"]')).toHaveCount(0);
+    await moveTo("ready", "Ready");
+
+    // The dashboard's Ready card opens a list with this order in it.
+    await page.goto("/orders");
+    await page.getByRole("link", { name: /Ready for Delivery/ }).click();
+    await expect(page).toHaveURL(/\/orders\/bucket\/ready/);
+    await expect(page.getByRole("cell", { name: customerName })).toBeVisible();
+
+    await page.goto(`/orders/${orderId}`);
+    await moveTo("delivered", "Delivered");
+    await page.goto("/orders");
+    const delivered = page.getByRole("link", { name: /Delivered/ }).filter({ hasText: "This month" });
+    await expect(delivered).toBeVisible();
+    await delivered.click();
+    await expect(page).toHaveURL(/\/orders\/bucket\/delivered_this_month/);
+    await expect(page.getByRole("cell", { name: customerName })).toBeVisible();
   });
 
   test("Kanban: last 2 months only, 50 per page, and paging works", async () => {

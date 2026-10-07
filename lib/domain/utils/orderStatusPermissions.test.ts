@@ -28,13 +28,14 @@ describe("canChangeStage (stage-tier, no assignment)", () => {
   it("production tier (Falls/Kutchu ... Finishing): everyone on the floor, not accountant", () => {
     for (const r of ["owner_manager", "designer", "master_tailor", "production_manager", "worker"] as Role[]) {
       expect(canChangeStage(r, "cutting")).toBe(true);
+      expect(canChangeStage(r, "marking")).toBe(true);
       expect(canChangeStage(r, "finishing")).toBe(true);
     }
     expect(canChangeStage("accountant", "cutting")).toBe(false);
   });
 
-  it("finalization tier (QC / Alteration / Delivered): owner / designer / PM only", () => {
-    for (const s of ["quality_check", "alteration", "delivered"] as const) {
+  it("finalization tier (QC / Alteration / Ready / Delivered): owner / designer / PM only", () => {
+    for (const s of ["quality_check", "alteration", "ready", "delivered"] as const) {
       for (const r of ["owner_manager", "designer", "production_manager"] as Role[]) {
         expect(canChangeStage(r, s)).toBe(true);
       }
@@ -62,5 +63,25 @@ describe("blockingStage / canTransition (no jumping over a stage the role can't 
   it("reports the TARGET when it's the target itself the role can't set", () => {
     expect(blockingStage("master_tailor", "finishing", "quality_check")).toBe("quality_check");
     expect(blockingStage("worker", "stitching", "delivered")).toBe("quality_check");
+  });
+});
+
+describe("canTransition follows the flow's shape (ADR 0008)", () => {
+  it("allows Delivered only from Ready", () => {
+    expect(canTransition("owner_manager", "ready", "delivered")).toBe(true);
+    expect(canTransition("owner_manager", "quality_check", "delivered")).toBe(false);
+    expect(canTransition("owner_manager", "alteration", "delivered")).toBe(false);
+  });
+
+  it("allows the alteration loop and no other way back", () => {
+    expect(canTransition("designer", "ready", "alteration")).toBe(true);
+    expect(canTransition("designer", "alteration", "ready")).toBe(true);
+    expect(canTransition("owner_manager", "ready", "quality_check")).toBe(false);
+    expect(canTransition("owner_manager", "cutting", "cutting")).toBe(false);
+  });
+
+  it("still needs the role's tier for the loop", () => {
+    expect(canTransition("worker", "ready", "alteration")).toBe(false);
+    expect(canTransition("master_tailor", "alteration", "ready")).toBe(false);
   });
 });

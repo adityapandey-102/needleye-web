@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  canChangeStage,
-  GRANULAR_STATUS_VALUES,
-  granularLabel,
-  stageIndex,
-  type GranularStatus,
-  type Role,
-} from "../../../lib/domain";
+import { canTransition, granularLabel, nextMainStage, type GranularStatus, type Role } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
 import { Button } from "../../../components/ui/Button";
 import { Icon } from "../../../components/ui/Icon";
@@ -19,7 +12,8 @@ import { useConfirm } from "../../../components/ui/ConfirmDialog";
 /**
  * Shown ONLY when an order is opened via its QR scan (the parent renders this
  * just for `?scan=1`). Whoever physically received the garment is prompted to
- * advance it to the next stage in the flow -- "Product received for X". Tapping
+ * advance it to the next stage on the main path (QC and Alteration -> Ready,
+ * Ready -> Delivered; never Alteration) -- "Product received for X". Tapping
  * the advance button asks for a final confirmation, then applies the change
  * (PATCH /orders/:id/status; the API re-checks role tier, forward-only, and
  * concurrency). Rendered only when the next stage is one this role may set.
@@ -39,9 +33,8 @@ export function StatusAdvancePrompt({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const idx = stageIndex(currentStatus);
-  const nextStatus = idx >= 0 && idx < GRANULAR_STATUS_VALUES.length - 1 ? GRANULAR_STATUS_VALUES[idx + 1]! : null;
-  const canAdvance = !!nextStatus && canChangeStage(role, nextStatus);
+  const nextStatus = nextMainStage(currentStatus);
+  const canAdvance = !!nextStatus && canTransition(role, currentStatus, nextStatus);
 
   useEffect(() => {
     if (!canAdvance) return;

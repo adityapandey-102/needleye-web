@@ -11,7 +11,7 @@ import {
   canonicalLabel,
   getTimelineSummary,
   hasCapability,
-  stageIndex,
+  stageMoveRefusal,
   toCanonicalStage,
   type CanonicalStage,
   type OrderListItem,
@@ -22,7 +22,7 @@ import { StatusPill } from "../../../components/ui/StatusPill";
 import { useToast } from "../../../components/ui/Toast";
 
 /**
- * The 9-canonical-stage production board, grouped by toCanonicalStage(order.productionStatus)
+ * The production board (one column per stage), grouped by toCanonicalStage(order.productionStatus)
  * (never stored redundantly -- see domain/order-status.ts). A drop writes
  * CANONICAL_TO_GRANULAR[targetStage] via PATCH /orders/:id/status, same
  * endpoint OrderStatusControl uses on the detail page.
@@ -60,9 +60,15 @@ export function KanbanBoard({
       showToast(`Your role can't move this order into "${canonicalLabel(targetStage)}"`, "error");
       return;
     }
-    // Forward-only: the production flow only moves ahead (the API enforces this
-    // too, but reject the backward drag up front for instant feedback).
-    if (stageIndex(targetGranular) <= stageIndex(order.productionStatus)) {
+    // The flow's shape: forward-only except Ready -> Alteration, Delivered only
+    // from Ready. The API enforces this too; reject the drop up front for
+    // instant feedback.
+    const refusal = stageMoveRefusal(order.productionStatus, targetGranular);
+    if (refusal === "deliver_requires_ready") {
+      showToast(`An order can only be delivered once it's Ready -- move it to "Ready" first.`, "error");
+      return;
+    }
+    if (refusal) {
       showToast(`The production flow only moves forward -- can't move back to "${canonicalLabel(targetStage)}".`, "error");
       return;
     }

@@ -2,7 +2,10 @@ import type { Capability } from "./capabilities";
 
 /**
  * The production lifecycle -- mirror of needleye-api's src/domain/order-status.ts.
- * A single linear, forward-only flow of 14 stages (see STAGE_ORDER).
+ * 16 stages (see STAGE_ORDER), forward-only with ONE exception -- Ready ->
+ * Alteration, so a garment can loop Ready -> Alteration -> Ready. Delivered is
+ * reachable only from Ready (ADR 0008). Alteration sits before Ready so the
+ * board and tracker read Ready right before Delivered.
  * `orders.production_status` always stores one of these granular values.
  */
 export const GRANULAR_STATUSES = [
@@ -12,6 +15,7 @@ export const GRANULAR_STATUSES = [
   { value: "falls_kutchu", label: "Falls / Kutchu" },
   { value: "fabric_purchased", label: "Fabric Purchased" },
   { value: "dyeing", label: "Dyeing" },
+  { value: "marking", label: "Marking" },
   { value: "cutting", label: "Cutting" },
   { value: "stitching", label: "Stitching" },
   { value: "hand_work", label: "Hand Work" },
@@ -19,6 +23,7 @@ export const GRANULAR_STATUSES = [
   { value: "finishing", label: "Finishing" },
   { value: "quality_check", label: "Quality Check / Trail" },
   { value: "alteration", label: "Alteration" },
+  { value: "ready", label: "Ready" },
   { value: "delivered", label: "Delivered" },
 ] as const;
 
@@ -72,6 +77,7 @@ export const STAGE_CAPABILITY: Record<GranularStatus, StatusCapability> = {
   falls_kutchu: "orders:status:production",
   fabric_purchased: "orders:status:production",
   dyeing: "orders:status:production",
+  marking: "orders:status:production",
   cutting: "orders:status:production",
   stitching: "orders:status:production",
   hand_work: "orders:status:production",
@@ -79,6 +85,7 @@ export const STAGE_CAPABILITY: Record<GranularStatus, StatusCapability> = {
   finishing: "orders:status:production",
   quality_check: "orders:status:finalization",
   alteration: "orders:status:finalization",
+  ready: "orders:status:finalization",
   delivered: "orders:status:finalization",
 };
 
@@ -103,3 +110,29 @@ export const COMPLETED_CANONICAL_STAGES: CanonicalStage[] = ["delivered"];
 
 /** The one stage that renders as an "alarming" (needs-attention) state in the UI. */
 export const ALARMING_STATUS: GranularStatus = "alteration";
+
+/** Finished and waiting for the customer -- the only stage Delivered can follow. */
+export const READY_STATUS: GranularStatus = "ready";
+
+/** Why a move from `from` to `to` breaks the flow's shape, or null if it doesn't (role checks are separate). */
+export type StageMoveRefusal = "same_stage" | "backward" | "deliver_requires_ready";
+
+/**
+ * Mirror of the API's stageMoveRefusal: same stage refused; Delivered only from
+ * Ready; backwards only Ready -> Alteration. The API re-checks on every request.
+ */
+export function stageMoveRefusal(from: GranularStatus, to: GranularStatus): StageMoveRefusal | null {
+  if (from === to) return "same_stage";
+  if (to === "delivered" && from !== READY_STATUS) return "deliver_requires_ready";
+  if (STAGE_ORDER[to] < STAGE_ORDER[from]) {
+    return from === READY_STATUS && to === ALARMING_STATUS ? null : "backward";
+  }
+  return null;
+}
+
+/** The next stage on the MAIN path (what a scan advances to): QC and Alteration -> Ready, Ready -> Delivered. */
+export function nextMainStage(current: GranularStatus): GranularStatus | null {
+  if (current === "delivered") return null;
+  if (current === "quality_check" || current === ALARMING_STATUS) return READY_STATUS;
+  return GRANULAR_STATUS_VALUES[STAGE_ORDER[current] + 1] ?? null;
+}

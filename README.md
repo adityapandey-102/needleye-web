@@ -322,7 +322,9 @@ ledger (unpaid → advance_paid → fully_paid), so it can't drift. Instead:
 ### Dashboard navigation & revenue reporting
 
 `OrderStatCards.tsx` (self-fetching, on `/orders`) renders the summary as
-clickable cards, each opening a **dedicated focused page** (not the full
+clickable cards -- Total, This Month, Active, In Production, **Ready for
+Delivery** (in Ready now), **Delivered** (this month only, not all time),
+Overdue, Urgent -- each opening a **dedicated focused page** (not the full
 orders list): most link to `/orders/bucket/[bucket]` (`BucketOrdersClient`,
 just the filtered table + pagination, no dashboard stats), while the payment
 cards link to `/orders/pending-payments` (`PendingPaymentsClient`) -- a
@@ -629,12 +631,18 @@ roles: `owner_manager`, `designer`, `master_tailor`, `accountant`,
 dashboard -- nav is empty and `/orders` redirects to `/scan`; scans an order QR
 and advances it). Status permissions are the four tiers in
 `orderStatusPermissions.ts`'s `canChangeStage` (design / pm_received /
-production / finalization -- QC, Alteration and Delivered are owner / designer /
-PM only); moves are forward-only, and `canTransition` / `blockingStage` refuse a
-jump past a stage the role can't set (so a designer isn't offered Falls/Kutchu
-from Design Approved -- that would skip PM Received). The status dropdown and the
-Kanban board both apply this; the API enforces all of it. See needleye-api
-ADR 0005 and its 2026-09-24 amendment.
+production / finalization -- QC, Alteration, Ready and Delivered are owner /
+designer / PM only). The flow has 16 stages (Marking after Dyeing, Ready after
+Alteration, right before Delivered); moves are forward-only except **Ready ->
+Alteration** (the alteration loop), and **Delivered only from Ready**
+(`stageMoveRefusal`). `canTransition` / `blockingStage` also refuse a jump past a
+stage the role can't set (so a designer isn't offered Falls/Kutchu from Design
+Approved -- that would skip PM Received). The status dropdown and the Kanban
+board both apply this; the QR-scan prompt offers `nextMainStage` (QC and
+Alteration -> Ready, Ready -> Delivered, never Alteration). The order tracker
+doesn't tick Alteration as done once an order is past it (it's a side loop, not
+a step every order passes). The API enforces all of it. See needleye-api ADR
+0005 (and its 2026-09-24 amendment) and ADR 0008.
 
 **Money — one way, decimal, string on the wire.** All money is a 2-decimal
 **string** ("1500.00"), never a JS `number`, everywhere in this app (API JSON,

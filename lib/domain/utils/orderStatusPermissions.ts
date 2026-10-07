@@ -1,5 +1,5 @@
 import { getCapabilityScope } from "../constants/capabilities";
-import { GRANULAR_STATUS_VALUES, stageCapability, stageIndex } from "../constants/orderStatus";
+import { GRANULAR_STATUS_VALUES, stageCapability, stageIndex, stageMoveRefusal } from "../constants/orderStatus";
 import type { GranularStatus } from "../constants/orderStatus";
 import type { Role } from "../constants/roles";
 
@@ -36,7 +36,7 @@ export function blockingStage(role: Role, from: GranularStatus, to: GranularStat
   return canChangeStage(role, to) ? null : to;
 }
 
-/** True if `role` may move an order from `from` straight to `to` (target tier + no gated skip). */
+/** True if `role` may move an order from `from` straight to `to`: the flow allows it (stageMoveRefusal) and the role clears the target tier with no gated skip. */
 export function canTransition(role: Role, from: GranularStatus, to: GranularStatus): boolean {
-  return blockingStage(role, from, to) === null;
+  return stageMoveRefusal(from, to) === null && blockingStage(role, from, to) === null;
 }

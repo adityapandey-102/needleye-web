@@ -68,14 +68,13 @@ export function OrderStatCards({ role }: { role: Role }) {
     { href: "/orders", icon: "📦", tone: "purple", value: stats.total, label: "Total Orders", caption: "All time", captionTone: "muted" },
     { href: "/orders/bucket/this_month", icon: "🗓️", tone: "purple", value: stats.thisMonth, label: "This Month", caption: "Booked this month", captionTone: "muted" },
     { href: "/orders/bucket/active", icon: "🔨", tone: "amber", value: stats.active, label: "Active Orders", caption: "Not yet delivered", captionTone: "muted" },
-    { href: "/orders/bucket/production", icon: "🧵", tone: "amber", value: stats.inProduction, label: "In Production", caption: "Cutting → QC", captionTone: "muted" },
-    { href: "/orders/bucket/completed", icon: "✅", tone: "green", value: stats.completed, label: "Completed", caption: "Ready / Delivered", captionTone: "success" },
+    { href: "/orders/bucket/production", icon: "🧵", tone: "amber", value: stats.inProduction, label: "In Production", caption: "Falls / Kutchu → Alteration", captionTone: "muted" },
+    { href: "/orders/bucket/ready", icon: "👗", tone: "green", value: stats.ready, label: "Ready for Delivery", caption: "Waiting for the customer", captionTone: "success" },
+    { href: "/orders/bucket/delivered_this_month", icon: "✅", tone: "green", value: stats.deliveredThisMonth, label: "Delivered", caption: "This month", captionTone: "success" },
     { href: "/orders/bucket/overdue", icon: "⏰", tone: "red", value: stats.overdue, label: "Overdue", caption: "Past due date", captionTone: "error" },
     { href: "/orders/bucket/urgent", icon: "⚠️", tone: "amber", value: stats.urgent, label: "Urgent", caption: "Due within 3 days", captionTone: "error" },
   ];
-  if (canSeePayments) {
-    cards.push({ href: "/orders/pending-payments", icon: "💳", tone: "pink", value: stats.pendingPayments!, label: "Pending Payments", caption: "Needs collection", captionTone: "error" });
-  }
+  // Pending Payments isn't repeated here: the payments band below already shows it.
 
   return (
     <div className="mb-6">
@@ -111,7 +110,7 @@ export function OrderStatCards({ role }: { role: Role }) {
 /**
  * One cell of the ledger strip: label with a small ink icon, the figure in the
  * display face, and the caption (coloured only when it carries meaning --
- * overdue, urgent, completed). `tone` / `index` are kept for the card config
+ * overdue, urgent, ready, delivered). `tone` / `index` are kept for the card config
  * but no longer paint the cell.
  */
 function StatCard({ href, icon, value, label, caption, captionTone }: StatCardConfig & { index: number }) {
