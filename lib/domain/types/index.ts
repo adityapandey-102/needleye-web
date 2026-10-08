@@ -46,6 +46,8 @@ export interface Payment {
   recordedByName?: string;
   notes: string | null;
   createdAt: string;
+  /** Dated in a month whose books are closed: it can't be edited or removed (ADR 0008 phase 5). */
+  monthClosed: boolean;
 }
 
 export interface Order {
@@ -160,9 +162,73 @@ export interface LedgerFigures {
   paymentsCount: number;
 }
 
+/** A month's books (ADR 0008 phase 5). */
+export interface LedgerMonthBooks {
+  /** closed: no payment dated in the month can be added, edited or removed. */
+  status: "open" | "closed";
+  /** The month has ended, so it can be closed (this month never has). */
+  ended: boolean;
+  /** The latest close (closed only). */
+  closedAt: string | null;
+  closedByName: string | null;
+}
+
 export interface LedgerMonth extends LedgerFigures {
   /** YYYY-MM -- always a calendar month. */
   month: string;
+  books: LedgerMonthBooks;
+}
+
+/** One close or reopen of a month. */
+export interface LedgerClosing {
+  id: string;
+  month: string;
+  action: "closed" | "reopened";
+  /** The month's figures at closing -- the closing record (closed only). */
+  figures: LedgerFigures | null;
+  /** Why it was reopened (reopened only). */
+  reason: string | null;
+  actorName: string | null;
+  createdAt: string;
+}
+
+/** GET /ledger/months/:month/closings */
+export interface LedgerMonthClosings {
+  month: string;
+  books: LedgerMonthBooks;
+  /** The month's figures now -- compare with the closing record. */
+  figuresNow: LedgerFigures;
+  /** Closes and reopens, newest first (at most 50). */
+  history: LedgerClosing[];
+  total: number;
+}
+
+/** One run of the check: the register against a recount of every order and payment. */
+export interface LedgerReconciliation {
+  id: string;
+  kind: "nightly" | "manual";
+  requestedByName: string | null;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  status: "verified" | "problems";
+  daysChecked: number;
+  mismatchedDays: number;
+  /** Up to 50 mismatched days, newest first. */
+  mismatches: { day: string; fields: { field: string; register: string; actual: string }[] }[];
+  overpaidOrders: number;
+  statusMismatches: number;
+  closedMonthDrift: number;
+  closedMonths: { month: string; closedCash: string; cashNow: string; closedPayments: number; paymentsNow: number }[];
+}
+
+/** GET /ledger/reconciliations/latest, POST /ledger/reconciliations */
+export interface LedgerVerification {
+  timeZone: string;
+  latest: LedgerReconciliation | null;
+  lastNightlyAt: string | null;
+  /** Over 26 hours since the last nightly check -- the schedule has stopped. */
+  nightlyOverdue: boolean;
 }
 
 /** GET /ledger/summary -- this month's cards. */

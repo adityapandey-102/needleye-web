@@ -25,6 +25,13 @@ describe("capabilities matrix", () => {
     expect(hasCapability("master_tailor", "payments:read")).toBe(false);
   });
 
+  it("closing the books: Owner and Accountant close; only the Owner reopens", () => {
+    for (const role of ROLES) {
+      expect(hasCapability(role, "ledger:close")).toBe(role === "owner_manager" || role === "accountant");
+      expect(hasCapability(role, "ledger:reopen")).toBe(role === "owner_manager");
+    }
+  });
+
   it("scopes designer payment access to their own assigned orders", () => {
     expect(getCapabilityScope("designer", "payments:manage")).toBe("assigned");
     expect(isScopedToOwnRecords("designer", "payments:manage")).toBe(true);

@@ -1,4 +1,4 @@
-import type { LedgerFigures, LedgerMonthsExport } from "../types";
+import type { LedgerFigures, LedgerMonthBooks, LedgerMonthsExport } from "../types";
 
 /** The first year the Revenue page offers (the shop's records start in 2020). */
 export const FIRST_REVENUE_YEAR = 2020;
@@ -37,6 +37,12 @@ function csvCell(value: string | number): string {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+/** A month's books in a word: Closed, Open (ended, can be closed) or Running (this month). */
+export function booksLabel(books: LedgerMonthBooks): "Closed" | "Open" | "Running" {
+  if (books.status === "closed") return "Closed";
+  return books.ended ? "Open" : "Running";
+}
+
 function figureCells(f: LedgerFigures): (string | number)[] {
   return [f.ordersBooked, f.ordersNotPriced, f.total, f.paidSoFar, f.outstanding, f.cashCollected, f.paymentsCount];
 }
@@ -46,9 +52,9 @@ function figureCells(f: LedgerFigures): (string | number)[] {
  * first, as on screen) and a totals row -- opens directly in Excel / Sheets.
  */
 export function ledgerMonthsToCsv(report: LedgerMonthsExport): string {
-  const header = ["Month", "Orders booked", "Not priced", "Total", "Paid so far", "Outstanding", "Cash collected", "Payments"];
+  const header = ["Month", "Orders booked", "Not priced", "Total", "Paid so far", "Outstanding", "Cash collected", "Payments", "Books"];
   const rows: (string | number)[][] = [header];
-  for (const m of report.months) rows.push([revenueMonthLabel(m.month), ...figureCells(m)]);
+  for (const m of report.months) rows.push([revenueMonthLabel(m.month), ...figureCells(m), booksLabel(m.books)]);
   rows.push([]);
   rows.push([`Total ${revenueMonthLabel(report.from)} to ${revenueMonthLabel(report.to)}`, ...figureCells(report.totals)]);
   return rows.map((r) => r.map(csvCell).join(",")).join("\n");

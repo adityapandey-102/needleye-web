@@ -201,6 +201,15 @@ test.describe.serial("more workflows", () => {
     for (const label of ["Total booked", "Paid so far", "Outstanding", "Cash collected"]) {
       await expect(thisMonth.getByText(label, { exact: true })).toBeVisible();
     }
+    // The guide at the top: closed until opened, then its sections expand one by one.
+    const guide = page.getByRole("region", { name: "Revenue and ledger guide" });
+    await guide.getByRole("button", { name: /Open guide/ }).click();
+    await expect(guide.getByText("The 4 numbers", { exact: true })).toBeVisible();
+    await expect(guide.getByText(/one follows the orders, the other follows the money/)).toBeVisible();
+    await guide.getByText("Closing a month", { exact: true }).click();
+    await expect(guide.getByText(/saved as its/)).toBeVisible();
+    await guide.getByRole("button", { name: /Hide guide/ }).click();
+    await expect(guide.getByText("The 4 numbers", { exact: true })).toBeHidden();
     // Since 2020: many months -- 12 a page, newest first, with the range's totals from the API.
     const loaded = page.waitForResponse((r) => r.url().includes("/ledger/months?from=2020-01") && r.status() === 200);
     await page.getByRole("button", { name: /^Since 2020/ }).click();
@@ -213,6 +222,47 @@ test.describe.serial("more workflows", () => {
     await page.getByRole("button", { name: /Export CSV/ }).first().click();
     const file = await download;
     expect(file.suggestedFilename()).toMatch(/^needleye-revenue-.*\.csv$/);
+  });
+
+  test("Books: Verify now, then close January 2020 and reopen it as the Owner (ADR 0008 phase 5)", async () => {
+    // An interrupted earlier run may have left January 2020 closed.
+    const before = await api<{ books: { status: string } }>(ownerToken, "/ledger/months/2020-01/closings");
+    if (before.books.status === "closed") {
+      await api(ownerToken, "/ledger/months/2020-01/reopen", { method: "POST", body: JSON.stringify({ reason: "e2e reset" }) });
+    }
+
+    await page.goto("/revenue");
+    const check = page.getByRole("region", { name: "Books check" });
+    await check.getByRole("button", { name: /Verify now/ }).click();
+    // Either result is a working check: a developer's local data may hold a deliberate mismatch.
+    // (That the register always matches is asserted by the API's integration suite, on a clean database.)
+    await expect(check.getByText(/^(Books verified|The check found problems)$/)).toBeVisible();
+    await expect(check.getByText(/Checked just now/)).toBeVisible();
+
+    // Just January 2020: Since 2020, then the end month back to January 2020.
+    await page.getByRole("button", { name: /^Since 2020/ }).click();
+    await page.getByLabel("To year").selectOption("2020");
+    const ranged = page.waitForResponse((r) => r.url().includes("/ledger/months?from=2020-01&to=2020-01") && r.status() === 200);
+    await page.getByLabel("To month").selectOption("01");
+    await ranged;
+
+    // Close it: the dialog shows the figures it will keep.
+    await page.getByRole("button", { name: "Close January 2020" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: /January 2020 — books open/ })).toBeVisible();
+    await dialog.getByRole("button", { name: "Close January 2020" }).click();
+    await expect(dialog).toHaveCount(0);
+    const closedChip = page.getByRole("button", { name: /January 2020: books closed/ });
+    await expect(closedChip).toBeVisible();
+
+    // Reopen it as the Owner, with a reason.
+    await closedChip.click();
+    await expect(dialog.getByRole("heading", { name: /January 2020 — books closed/ })).toBeVisible();
+    await expect(dialog.getByRole("columnheader", { name: "At closing" })).toBeVisible();
+    await dialog.getByLabel(/Why reopen January 2020/).fill("e2e: checking the reopen flow");
+    await dialog.getByRole("button", { name: "Reopen January 2020" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Close January 2020" })).toBeVisible();
   });
 
   test("Ledger Activity: export this month as CSV and PDF; no export by year", async () => {

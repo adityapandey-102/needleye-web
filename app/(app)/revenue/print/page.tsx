@@ -72,7 +72,10 @@ export default async function RevenuePrintPage({
           <tbody>
             {report.months.map((m) => (
               <tr key={m.month} className="border-b border-neutral-200">
-                <td className="py-1.5 pr-3">{revenueMonthLabel(m.month)}</td>
+                <td className="py-1.5 pr-3">
+                  {revenueMonthLabel(m.month)}
+                  {m.books.status === "closed" ? " · Closed" : ""}
+                </td>
                 <td className="py-1.5 pr-3">
                   {m.ordersBooked}
                   {m.ordersNotPriced > 0 ? ` (${m.ordersNotPriced} not priced)` : ""}
@@ -98,7 +101,8 @@ export default async function RevenuePrintPage({
 
         <p className="mt-6 text-[11px] text-neutral-400">
           Needleye · by Sakina Ahmed · Calendar months. Total booked and paid so far follow each month&rsquo;s orders (paid on any date); cash
-          collected is the money received in that month, from any order. Confidential.
+          collected is the money received in that month, from any order. Closed: the month&rsquo;s books are closed and its cash collected is final.
+          Confidential.
         </p>
       </div>
     </div>

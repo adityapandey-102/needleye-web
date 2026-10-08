@@ -273,11 +273,21 @@ export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTot
                     </div>
                     {p.notes && <div className="mt-0.5 text-[11px] text-text-muted italic">{p.notes}</div>}
                   </div>
-                  {canCorrect && !delivered && (
-                    <button onClick={() => void handleDelete(p.id)} className="text-xs text-error hover:underline print:hidden">
-                      Remove
-                    </button>
-                  )}
+                  {canCorrect &&
+                    !delivered &&
+                    (p.monthClosed ? (
+                      // ADR 0008 phase 5: dated in a month whose books are closed -- the API refuses changes.
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] text-text-muted"
+                        title="This payment is dated in a month whose books are closed. The Owner can reopen the month."
+                      >
+                        <Icon name="lock" size={12} /> Month closed
+                      </span>
+                    ) : (
+                      <button onClick={() => void handleDelete(p.id)} className="text-xs text-error hover:underline print:hidden">
+                        Remove
+                      </button>
+                    ))}
                 </div>
               ))}
             </div>

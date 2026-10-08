@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { formatCurrency, MONTH_OPTIONS, revenueYears, toDateInputValue, type LedgerMonthsPage } from "../../../lib/domain";
+import { formatCurrency, MONTH_OPTIONS, revenueYears, toDateInputValue, type LedgerMonth, type LedgerMonthsPage } from "../../../lib/domain";
 import { ledgerApi } from "../api/ledgerApi";
 import { downloadCsv, ledgerMonthsToCsv, revenueMonthLabel, monthRangeLabel } from "../export";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
@@ -11,6 +11,7 @@ import { Select } from "../../../components/ui/Select";
 import { Pager } from "../../../components/ui/Pager";
 import { Icon } from "../../../components/ui/Icon";
 import { useToast } from "../../../components/ui/Toast";
+import { MonthBooksDialog } from "./MonthBooksDialog";
 
 const PAGE_SIZE = 12;
 
@@ -23,9 +24,11 @@ function currentMonth(): string {
  * Calendar months for any range (from 2020), newest first, paged by the API
  * -- 12 months a page -- with the range's totals summed by the API, and CSV /
  * PDF export of the whole range. Replaces the old unpaged "Monthly Revenue
- * History" (payday cycles are gone: always calendar months).
+ * History" (payday cycles are gone: always calendar months). Each month shows
+ * its books (phase 5): Close a finished month, see a closed one's record, and
+ * -- Owner only -- reopen it.
  */
-export function MonthlyLedger() {
+export function MonthlyLedger({ canClose, canReopen }: { canClose: boolean; canReopen: boolean }) {
   const { showToast } = useToast();
   const now = useMemo(() => currentMonth(), []);
   const years = useMemo(() => revenueYears(Number(now.slice(0, 4))), [now]);
@@ -37,6 +40,7 @@ export function MonthlyLedger() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const [booksMonth, setBooksMonth] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,7 +154,7 @@ export function MonthlyLedger() {
           </div>
         ) : (
           <div className={`overflow-x-auto transition-opacity ${loading ? "opacity-60" : ""}`}>
-            <table className="w-full min-w-160 text-sm">
+            <table className="w-full min-w-180 text-sm">
               <thead>
                 <tr className="border-b border-border-light text-left text-xs text-text-muted">
                   <th className="py-2 pr-4 font-medium">Month</th>
@@ -158,7 +162,8 @@ export function MonthlyLedger() {
                   <th className="py-2 pr-4 text-right font-medium">Total booked</th>
                   <th className="py-2 pr-4 text-right font-medium">Paid so far</th>
                   <th className="py-2 pr-4 text-right font-medium">Outstanding</th>
-                  <th className="py-2 text-right font-medium">Cash collected</th>
+                  <th className="py-2 pr-4 text-right font-medium">Cash collected</th>
+                  <th className="py-2 text-right font-medium">Books</th>
                 </tr>
               </thead>
               <tbody className="rows-in">
@@ -172,7 +177,10 @@ export function MonthlyLedger() {
                     <td className="figure py-2.5 pr-4 text-right text-text-primary">{formatCurrency(m.total)}</td>
                     <td className="figure py-2.5 pr-4 text-right text-success">{formatCurrency(m.paidSoFar)}</td>
                     <td className="figure py-2.5 pr-4 text-right text-warning">{formatCurrency(m.outstanding)}</td>
-                    <td className="figure py-2.5 text-right font-semibold text-text-primary">{formatCurrency(m.cashCollected)}</td>
+                    <td className="figure py-2.5 pr-4 text-right font-semibold text-text-primary">{formatCurrency(m.cashCollected)}</td>
+                    <td className="py-2.5 text-right">
+                      <BooksCell m={m} canClose={canClose} onOpen={() => setBooksMonth(m.month)} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -182,10 +190,46 @@ export function MonthlyLedger() {
         {data && <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} className="mt-2 -mx-4 -mb-4" />}
         <p className="mt-3 text-[11px] text-text-muted">
           Total booked and paid so far follow each month&rsquo;s orders (paid on any date); cash collected is the money received in that month, from
-          any order.
+          any order. A closed month&rsquo;s payments are locked; only the Owner can reopen it.
         </p>
       </CardBody>
+      {booksMonth && (
+        <MonthBooksDialog
+          month={booksMonth}
+          canClose={canClose}
+          canReopen={canReopen}
+          onCancel={() => setBooksMonth(null)}
+          onChanged={() => {
+            setBooksMonth(null);
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      )}
     </Card>
+  );
+}
+
+/** A month's books: Closed (opens its record), Close… (a finished open month), or Running (this month). */
+function BooksCell({ m, canClose, onOpen }: { m: LedgerMonth; canClose: boolean; onOpen: () => void }) {
+  const label = revenueMonthLabel(m.month);
+  if (m.books.status === "closed") {
+    return (
+      <button
+        onClick={onOpen}
+        aria-label={`${label}: books closed — see the closing record`}
+        className="inline-flex items-center gap-1 rounded-full bg-primary-bg px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary-bg/70"
+      >
+        <Icon name="lock" size={12} /> Closed
+      </button>
+    );
+  }
+  if (!m.books.ended) return <span className="text-[11px] text-text-muted">Running</span>;
+  return canClose ? (
+    <Button variant="outline" className="px-2 py-1 text-[11px]" onClick={onOpen} aria-label={`Close ${label}`}>
+      Close…
+    </Button>
+  ) : (
+    <span className="text-[11px] text-text-muted">Open</span>
   );
 }
 

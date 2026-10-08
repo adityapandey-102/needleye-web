@@ -15,5 +15,5 @@ export default async function RevenuePage() {
     redirect("/orders");
   }
 
-  return <RevenueClient />;
+  return <RevenueClient role={profile.role} />;
 }
