@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { api, createFixtureStaff, loginAsOwner, uniqueDueDate, type FixtureRole, type FixtureUser } from "./fixtures";
+import { toDateInputValue } from "../lib/domain/utils/date";
 
 const OWNER_EMAIL = process.env.E2E_OWNER_EMAIL ?? "owner@needleeye.test";
 const OWNER_PASSWORD = process.env.E2E_OWNER_PASSWORD ?? "";
@@ -56,9 +57,10 @@ test.beforeAll(async () => {
 function pagesFor(role: FixtureRole | "owner"): Visit[] {
   const owner = role === "owner";
   const financial = owner || role === "accountant";
-  const today = new Date();
-  const from = `${today.getFullYear()}-01-01`;
-  const to = `${today.getFullYear()}-12-31`;
+  // The revenue statement takes calendar months (YYYY-MM), up to this month.
+  const thisMonth = toDateInputValue(new Date()).slice(0, 7);
+  const from = `${thisMonth.slice(0, 4)}-01`;
+  const to = thisMonth;
   if (role === "worker") {
     return [
       { path: "/scan", allowed: true },

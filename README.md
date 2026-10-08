@@ -85,7 +85,7 @@ modules/
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
-    components/RevenueClient.tsx   # owner_manager/accountant financial dashboard -- collected/outstanding + monthly accounting-cycle history + LedgerActivity audit trail (/revenue)
+    components/RevenueClient.tsx   # owner_manager/accountant financial dashboard (/revenue): ThisMonthCards + MonthlyLedger (paged months, range totals, CSV/PDF) + LedgerActivity audit trail
   reports/                       # owner-only (reports:staff) -- /reports
     components/                 # ReportPageHeader, TeamStatusCard (/reports/team: server-paged Working/Idle), ActivityFeedCard (/reports/activity: 7 days, each loaded when opened, in 5 category tabs), StaffReportClient + StaffPicker + WeeklyThroughputChart (/reports/staff: team -> searchable paged person list -> monthly report + SVG chart; /orders/staff-report redirects)
     requireReportsAccess.ts        # server-side owner-only gate shared by every /reports page
@@ -354,12 +354,17 @@ with an **Overdue / Upcoming** filter backed by the API's
 `master_tailor`, mirroring the API's field stripping.
 
 `/revenue` (`modules/revenue/RevenueClient.tsx`, owner_manager/accountant only,
-gated by `reports:financial`) is the financial dashboard: all-time
-collected/outstanding + a monthly accounting-cycle history over a
-**selectable year range** (From/To year). The accountant can **Export CSV**
-(opens in Excel; pure `revenueToCsv` in `lib/domain`) or **Export PDF** via a
-printable statement route (`/revenue/print`, `print:hidden` chrome so the print
-output is just the statement).
+gated by `reports:financial`) reads the API's daily ledger (needleye-api ADR
+0008, phase 4) -- always **calendar months**:
+- **This month** (`ThisMonthCards`): Total booked (orders booked this month, and
+  how many aren't priced yet), Paid so far (on those orders), Outstanding, and
+  Cash collected (all money received this month, any order).
+- **Monthly ledger** (`MonthlyLedger`): any range from 2020 (From / To month,
+  plus This year / Last 12 months / Since 2020), newest month first, **12 a page
+  from the API** with the shared `Pager`; the range's totals come from the API,
+  not from summing the visible page. **Export CSV** fetches every month of the
+  range (`ledgerMonthsToCsv`, unit-tested) and **Export PDF** opens the
+  printable statement (`/revenue/print?from=YYYY-MM&to=YYYY-MM`).
 
 Below the history, **Ledger Activity** (`LedgerActivity.tsx`) is the payment
 audit trail: who recorded, edited, or removed a payment, when, on which order,

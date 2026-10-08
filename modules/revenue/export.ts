@@ -1,6 +1,6 @@
 // Pure formatting/CSV-building logic lives in lib/domain (unit-tested there);
 // re-exported here so revenue components have one import site.
-export { periodLabel, revenueToCsv } from "../../lib/domain";
+export { ledgerMonthsToCsv, revenueMonthLabel, monthRangeLabel } from "../../lib/domain";
 
 /** Triggers a client-side download of `content` as a CSV file. */
 export function downloadCsv(filename: string, content: string): void {

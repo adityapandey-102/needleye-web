@@ -1,35 +1,55 @@
-import { addMoney } from "./money";
-import type { RevenueReport } from "../types";
+import type { LedgerFigures, LedgerMonthsExport } from "../types";
 
-/**
- * Formats one accounting period's start date into a readable label. For a
- * calendar cycle (day 1) that's "July 2026"; for a shifted cycle it's the start
- * date, since the period straddles two calendar months. Shared by the on-screen
- * table, the CSV export, and the printable report.
- */
-export function periodLabel(periodStart: string, cycleStartDay: number): string {
-  const date = new Date(`${periodStart}T00:00:00`);
-  if (cycleStartDay === 1) {
-    return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-  }
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+/** The first year the Revenue page offers (the shop's records start in 2020). */
+export const FIRST_REVENUE_YEAR = 2020;
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "2026-10" -> "October 2026" (plain string maths -- no timezone can shift a month). */
+export function revenueMonthLabel(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return `${MONTH_NAMES[(m ?? 1) - 1]} ${y}`;
 }
 
-/** Escapes a value for a CSV cell (quotes it when it contains a comma, quote, or newline). */
+/** "2026-10" -> "Oct 2026" */
+export function shortRevenueMonthLabel(month: string): string {
+  return revenueMonthLabel(month).replace(/^(\w{3})\w*/, "$1");
+}
+
+export const MONTH_OPTIONS = MONTH_NAMES.map((label, i) => ({ value: String(i + 1).padStart(2, "0"), label }));
+
+/** The years from FIRST_REVENUE_YEAR to `currentYear`. */
+export function revenueYears(currentYear: number): number[] {
+  return Array.from({ length: Math.max(1, currentYear - FIRST_REVENUE_YEAR + 1) }, (_, i) => FIRST_REVENUE_YEAR + i);
+}
+
+/** "the range" in a file name or heading: "2026", "Jan–Oct 2026", "Mar 2024–Oct 2026". */
+export function monthRangeLabel(from: string, to: string): string {
+  if (from === to) return revenueMonthLabel(from);
+  if (from.endsWith("-01") && to.endsWith("-12") && from.slice(0, 4) === to.slice(0, 4)) return from.slice(0, 4);
+  if (from.slice(0, 4) === to.slice(0, 4)) return `${shortRevenueMonthLabel(from).slice(0, 3)}–${shortRevenueMonthLabel(to)}`;
+  return `${shortRevenueMonthLabel(from)}–${shortRevenueMonthLabel(to)}`;
+}
+
+/** Escapes a CSV cell (quotes it when it holds a comma, quote or newline). */
 function csvCell(value: string | number): string {
   const s = String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** Builds a CSV (Period, Period Start, Collected, Payments) + a total row -- opens directly in Excel/Sheets. */
-export function revenueToCsv(report: RevenueReport): string {
-  const rows: (string | number)[][] = [["Period", "Period Start", "Collected", "Payments"]];
-  let total = "0.00";
-  for (const p of report.periods) {
-    rows.push([periodLabel(p.periodStart, report.cycleStartDay), p.periodStart, p.collected, p.paymentCount]);
-    total = addMoney(total, p.collected);
-  }
+function figureCells(f: LedgerFigures): (string | number)[] {
+  return [f.ordersBooked, f.ordersNotPriced, f.total, f.paidSoFar, f.outstanding, f.cashCollected, f.paymentsCount];
+}
+
+/**
+ * The Revenue page's "Export CSV": one row per month of the range (newest
+ * first, as on screen) and a totals row -- opens directly in Excel / Sheets.
+ */
+export function ledgerMonthsToCsv(report: LedgerMonthsExport): string {
+  const header = ["Month", "Orders booked", "Not priced", "Total", "Paid so far", "Outstanding", "Cash collected", "Payments"];
+  const rows: (string | number)[][] = [header];
+  for (const m of report.months) rows.push([revenueMonthLabel(m.month), ...figureCells(m)]);
   rows.push([]);
-  rows.push(["Total", "", total, ""]);
+  rows.push([`Total ${revenueMonthLabel(report.from)} to ${revenueMonthLabel(report.to)}`, ...figureCells(report.totals)]);
   return rows.map((r) => r.map(csvCell).join(",")).join("\n");
 }

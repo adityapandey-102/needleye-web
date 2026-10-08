@@ -1,51 +1,52 @@
 import { describe, expect, it } from "vitest";
-import { periodLabel, revenueToCsv } from "./revenue";
-import type { RevenueReport } from "../types";
+import { ledgerMonthsToCsv, revenueMonthLabel, monthRangeLabel, revenueYears } from "./revenue";
+import type { LedgerFigures, LedgerMonthsExport } from "../types";
 
-describe("periodLabel", () => {
-  it("uses a Month Year label for a calendar cycle (day 1)", () => {
-    expect(periodLabel("2026-07-01", 1)).toMatch(/2026/);
-    expect(periodLabel("2026-07-01", 1)).toMatch(/July|Jul/);
+const f = (total: string, paid: string, cash: string, orders = 2, notPriced = 0): LedgerFigures => ({
+  ordersBooked: orders,
+  ordersNotPriced: notPriced,
+  total,
+  paidSoFar: paid,
+  outstanding: (Number(total) - Number(paid)).toFixed(2),
+  cashCollected: cash,
+  paymentsCount: 3,
+});
+
+describe("month labels", () => {
+  it("reads calendar months, whatever the machine's timezone", () => {
+    expect(revenueMonthLabel("2026-10")).toBe("October 2026");
+    expect(revenueMonthLabel("2026-01")).toBe("January 2026");
   });
 
-  it("uses the start date for a shifted cycle", () => {
-    // A day-7 cycle straddles two months, so the label is the concrete start date.
-    expect(periodLabel("2026-07-07", 7)).toMatch(/2026/);
+  it("names a range compactly", () => {
+    expect(monthRangeLabel("2026-10", "2026-10")).toBe("October 2026");
+    expect(monthRangeLabel("2025-01", "2025-12")).toBe("2025");
+    expect(monthRangeLabel("2026-01", "2026-10")).toBe("Jan–Oct 2026");
+    expect(monthRangeLabel("2024-03", "2026-10")).toBe("Mar 2024–Oct 2026");
+  });
+
+  it("offers the years from 2020 to now", () => {
+    expect(revenueYears(2026)).toEqual([2020, 2021, 2022, 2023, 2024, 2025, 2026]);
   });
 });
 
-describe("revenueToCsv", () => {
-  const report: RevenueReport = {
-    cycleStartDay: 1,
-    from: "2026-01-01",
-    to: "2026-12-31",
-    periods: [
-      { periodStart: "2026-01-01", collected: "1200.00", paymentCount: 3 },
-      { periodStart: "2026-02-01", collected: "800.00", paymentCount: 2 },
+describe("ledgerMonthsToCsv", () => {
+  const report: LedgerMonthsExport = {
+    from: "2026-08",
+    to: "2026-09",
+    timeZone: "Asia/Kolkata",
+    months: [
+      { month: "2026-09", ...f("30000.00", "12000.00", "9000.00", 3, 1) },
+      { month: "2026-08", ...f("0.00", "0.00", "4000.00", 0) },
     ],
+    totals: f("30000.00", "12000.00", "13000.00", 3, 1),
   };
 
-  it("emits a header, one row per period, and a total row", () => {
-    const csv = revenueToCsv(report);
-    const lines = csv.split("\n");
-    expect(lines[0]).toBe("Period,Period Start,Collected,Payments");
-    expect(lines).toContain("Total,,2000.00,");
-    // Two period rows + header + blank + total.
-    expect(lines.filter((l) => l.includes("2026-0")).length).toBe(2);
-  });
-
-  it("quotes cells containing commas", () => {
-    const withComma: RevenueReport = {
-      ...report,
-      cycleStartDay: 7,
-      periods: [{ periodStart: "2026-01-07", collected: "1000.00", paymentCount: 1 }],
-    };
-    const csv = revenueToCsv(withComma);
-    // A "7 Jan, 2026"-style label (locale-dependent) must stay one CSV cell.
-    for (const line of csv.split("\n")) {
-      // Every data line has exactly 3 unquoted commas (4 columns), regardless of label content.
-      const outsideQuotes = line.replace(/"[^"]*"/g, "");
-      expect((outsideQuotes.match(/,/g) ?? []).length).toBeLessThanOrEqual(3);
-    }
+  it("one row per month (as on screen) and a totals row", () => {
+    const lines = ledgerMonthsToCsv(report).split("\n");
+    expect(lines[0]).toBe("Month,Orders booked,Not priced,Total,Paid so far,Outstanding,Cash collected,Payments");
+    expect(lines[1]).toBe("September 2026,3,1,30000.00,12000.00,18000.00,9000.00,3");
+    expect(lines[2]).toBe("August 2026,0,0,0.00,0.00,0.00,4000.00,3");
+    expect(lines.at(-1)).toBe("Total August 2026 to September 2026,3,1,30000.00,12000.00,18000.00,13000.00,3");
   });
 });

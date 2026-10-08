@@ -142,20 +142,57 @@ export interface PriceChange {
   createdAt: string;
 }
 
-/** One accounting period's collected revenue, from GET /orders/revenue. */
-export interface RevenuePeriod {
-  periodStart: string;
-  /** Money as a 2dp string. */
-  collected: string;
-  paymentCount: number;
+// -- Revenue (GET /ledger/*, reports:financial) -- needleye-api ADR 0008 phase 4 --
+
+/** A period's ledger figures (a month, or a whole range). Money as 2dp strings. */
+export interface LedgerFigures {
+  ordersBooked: number;
+  /** Booked orders without a price yet (not in `total`). */
+  ordersNotPriced: number;
+  /** Value of the orders booked in the period (as priced now). */
+  total: string;
+  /** Paid so far, on any date, on those orders. */
+  paidSoFar: string;
+  /** total - paidSoFar. */
+  outstanding: string;
+  /** Money received in the period, from any order. */
+  cashCollected: string;
+  paymentsCount: number;
 }
 
-export interface RevenueReport {
-  cycleStartDay: number;
-  /** Inclusive date window (YYYY-MM-DD) the periods cover, echoed from the request. */
+export interface LedgerMonth extends LedgerFigures {
+  /** YYYY-MM -- always a calendar month. */
+  month: string;
+}
+
+/** GET /ledger/summary -- this month's cards. */
+export interface LedgerSummary {
+  month: string;
+  /** The shop's today (YYYY-MM-DD). */
+  asOf: string;
+  timeZone: string;
+  figures: LedgerFigures;
+}
+
+/** GET /ledger/months -- one page of a range, newest month first, with the range's totals. */
+export interface LedgerMonthsPage {
   from: string;
   to: string;
-  periods: RevenuePeriod[];
+  months: LedgerMonth[];
+  /** Months in the range. */
+  total: number;
+  limit: number;
+  offset: number;
+  totals: LedgerFigures;
+}
+
+/** GET /ledger/months/export -- every month of a range (at most 240). */
+export interface LedgerMonthsExport {
+  from: string;
+  to: string;
+  timeZone: string;
+  months: LedgerMonth[];
+  totals: LedgerFigures;
 }
 
 /** One designer/master-tailor's monthly cohort board (orders booked that month) — GET /orders/staff-report. */

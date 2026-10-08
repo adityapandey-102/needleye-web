@@ -195,10 +195,21 @@ test.describe.serial("more workflows", () => {
     await ctx.close();
   });
 
-  test("Revenue: export CSV downloads a file", async () => {
+  test("Revenue: this month's cards, the monthly ledger paged by the API, and its CSV", async () => {
     await page.goto("/revenue");
+    const thisMonth = page.getByRole("region", { name: "This month" });
+    for (const label of ["Total booked", "Paid so far", "Outstanding", "Cash collected"]) {
+      await expect(thisMonth.getByText(label, { exact: true })).toBeVisible();
+    }
+    // Since 2020: many months -- 12 a page, newest first, with the range's totals from the API.
+    const loaded = page.waitForResponse((r) => r.url().includes("/ledger/months?from=2020-01") && r.status() === 200);
+    await page.getByRole("button", { name: /^Since 2020/ }).click();
+    await loaded;
+    await expect(page.getByText(/^Showing 1–12 of \d+$/)).toBeVisible();
+    await expect(page.getByLabel("Range totals").getByText(/^Booked · /)).toBeVisible();
+
     const download = page.waitForEvent("download");
-    // The revenue statement's own button -- Ledger Activity (a named region below) has one too.
+    // The monthly ledger's own button -- Ledger Activity (a named region below) has one too.
     await page.getByRole("button", { name: /Export CSV/ }).first().click();
     const file = await download;
     expect(file.suggestedFilename()).toMatch(/^needleye-revenue-.*\.csv$/);

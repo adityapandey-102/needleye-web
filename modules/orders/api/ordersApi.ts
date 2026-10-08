@@ -9,7 +9,6 @@ import type {
   OrderStats,
   OrderStatusHistoryEntry,
   PriceChange,
-  RevenueReport,
   StaffReport,
   UpdateOrderInput,
 } from "../../../lib/domain";
@@ -101,12 +100,6 @@ export const ordersApi = {
     const query = new URLSearchParams({ from, to });
     if (excludeOrderId) query.set("excludeOrderId", excludeOrderId);
     return apiFetch(`/orders/delivery-load?${query.toString()}`);
-  },
-
-  /** Monthly revenue report over an inclusive [from, to] window -- owner_manager / accountant only (reports:financial). */
-  revenue(from: string, to: string): Promise<RevenueReport> {
-    const query = new URLSearchParams({ from, to });
-    return apiFetch(`/orders/revenue?${query.toString()}`);
   },
 
   /** One staff member's workload report for a month (YYYY-MM, default current) -- owner_manager only (reports:staff). */
