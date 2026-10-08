@@ -49,13 +49,13 @@ export function Sidebar({
     <>
       {open && (
         <div
-          className="animate-fade-in fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          className="animate-fade-in fixed inset-0 z-40 bg-black/50 backdrop-blur-sm xl:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
       <aside
-        className={`fixed top-0 left-0 z-50 flex h-screen w-65 flex-col gradient-sidebar shadow-app-lg transition-transform duration-300 ease-out lg:translate-x-0 print:hidden ${
+        className={`fixed top-0 left-0 z-50 flex h-screen w-65 flex-col gradient-sidebar shadow-app-lg transition-transform duration-300 ease-out xl:translate-x-0 print:hidden ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

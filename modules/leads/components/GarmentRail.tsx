@@ -44,25 +44,29 @@ function TileView({ tile, className, sizes, eager }: { tile: Tile; className: st
   );
 }
 
-/** Desktop: two columns moving in opposite directions, a gold tacking stitch between them. */
+/**
+ * Desktop: three columns gliding in opposite directions (the middle one down,
+ * a touch slower), a gold tacking stitch between them.
+ */
 export function GarmentRailColumns({ photos }: { photos: BrandPhoto[] }) {
-  const tiles = tilesFrom(photos, 6);
-  const left = tiles.filter((_, i) => i % 2 === 0);
-  const right = tiles.filter((_, i) => i % 2 === 1);
-  const column = (items: Tile[], dir: "rail-up" | "rail-down") => (
+  const tiles = tilesFrom(photos, 9);
+  const columns = [0, 1, 2].map((c) => tiles.filter((_, i) => i % 3 === c));
+  const column = (items: Tile[], dir: "rail-up" | "rail-down", duration: string) => (
     <div className="min-w-0 flex-1 overflow-hidden">
-      <div className={`${dir} flex flex-col gap-4`}>
+      <div className={`${dir} flex flex-col gap-4`} style={{ animationDuration: duration }}>
         {[...items, ...items].map((t, i) => (
-          <TileView key={i} tile={t} className="aspect-[3/4] w-full" sizes="(min-width: 1024px) 18vw, 1px" eager={i < 2} />
+          <TileView key={i} tile={t} className="aspect-[3/4] w-full" sizes="(min-width: 1024px) 15vw, 1px" eager={i < 2} />
         ))}
       </div>
     </div>
   );
   return (
-    <div className="rail-hold rail-fade-y flex h-full gap-4" role="img" aria-label="Needleye designs">
-      {column(left, "rail-up")}
+    <div className="rail-hold rail-fade-y flex h-full gap-4" role="img" aria-label="Needle Eye designs">
+      {column(columns[0]!, "rail-up", "80s")}
       <div className="stitch-rule-v w-px shrink-0 opacity-70" aria-hidden />
-      {column(right, "rail-down")}
+      {column(columns[1]!, "rail-down", "95s")}
+      <div className="stitch-rule-v w-px shrink-0 opacity-70" aria-hidden />
+      {column(columns[2]!, "rail-up", "88s")}
     </div>
   );
 }
@@ -71,7 +75,7 @@ export function GarmentRailColumns({ photos }: { photos: BrandPhoto[] }) {
 export function GarmentRailStrip({ photos }: { photos: BrandPhoto[] }) {
   const tiles = tilesFrom(photos, 6);
   return (
-    <div className="rail-hold rail-fade-x overflow-hidden" role="img" aria-label="Needleye designs">
+    <div className="rail-hold rail-fade-x overflow-hidden" role="img" aria-label="Needle Eye designs">
       <div className="rail-strip flex w-max gap-3">
         {[...tiles, ...tiles].map((t, i) => (
           <TileView key={i} tile={t} className="h-44 w-32" sizes="128px" eager={i < 3} />

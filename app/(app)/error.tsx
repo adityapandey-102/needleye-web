@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "../../components/ui/Button";
+import { Button, ButtonLink } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 
 /**
@@ -21,9 +20,9 @@ export default function AppError({ reset }: { error: Error & { digest?: string }
       </p>
       <div className="mt-5 flex justify-center gap-3">
         <Button onClick={() => reset()}>Try again</Button>
-        <Link href="/orders">
-          <Button variant="outline">Back to Orders</Button>
-        </Link>
+        <ButtonLink href="/orders" variant="outline">
+          Back to Orders
+        </ButtonLink>
       </div>
     </div>
   );

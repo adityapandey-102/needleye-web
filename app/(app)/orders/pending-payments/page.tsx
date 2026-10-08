@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { hasCapability } from "../../../../lib/domain";
 import { apiFetchServer } from "../../../../lib/api/server";
-import { Button } from "../../../../components/ui/Button";
+import { ButtonLink } from "../../../../components/ui/Button";
 import { PendingPaymentsClient } from "../../../../modules/orders/components/PendingPaymentsClient";
 import { Icon } from "../../../../components/ui/Icon";
 
@@ -24,12 +23,10 @@ export default async function PendingPaymentsPage() {
           <h1 className="page-title">Pending Payments</h1>
           <p className="text-sm text-text-muted">Orders with money still to collect, by payment due status.</p>
         </div>
-        <Link href="/orders">
-          <Button variant="outline">
-            <Icon name="chevron-right" size={16} className="rotate-180" />
-            All Orders
-          </Button>
-        </Link>
+        <ButtonLink href="/orders" variant="outline">
+          <Icon name="chevron-right" size={16} className="rotate-180" />
+          All Orders
+        </ButtonLink>
       </div>
       <PendingPaymentsClient />
     </div>

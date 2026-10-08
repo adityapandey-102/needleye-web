@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { api, createFixtureStaff, loginAsOwner, uniqueDueDate, type FixtureRole, type FixtureUser } from "./fixtures";
 import { toDateInputValue } from "../lib/domain/utils/date";
 
@@ -134,32 +134,61 @@ async function walk(page: Page, role: FixtureRole | "owner") {
   expect(problems, problems.join("\n")).toEqual([]);
 }
 
+// Each walk opens about ten pages; the dev server compiles a page on its first visit.
+const WALK_TIMEOUT_MS = 60_000;
+
 test("owner: every page opens cleanly", async ({ page }) => {
+  test.setTimeout(WALK_TIMEOUT_MS);
   await signIn(page, OWNER_EMAIL, OWNER_PASSWORD);
   await walk(page, "owner");
 });
 
 for (const role of ["designer", "master_tailor", "accountant", "production_manager", "worker"] as const) {
   test(`${role}: allowed pages open cleanly, the rest are refused`, async ({ page }) => {
+    test.setTimeout(WALK_TIMEOUT_MS);
     const u = users[role]!;
     await signIn(page, u.email, u.password);
     await walk(page, role);
   });
 }
 
-test("phone size: the main pages render without errors", async ({ browser }) => {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await ctx.newPage();
-  await signIn(page, OWNER_EMAIL, OWNER_PASSWORD);
+// Phone, tablet upright, tablet sideways (no sidebar below 1280 px). One sign-in, reused --
+// the local API's sign-in rate limit counts every attempt in the run.
+test("phone and tablet sizes: the main pages render without errors or sideways scrolling", async ({ browser }) => {
+  test.setTimeout(3 * WALK_TIMEOUT_MS);
+  let session: Awaited<ReturnType<BrowserContext["storageState"]>> | undefined;
   const problems: string[] = [];
-  page.on("pageerror", (e) => problems.push(e.message));
-  for (const path of ["/orders", `/orders/${orderId}`, "/orders/new", "/reports/team", "/revenue", "/leads", "/leads/new", "/enquiry"]) {
-    await page.goto(path);
-    await page.waitForLoadState("networkidle").catch(() => undefined);
-    // Nothing may overflow sideways on a phone.
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect.soft(overflow, `${path} scrolls sideways on a phone`).toBeLessThanOrEqual(1);
+  for (const { width, height } of [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width, height }, isMobile: width < 1024, hasTouch: width < 1024, storageState: session });
+    const page = await ctx.newPage();
+    if (!session) {
+      await signIn(page, OWNER_EMAIL, OWNER_PASSWORD);
+      session = await ctx.storageState();
+    }
+    page.on("pageerror", (e) => problems.push(`${width} px: ${e.message}`));
+    for (const path of [
+      "/orders",
+      `/orders/${orderId}`,
+      "/orders/new",
+      "/orders/pending-payments",
+      "/reports/team",
+      "/revenue",
+      "/leads",
+      "/leads/new",
+      "/admin/users",
+      "/enquiry",
+    ]) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle").catch(() => undefined);
+      // Nothing may overflow sideways: wide tables scroll inside their card, or turn into cards.
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect.soft(overflow, `${path} scrolls sideways at ${width} px`).toBeLessThanOrEqual(1);
+    }
+    await ctx.close();
   }
   expect(problems).toEqual([]);
-  await ctx.close();
 });

@@ -213,6 +213,29 @@ body {
   transform-origin: left center;
   animation: grow-x 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+/* A progress ring draws itself from empty to its value (the value is the
+ * element's own stroke-dashoffset; --ring-length is the full circumference). */
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-length);
+  }
+}
+.ring-fill {
+  animation: ring-fill 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* Chart columns rise from the baseline. */
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.grow-y {
+  transform-origin: center bottom;
+  animation: grow-y 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 /* The current production stage breathes softly so the eye finds it. */
 @keyframes current-pulse {
@@ -281,6 +304,20 @@ body {
   }
 }
 
+/* A page header's buttons: in a row beside the title; on phones, full width and
+   stacked, so they line up instead of wrapping ragged. */
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+@media (width < 40rem) {
+  .page-actions {
+    display: grid;
+    width: 100%;
+  }
+}
+
 /* Themed, slim scrollbars (premium polish; ignored where unsupported). */
 * {
   scrollbar-width: thin;
@@ -296,6 +333,62 @@ body {
 }
 *::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent);
+}
+
+/* ---- The hero band: the brand red of the main buttons, with a gold outline ----
+ * One per page, for the numbers that matter most -- the Orders dashboard, the
+ * Revenue page's month, an order's header -- in exactly the colour of
+ * "Create New Order" (--gradient-primary, nothing laid over it). Cells are
+ * divided by hairlines drawn on their own edges (.hero-cell). Meaning on the
+ * red stays in the brand's own tones: gold for good, apricot for "soon",
+ * rose for trouble -- no greens or blues (AA contrast on the band). */
+:root {
+  --on-dark-muted: rgba(255, 255, 255, 0.68);
+  --on-dark-success: #e8cf98;
+  --on-dark-warning: #f2b47e;
+  --on-dark-error: #ff9d9d;
+}
+.hero-band {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-app-lg);
+  color: #fff;
+  background-image: var(--gradient-primary);
+  box-shadow:
+    0 0 0 1px rgba(200, 168, 101, 0.6),
+    var(--shadow-app-lg);
+}
+.hero-band::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 1;
+  height: 3px;
+  background-image: var(--gradient-gold);
+  pointer-events: none;
+}
+.hero-cells {
+  display: grid;
+}
+/* Hairlines on each cell's left and top edge; the band clips the outer ones. */
+.hero-cell {
+  box-shadow:
+    -1px 0 0 rgba(255, 255, 255, 0.14),
+    0 -1px 0 rgba(255, 255, 255, 0.14);
+  transition: background-color 0.2s ease;
+}
+a.hero-cell:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+@media print {
+  .hero-band {
+    background: #fff;
+    color: #000;
+    box-shadow: 0 0 0 1px #d4d4d4;
+  }
+  .hero-cell {
+    background: #fff;
+  }
 }
 
 /* ---- Gradient / material utility classes (Tailwind can't derive these from a var) ---- */
@@ -637,6 +730,183 @@ html:has(.lux) {
 }
 .lux-zoom:hover img {
   transform: scale(1.045);
+}
+
+/* The enquiry form in the page's noir and gold (EnquiryForm tone="lux"). */
+.lux-form label {
+  color: var(--lux-gold-light);
+  letter-spacing: 0.03em;
+}
+.lux-form label .text-error,
+.lux-form .text-error {
+  color: var(--on-dark-error);
+}
+.lux-form :is(input, textarea) {
+  background-color: rgba(255, 255, 255, 0.045);
+  border-color: rgba(232, 213, 166, 0.28);
+  color: var(--lux-ivory);
+}
+.lux-form :is(input, textarea)::placeholder {
+  color: rgba(247, 241, 231, 0.36);
+}
+.lux-form :is(input, textarea):hover {
+  border-color: rgba(232, 213, 166, 0.5);
+}
+.lux-form :is(input, textarea):focus {
+  border-color: var(--lux-gold);
+  box-shadow: 0 0 0 3px rgba(197, 164, 101, 0.2);
+}
+.lux-form .text-text-muted {
+  color: rgba(247, 241, 231, 0.4);
+}
+.lux-form [role="alert"] {
+  border-color: rgba(244, 199, 132, 0.35);
+  background-color: rgba(244, 199, 132, 0.08);
+  color: var(--on-dark-warning);
+}
+
+/* The enquiry popup (EnquiryDialog): a native <dialog>, shown with showModal()
+ * the moment the page opens and from every "Book a consultation" link. */
+.enquiry-dialog {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.enquiry-dialog:modal {
+  /* Centred: Tailwind's reset zeroes every margin, including the dialog's own auto. */
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  width: min(980px, calc(100% - 1.5rem));
+  max-width: none;
+  max-height: calc(100dvh - 1.5rem);
+  overflow: auto;
+  border-radius: 22px;
+  animation: enquiry-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.enquiry-dialog::backdrop {
+  background: rgba(8, 5, 4, 0.74);
+  backdrop-filter: blur(6px);
+}
+html:has(.enquiry-dialog:modal) {
+  overflow: hidden;
+}
+@keyframes enquiry-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+.enquiry-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(160deg, rgba(31, 22, 18, 0.97), rgba(13, 9, 8, 0.99));
+  box-shadow:
+    0 0 0 1px rgba(232, 213, 166, 0.38),
+    0 40px 90px -30px rgba(0, 0, 0, 0.8);
+}
+.enquiry-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--lux-gold) 20%, var(--lux-gold-light) 50%, var(--lux-gold) 80%, transparent);
+}
+.enquiry-photo {
+  display: none;
+}
+@media (min-width: 768px) {
+  .enquiry-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  }
+  .enquiry-photo {
+    display: block;
+  }
+}
+
+/* "Book a consultation" while browsing: the deep red pill with a gold ring
+ * running round it (a spinning conic gradient behind a 2px inset) and a soft
+ * shine passing over the label. */
+.lux-chase {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 2px;
+  box-shadow:
+    0 18px 40px -14px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(232, 213, 166, 0.22);
+  transition: transform 0.2s ease;
+}
+.lux-chase:hover {
+  transform: translateY(-2px);
+}
+.lux-chase::before {
+  content: "";
+  position: absolute;
+  inset: -160%;
+  z-index: -2;
+  background: conic-gradient(from 0deg, transparent 0 62%, #9c7a3c 70%, #f1e2b8 80%, #c5a465 88%, transparent 96%);
+  animation: lux-spin 2.6s linear infinite;
+}
+.lux-chase::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+}
+.lux-chase > span {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 0.85rem 1.45rem;
+  white-space: nowrap;
+  color: #f7f1e7;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.lux-chase > span::after,
+.lux-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: skewX(-20deg);
+  animation: lux-shine 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.lux-shine {
+  position: relative;
+  overflow: hidden;
+}
+@keyframes lux-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@keyframes lux-shine {
+  0%,
+  55% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
 }
 
 /* Respect users who prefer less motion. */

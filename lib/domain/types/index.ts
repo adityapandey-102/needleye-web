@@ -126,6 +126,8 @@ export interface OrderStats {
   // Money as 2dp strings.
   collectedRevenue?: string;
   outstandingRevenue?: string;
+  /** Orders not yet delivered, by pipeline group (they add up to `active`). */
+  pipeline?: { design: number; received: number; production: number; checks: number; ready: number };
 }
 
 export type PriceChangeKind = "set" | "raise" | "discount";

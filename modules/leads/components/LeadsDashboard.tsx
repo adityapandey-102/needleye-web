@@ -15,8 +15,8 @@ import {
 } from "../../../lib/domain";
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import { leadsApi } from "../api/leadsApi";
-import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
+import { CARD_GRID_CELL, Card, CardBody, CardHeader } from "../../../components/ui/Card";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Field";
 import { Select } from "../../../components/ui/Select";
 import { Pager } from "../../../components/ui/Pager";
@@ -129,13 +129,11 @@ export function LeadsDashboard({ isOwner }: { isOwner: boolean }) {
           </p>
         </div>
         {isOwner && (
-          <div className="flex flex-wrap gap-2">
+          <div className="page-actions">
             <CopyFormLinkButton />
-            <Link href="/leads/new">
-              <Button>
-                <Icon name="plus" size={16} /> Add lead
-              </Button>
-            </Link>
+            <ButtonLink href="/leads/new">
+              <Icon name="plus" size={16} /> Add lead
+            </ButtonLink>
           </div>
         )}
       </div>
@@ -240,8 +238,10 @@ export function LeadsDashboard({ isOwner }: { isOwner: boolean }) {
             </div>
           ) : (
             <div className={`overflow-hidden rounded-app-sm border border-border-light transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}>
-              <table className="w-full text-sm">
-                <thead className="hidden bg-app-bg/60 text-left text-[11px] font-semibold text-text-muted md:table-header-group">
+              {/* Phones: a card per lead (number and stage, then who, then what they want); tablets: two
+                  across; desktop: the table. */}
+              <table className="block w-full text-sm lg:table">
+                <thead className="hidden bg-app-bg/60 text-left text-[11px] font-semibold text-text-muted lg:table-header-group">
                   <tr>
                     <th className="px-4 py-2.5">Lead</th>
                     <th className="px-4 py-2.5">Customer</th>
@@ -251,10 +251,13 @@ export function LeadsDashboard({ isOwner }: { isOwner: boolean }) {
                     <th className="px-4 py-2.5">Received</th>
                   </tr>
                 </thead>
-                <tbody className="rows-in divide-y divide-border-light">
+                <tbody className="rows-in grid md:grid-cols-2 lg:table-row-group">
                   {data.leads.map((l) => (
-                    <tr key={l.id} className="relative flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors hover:bg-primary-bg/30 md:table-row md:p-0">
-                      <td className="md:px-4 md:py-3">
+                    <tr
+                      key={l.id}
+                      className={`${CARD_GRID_CELL} relative flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors hover:bg-primary-bg/30 lg:table-row lg:p-0 lg:odd:border-r-0 lg:nth-2:border-t`}
+                    >
+                      <td className="order-1 lg:px-4 lg:py-3 lg:whitespace-nowrap">
                         <Link href={`/leads/${l.id}`} className="font-semibold text-primary after:absolute after:inset-0 hover:underline">
                           {l.leadNumber}
                         </Link>
@@ -264,22 +267,24 @@ export function LeadsDashboard({ isOwner }: { isOwner: boolean }) {
                           </span>
                         )}
                       </td>
-                      <td className="min-w-0 flex-1 md:px-4 md:py-3">
+                      <td className="order-3 min-w-0 basis-full lg:px-4 lg:py-3">
                         <p className="font-medium text-text-primary">{l.customerName}</p>
                         <p className="text-xs text-text-muted tabular-nums">{l.phone}</p>
                       </td>
-                      <td className="hidden max-w-88 text-text-secondary md:table-cell md:px-4 md:py-3">
-                        <p className="line-clamp-2">{l.requirement || <span className="text-text-muted italic">No details</span>}</p>
+                      <td
+                        className={`order-4 basis-full text-[13px] text-text-secondary lg:table-cell lg:max-w-88 lg:px-4 lg:py-3 lg:text-sm ${l.requirement ? "" : "hidden"}`}
+                      >
+                        <p className="line-clamp-1 lg:line-clamp-2">{l.requirement || <span className="text-text-muted italic">No details</span>}</p>
                       </td>
-                      <td className="md:px-4 md:py-3">
+                      <td className="order-2 ml-auto lg:ml-0 lg:px-4 lg:py-3">
                         <LeadStatusPill status={l.status} />
                       </td>
                       {isOwner && (
-                        <td className="text-xs text-text-secondary md:px-4 md:py-3 md:text-sm">
+                        <td className="order-5 text-xs text-text-secondary lg:px-4 lg:py-3 lg:text-sm">
                           {l.assignedToName ?? <span className="text-text-muted">Unassigned</span>}
                         </td>
                       )}
-                      <td className="w-full text-xs text-text-muted md:w-auto md:px-4 md:py-3" title={l.createdAt}>
+                      <td className="order-6 text-xs text-text-muted lg:px-4 lg:py-3" title={l.createdAt}>
                         {timeAgoLabel(l.createdAt)} · {LEAD_SOURCE_LABELS[l.source]}
                       </td>
                     </tr>
@@ -392,7 +397,7 @@ function DesignersCard({ reloadKey, onPick }: { reloadKey: number; onPick: (d: D
           <p className="py-6 text-center text-sm text-text-muted">No designer with leads matches “{debounced}”.</p>
         ) : (
           <div className={`overflow-hidden rounded-app-sm border border-border-light transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}>
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full min-w-md text-sm">
                 <thead className="bg-app-bg/60 text-left text-[11px] font-semibold text-text-muted">
                   <tr>

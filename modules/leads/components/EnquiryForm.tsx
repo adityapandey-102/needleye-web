@@ -25,7 +25,8 @@ const TURNSTILE_SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?
  * API -- Cloudflare Turnstile. Whatever happens, the customer gets a calm,
  * professional answer; text is only ever shown as text.
  */
-export function EnquiryForm() {
+export function EnquiryForm({ tone = "light", titleId }: { tone?: "light" | "lux"; titleId?: string } = {}) {
+  const lux = tone === "lux";
   const [fields, setFields] = useState<EnquiryFields>({ name: "", phone: "", requirement: "" });
   const [website, setWebsite] = useState(""); // the honeypot -- people never see it
   const [formToken, setFormToken] = useState<string | null>(null);
@@ -120,20 +121,26 @@ export function EnquiryForm() {
   if (done) {
     return (
       <div className="py-6 text-center" role="status">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success-bg text-success">
+        <div
+          className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${lux ? "bg-[rgba(197,164,101,0.15)] text-(--lux-gold-light) ring-1 ring-[rgba(232,213,166,0.4)]" : "bg-success-bg text-success"}`}
+        >
           <Icon name="check-circle" size={28} />
         </div>
-        <h2 className="mt-4 font-serif text-[28px] font-semibold text-text-primary">Thank you!</h2>
-        <p className="mt-2 text-sm leading-relaxed text-text-secondary">{done}</p>
+        <h2 id={titleId} className={`mt-4 font-serif text-[28px] font-semibold ${lux ? "text-(--lux-ivory)" : "text-text-primary"}`}>
+          Thank you!
+        </h2>
+        <p className={`mt-2 text-sm leading-relaxed ${lux ? "text-(--lux-muted-dark)" : "text-text-secondary"}`}>{done}</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} noValidate className="flex flex-col gap-4">
+    <form onSubmit={(e) => void submit(e)} noValidate className={`flex flex-col gap-4 ${lux ? "lux-form" : ""}`}>
       <div>
-        <h2 className="font-serif text-[28px] leading-tight font-semibold text-text-primary">Tell us about your outfit</h2>
-        <p className="mt-1.5 text-sm text-text-muted">Our team will call you back, usually within a day.</p>
+        <h2 id={titleId} className={`font-serif text-[28px] leading-tight font-semibold ${lux ? "text-(--lux-ivory)" : "text-text-primary"}`}>
+          Tell us about your outfit
+        </h2>
+        <p className={`mt-1.5 text-sm ${lux ? "text-(--lux-muted-dark)" : "text-text-muted"}`}>Our team will call you back, usually within a day.</p>
       </div>
 
       {loadError && (
@@ -206,10 +213,16 @@ export function EnquiryForm() {
         </p>
       )}
 
-      <Button type="submit" disabled={sending || !formToken} className="w-full justify-center">
-        <Icon name="send" size={16} /> {sending ? "Sending..." : "Send enquiry"}
-      </Button>
-      <p className="text-center text-[11px] text-text-muted">We use your number only to contact you about this enquiry.</p>
+      {lux ? (
+        <button type="submit" disabled={sending || !formToken} className="lux-btn-gold w-full justify-center disabled:cursor-not-allowed disabled:opacity-60">
+          <Icon name="send" size={16} /> {sending ? "Sending..." : "Send enquiry"}
+        </button>
+      ) : (
+        <Button type="submit" disabled={sending || !formToken} className="w-full justify-center">
+          <Icon name="send" size={16} /> {sending ? "Sending..." : "Send enquiry"}
+        </Button>
+      )}
+      <p className={`text-center text-[11px] ${lux ? "text-white/45" : "text-text-muted"}`}>We use your number only to contact you about this enquiry.</p>
     </form>
   );
 }

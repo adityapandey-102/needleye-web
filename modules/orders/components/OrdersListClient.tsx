@@ -1,32 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import { useRouter } from "next/navigation";
-import {
-  addMonthsIso,
-  formatDateOnly,
-  isoToday,
-  longDateLabel,
-  getTimelineSummary,
-  granularLabel,
-  paymentStatusLabel,
-  paymentStatusTone,
-  hasCapability,
-  type OrderListItem,
-  type Role,
-} from "../../../lib/domain";
+import { addMonthsIso, isoToday, longDateLabel, hasCapability, type OrderListItem, type Role } from "../../../lib/domain";
 import { useTeamMembers } from "../hooks/useTeamMembers";
 import { ordersApi } from "../api/ordersApi";
-import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
+import { Card, CardHeader } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Field";
 import { Select } from "../../../components/ui/Select";
-import { Button } from "../../../components/ui/Button";
 import { Pager } from "../../../components/ui/Pager";
-import { StatusPill } from "../../../components/ui/StatusPill";
 import { Icon } from "../../../components/ui/Icon";
 import { KanbanBoard } from "./KanbanBoard";
+import { OrdersEmpty, OrdersTable, OrdersTableSkeleton } from "./OrdersTable";
 
 type ViewMode = "table" | "kanban";
 
@@ -55,6 +41,10 @@ const BUCKET_LABELS: Record<string, string> = {
   this_month: "Booked this month",
 };
 
+/**
+ * Every order in the caller's scope, as one card (like the Revenue page's
+ * monthly ledger): search and team filters, Table or Kanban, paged by the API.
+ */
 export function OrdersListClient({
   role,
   initialBucket,
@@ -68,6 +58,7 @@ export function OrdersListClient({
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [view, setView] = useState<ViewMode>("table");
   const [bucket, setBucket] = useState(initialBucket ?? "");
 
@@ -83,6 +74,7 @@ export function OrdersListClient({
   const { members: designers } = useTeamMembers("designer");
   const { members: masters } = useTeamMembers("master_tailor");
   const canSeePayment = hasCapability(role, "payments:read");
+  const filtered = Boolean(search.trim() || designerId || masterTailorId);
 
   // Any filter or view change goes through these so it also resets to the
   // first page -- otherwise a filter that narrows the result set could leave
@@ -98,6 +90,12 @@ export function OrdersListClient({
   }
   function changeMaster(value: string) {
     setMasterTailorId(value);
+    setPage(0);
+  }
+  function clearFilters() {
+    setSearch("");
+    setDesignerId("");
+    setMasterTailorId("");
     setPage(0);
   }
   function changeView(next: ViewMode) {
@@ -149,188 +147,141 @@ export function OrdersListClient({
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch, designerId, masterTailorId, bucket, view, page, kanbanFrom]);
+  }, [debouncedSearch, designerId, masterTailorId, bucket, view, page, kanbanFrom, reloadKey]);
 
+  const subtitle = loading && orders.length === 0 ? "Loading…" : `${total.toLocaleString("en-IN")} ${total === 1 ? "order" : "orders"} · newest first`;
 
   return (
-    <div>
-      <Card className="mb-4">
-        <CardHeader icon="🔎" iconTone="purple" title="Search & Filter Orders" subtitle="Find work by customer, bill number, order ID, or team" />
-        <CardBody className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+    <Card>
+      <CardHeader
+        icon={<Icon name="list" size={17} />}
+        title={view === "kanban" ? "Production board" : "All orders"}
+        subtitle={subtitle}
+        wideAction
+        action={
+          <div role="group" aria-label="View" className="flex rounded-app border border-border bg-app-bg/70 p-0.5 sm:inline-flex">
+            <ViewButton active={view === "table"} onClick={() => changeView("table")} icon="list" label="Table" />
+            <ViewButton active={view === "kanban"} onClick={() => changeView("kanban")} icon="columns" label="Kanban" />
+          </div>
+        }
+      />
+
+      {/* Search and team filters, in the card like the Revenue page's range picker:
+          stacked on phones, search over the two pickers on tablets, one row on desktop. */}
+      <div className="grid gap-3 border-b border-border-light px-5 py-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
+        <div className="relative sm:col-span-2 lg:min-w-55 lg:flex-1">
+          <Icon name="search" size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-muted" />
           <Input
-            className="w-full sm:min-w-55 sm:flex-1"
+            className="w-full pl-9"
             placeholder="Search customer, bill number, or order ID"
+            aria-label="Search orders"
             value={search}
             onChange={(e) => changeSearch(e.target.value)}
           />
-          <Select className="w-full sm:w-auto" value={designerId} onChange={(e) => changeDesigner(e.target.value)}>
-            <option value="">All Designers</option>
-            {designers.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.fullName}
-              </option>
-            ))}
-          </Select>
-          <Select className="w-full sm:w-auto" value={masterTailorId} onChange={(e) => changeMaster(e.target.value)}>
-            <option value="">All Masters</option>
-            {masters.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.fullName}
-              </option>
-            ))}
-          </Select>
-        </CardBody>
-      </Card>
+        </div>
+        <Select className="lg:w-auto" aria-label="Designer" value={designerId} onChange={(e) => changeDesigner(e.target.value)}>
+          <option value="">All Designers</option>
+          {designers.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.fullName}
+            </option>
+          ))}
+        </Select>
+        <Select className="lg:w-auto" aria-label="Master tailor" value={masterTailorId} onChange={(e) => changeMaster(e.target.value)}>
+          <option value="">All Masters</option>
+          {masters.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.fullName}
+            </option>
+          ))}
+        </Select>
+        {filtered && (
+          <button onClick={clearFilters} className="inline-flex items-center gap-1 justify-self-start text-xs font-medium text-primary hover:underline sm:col-span-2 lg:self-center">
+            <Icon name="x" size={13} /> Clear
+          </button>
+        )}
+      </div>
 
       {bucket && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-app-sm border border-primary/30 bg-primary-bg/50 px-3 py-2 text-xs text-text-secondary">
-          <span>
-            Filtered by <span className="font-semibold text-text-primary">{BUCKET_LABELS[bucket] ?? bucket}</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-light bg-primary-bg/40 px-5 py-2.5 text-xs text-text-secondary">
+          <span className="inline-flex items-center gap-1.5">
+            <Icon name="list" size={13} className="text-primary" />
+            Showing <span className="font-semibold text-text-primary">{BUCKET_LABELS[bucket] ?? bucket}</span>
           </span>
-          <button onClick={clearBucket} className="font-medium text-primary underline">
-            Clear filter
+          <button onClick={clearBucket} className="font-medium text-primary underline-offset-4 hover:underline">
+            Show all orders
           </button>
         </div>
       )}
 
-      <div className="mb-3 flex justify-end gap-2">
-        <Button variant={view === "table" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => changeView("table")}>
-          <Icon name="list" size={15} /> Table
-        </Button>
-        <Button variant={view === "kanban" ? "primary" : "outline"} className="px-3 py-1.5 text-xs" onClick={() => changeView("kanban")}>
-          <Icon name="columns" size={15} /> Kanban
-        </Button>
-      </div>
-
-      {view === "kanban" ? (
+      {error ? (
+        <div className="m-5 flex items-center justify-between rounded-app-sm border border-error/30 bg-error-bg/40 px-3 py-2 text-sm text-error">
+          <span>{error}</span>
+          <button onClick={() => setReloadKey((k) => k + 1)} className="font-medium underline">
+            Retry
+          </button>
+        </div>
+      ) : view === "kanban" ? (
         loading ? (
-          <div className="p-6 text-sm text-text-muted">Loading…</div>
-        ) : error ? (
-          <div className="p-6 text-sm text-error">{error}</div>
+          <div className="flex gap-3 overflow-hidden p-5" aria-busy="true">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="skeleton h-64 w-64 shrink-0 rounded-app-lg" />
+            ))}
+          </div>
         ) : (
-          <>
-            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-app border border-border bg-card px-3.5 py-2.5 text-xs text-text-secondary shadow-app">
+          <div className="p-5">
+            <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
               <Icon name="calendar" size={14} className="text-primary" />
               <span>
-                Orders booked since <strong className="font-semibold text-text-primary">{longDateLabel(kanbanFrom)}</strong>, newest
-                first, {KANBAN_PAGE_SIZE} per page.
+                Orders booked since <strong className="font-semibold text-text-primary">{longDateLabel(kanbanFrom)}</strong>, newest first,{" "}
+                {KANBAN_PAGE_SIZE} per page.
               </span>
               <span className="text-text-muted">Older orders are in Table view.</span>
-            </div>
+            </p>
             <KanbanBoard orders={orders} role={role} />
-            <div className="mt-3 overflow-hidden rounded-app-lg border border-border bg-card shadow-app">
-              <Pager page={page} pageSize={KANBAN_PAGE_SIZE} total={total} onPageChange={setPage} className="border-t-0" />
-            </div>
-          </>
+          </div>
         )
+      ) : loading && orders.length === 0 ? (
+        <OrdersTableSkeleton />
+      ) : orders.length === 0 ? (
+        <OrdersEmpty
+          title="No orders match"
+          hint="Try another search, or clear the filters."
+          action={
+            (filtered || bucket) && (
+              <button
+                onClick={() => {
+                  clearFilters();
+                  if (bucket) clearBucket();
+                }}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                Clear filters
+              </button>
+            )
+          }
+        />
       ) : (
-      <Card>
-        <CardHeader icon="📋" iconTone="blue" title="All Orders" subtitle="Open any order for full details" />
-        {loading ? (
-          <div className="p-6 text-sm text-text-muted">Loading…</div>
-        ) : error ? (
-          <div className="p-6 text-sm text-error">{error}</div>
-        ) : orders.length === 0 ? (
-          <div className="p-6 text-sm text-text-muted">No orders match the current filters.</div>
-        ) : (
-          <>
-            {/* Mobile / tablet: stacked cards (a wide table forces horizontal
-                scrolling on the phones + tablets most of the team uses). */}
-            <div className="divide-y divide-border-light lg:hidden">
-              {orders.map((order, i) => {
-                const timeline = getTimelineSummary(order);
-                return (
-                  <Link
-                    key={order.id}
-                    href={`/orders/${order.id}`}
-                    style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
-                    className="animate-fade-in block p-4 transition-colors hover:bg-app-bg/70 active:bg-primary-bg/60"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate font-serif text-sm font-bold text-text-primary">{order.customerName}</div>
-                        <div className="mt-0.5 text-xs font-medium text-text-muted">{order.orderNumber}</div>
-                      </div>
-                      <Icon name="chevron-right" size={18} className="mt-0.5 shrink-0 text-primary/40" />
-                    </div>
-                    <div className="mt-2.5 flex flex-wrap gap-1.5">
-                      <StatusPill label={granularLabel(order.productionStatus)} />
-                      <StatusPill label={timeline.statusLabel} tone={timeline.tone} />
-                      {canSeePayment && order.paymentStatus && (
-                        <StatusPill label={paymentStatusLabel(order.paymentStatus)} tone={paymentStatusTone(order.paymentStatus)} />
-                      )}
-                    </div>
-                    <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-muted">
-                      <span className="inline-flex items-center gap-1">
-                        <Icon name="palette" size={13} /> {order.designerName ?? "—"}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Icon name="needle" size={13} /> {order.masterTailorName ?? "—"}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Icon name="calendar" size={13} /> {formatDateOnly(order.dueDate)}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Desktop: full table */}
-            <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[900px] text-sm">
-              <thead>
-                <tr className="border-b border-border bg-primary-bg/70 text-left text-xs font-semibold text-primary/85">
-                  <th className="px-4 py-2.5 font-medium">Order ID</th>
-                  <th className="px-4 py-2.5 font-medium">Customer</th>
-                  <th className="px-4 py-2.5 font-medium">Designer</th>
-                  <th className="px-4 py-2.5 font-medium">Master</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Due Date</th>
-                  <th className="px-4 py-2.5 font-medium">Timeline</th>
-                  {canSeePayment && <th className="px-4 py-2.5 font-medium">Payment</th>}
-                  <th className="px-4 py-2.5 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="rows-in">
-                {orders.map((order) => {
-                  const timeline = getTimelineSummary(order);
-                  return (
-                    <tr key={order.id} className="border-b border-border-light transition-colors last:border-0 hover:bg-primary-bg/30">
-                      <td className="px-4 py-2.5 font-medium whitespace-nowrap text-text-primary">{order.orderNumber}</td>
-                      <td className="px-4 py-2.5">{order.customerName}</td>
-                      <td className="px-4 py-2.5 text-text-secondary">{order.designerName ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-text-secondary">{order.masterTailorName ?? "—"}</td>
-                      <td className="px-4 py-2.5">
-                        <StatusPill label={granularLabel(order.productionStatus)} />
-                      </td>
-                      <td className="px-4 py-2.5 text-text-secondary">{formatDateOnly(order.dueDate)}</td>
-                      <td className="px-4 py-2.5">
-                        <StatusPill label={timeline.statusLabel} tone={timeline.tone} />
-                      </td>
-                      {canSeePayment && (
-                        <td className="px-4 py-2.5">
-                          <StatusPill label={paymentStatusLabel(order.paymentStatus)} tone={paymentStatusTone(order.paymentStatus)} />
-                        </td>
-                      )}
-                      <td className="px-4 py-2.5">
-                        <Link href={`/orders/${order.id}`}>
-                          <Button variant="outline" className="px-3 py-1.5 text-xs">
-                            View
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-          </>
-        )}
-        {!loading && !error && <Pager page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />}
-      </Card>
+        <OrdersTable orders={orders} canSeePayment={canSeePayment} dimmed={loading} />
       )}
-    </div>
+      {!error && (orders.length > 0 || page > 0) && (
+        <Pager page={page} pageSize={view === "table" ? PAGE_SIZE : KANBAN_PAGE_SIZE} total={total} onPageChange={setPage} />
+      )}
+    </Card>
+  );
+}
+
+function ViewButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: "list" | "columns"; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all duration-200 sm:flex-none ${
+        active ? "bg-card text-primary shadow-app" : "text-text-secondary hover:text-text-primary"
+      }`}
+    >
+      <Icon name={icon} size={14} /> {label}
+    </button>
   );
 }

@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Button } from "../../components/ui/Button";
+import { ButtonLink } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 
 /**
@@ -16,12 +15,10 @@ export default function AppNotFound() {
       <p className="mt-2 text-sm text-text-secondary">
         The page or record you&rsquo;re looking for doesn&rsquo;t exist, or you don&rsquo;t have access to it.
       </p>
-      <Link href="/orders" className="mt-5 inline-block">
-        <Button>
-          <Icon name="chevron-right" size={16} className="rotate-180" />
-          Back to Orders
-        </Button>
-      </Link>
+      <ButtonLink href="/orders" className="mt-5">
+        <Icon name="chevron-right" size={16} className="rotate-180" />
+        Back to Orders
+      </ButtonLink>
     </div>
   );
 }

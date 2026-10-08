@@ -110,7 +110,7 @@ export function KanbanBoard({
   return (
     <div>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-3">
+        <div className="relative flex gap-3 overflow-x-auto pb-3">
           {CANONICAL_STAGES.map((stage) => (
             <KanbanColumn
               key={stage.value}

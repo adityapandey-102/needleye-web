@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Button } from "../../../components/ui/Button";
+import { ButtonLink } from "../../../components/ui/Button";
 import { Icon } from "../../../components/ui/Icon";
 
 /**
@@ -17,12 +16,10 @@ export default function OrderNotFound() {
         This order doesn&rsquo;t exist, or it isn&rsquo;t assigned to you. Designers and Master Tailors can only open orders
         assigned to them.
       </p>
-      <Link href="/orders" className="mt-5 inline-block">
-        <Button>
-          <Icon name="chevron-right" size={16} className="rotate-180" />
-          Back to Orders
-        </Button>
-      </Link>
+      <ButtonLink href="/orders" className="mt-5">
+        <Icon name="chevron-right" size={16} className="rotate-180" />
+        Back to Orders
+      </ButtonLink>
     </div>
   );
 }

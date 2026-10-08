@@ -21,7 +21,7 @@ import { leadsApi } from "../api/leadsApi";
 import { notifyLeadsChanged } from "./LeadsBadgeProvider";
 import { DesignerPicker } from "./DesignerPicker";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
 import { Textarea } from "../../../components/ui/Select";
 import { Modal } from "../../../components/ui/Modal";
@@ -135,16 +135,12 @@ export function LeadDetailView({ leadId, isOwner }: { leadId: string; isOwner: b
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <a href={`tel:+91${lead.phone}`}>
-                <Button variant="outline">
-                  <Icon name="phone" size={16} /> {lead.phone}
-                </Button>
-              </a>
-              <a href={whatsappLink(lead.phone)} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline">
-                  <Icon name="message" size={16} /> WhatsApp
-                </Button>
-              </a>
+              <ButtonLink href={`tel:+91${lead.phone}`} variant="outline">
+                <Icon name="phone" size={16} /> {lead.phone}
+              </ButtonLink>
+              <ButtonLink href={whatsappLink(lead.phone)} variant="outline" target="_blank" rel="noopener noreferrer">
+                <Icon name="message" size={16} /> WhatsApp
+              </ButtonLink>
             </div>
           </div>
 

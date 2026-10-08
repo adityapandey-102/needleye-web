@@ -25,10 +25,10 @@ function Shell({ profile, children }: { profile: Profile; children: React.ReactN
     <div className="flex min-h-screen">
       <Sidebar profile={profile} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex min-w-0 flex-1 flex-col lg:ml-65 print:ml-0">
+      <div className="flex min-w-0 flex-1 flex-col xl:ml-65 print:ml-0">
         {/* Phones and tablets only: the menu button and the brand. On desktop the
             sidebar carries both, so an empty bar would just take space. */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/90 px-4 backdrop-blur-md lg:hidden print:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/90 px-4 backdrop-blur-md xl:hidden print:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
             className="rounded-app p-2 text-text-secondary transition-colors hover:bg-app-bg"

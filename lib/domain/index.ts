@@ -27,6 +27,7 @@ export * from "./utils/ledgerExport";
 export * from "./utils/orderStatusPermissions";
 export * from "./utils/productCategorySearch";
 export * from "./utils/deliveryCalendar";
+export * from "./utils/dashboard";
 export * from "./utils/activityEvent";
 export * from "./validation/order";
 export * from "./validation/payment";

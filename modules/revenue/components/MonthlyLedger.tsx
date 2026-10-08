@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { formatCurrency, MONTH_OPTIONS, revenueYears, toDateInputValue, type LedgerMonth, type LedgerMonthsPage } from "../../../lib/domain";
 import { ledgerApi } from "../api/ledgerApi";
 import { downloadCsv, ledgerMonthsToCsv, revenueMonthLabel, monthRangeLabel } from "../export";
-import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
+import { CARD_GRID_CELL, Card, CardBody, CardHeader } from "../../../components/ui/Card";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
 import { Pager } from "../../../components/ui/Pager";
 import { Icon } from "../../../components/ui/Icon";
@@ -119,15 +118,13 @@ export function MonthlyLedger({ canClose, canReopen }: { canClose: boolean; canR
               </Button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={exporting || !data} onClick={() => void exportCsv()}>
               <Icon name="download" size={14} /> {exporting ? "Exporting…" : "Export CSV"}
             </Button>
-            <Link href={`/revenue/print?from=${from}&to=${to}`} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="px-3 py-1.5 text-xs">
-                <Icon name="printer" size={14} /> Export PDF
-              </Button>
-            </Link>
+            <ButtonLink href={`/revenue/print?from=${from}&to=${to}`} target="_blank" rel="noopener noreferrer" variant="outline" className="px-3 py-1.5 text-xs">
+              <Icon name="printer" size={14} /> Export PDF
+            </ButtonLink>
           </div>
         </div>
 
@@ -153,38 +150,75 @@ export function MonthlyLedger({ canClose, canReopen }: { canClose: boolean; canR
             ))}
           </div>
         ) : (
-          <div className={`overflow-x-auto transition-opacity ${loading ? "opacity-60" : ""}`}>
-            <table className="w-full min-w-180 text-sm">
-              <thead>
-                <tr className="border-b border-border-light text-left text-xs text-text-muted">
-                  <th className="py-2 pr-4 font-medium">Month</th>
-                  <th className="py-2 pr-4 font-medium">Orders</th>
-                  <th className="py-2 pr-4 text-right font-medium">Total booked</th>
-                  <th className="py-2 pr-4 text-right font-medium">Paid so far</th>
-                  <th className="py-2 pr-4 text-right font-medium">Outstanding</th>
-                  <th className="py-2 pr-4 text-right font-medium">Cash collected</th>
-                  <th className="py-2 text-right font-medium">Books</th>
-                </tr>
-              </thead>
-              <tbody className="rows-in">
-                {data?.months.map((m) => (
-                  <tr key={m.month} className="border-b border-border-light transition-colors last:border-0 hover:bg-primary-bg/30">
-                    <td className="py-2.5 pr-4 font-medium text-text-primary">{revenueMonthLabel(m.month)}</td>
-                    <td className="py-2.5 pr-4 text-text-secondary">
-                      {m.ordersBooked}
-                      {m.ordersNotPriced > 0 && <span className="ml-1 text-xs text-warning-text">({m.ordersNotPriced} not priced)</span>}
-                    </td>
-                    <td className="figure py-2.5 pr-4 text-right text-text-primary">{formatCurrency(m.total)}</td>
-                    <td className="figure py-2.5 pr-4 text-right text-success">{formatCurrency(m.paidSoFar)}</td>
-                    <td className="figure py-2.5 pr-4 text-right text-warning">{formatCurrency(m.outstanding)}</td>
-                    <td className="figure py-2.5 pr-4 text-right font-semibold text-text-primary">{formatCurrency(m.cashCollected)}</td>
-                    <td className="py-2.5 text-right">
-                      <BooksCell m={m} canClose={canClose} onOpen={() => setBooksMonth(m.month)} />
-                    </td>
+          <div className={`transition-opacity ${loading ? "opacity-60" : ""}`}>
+            <div className="relative hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-180 text-sm">
+                <thead>
+                  <tr className="border-b border-border-light text-left text-xs text-text-muted">
+                    <th className="py-2 pr-4 font-medium">Month</th>
+                    <th className="py-2 pr-4 font-medium">Orders</th>
+                    <th className="py-2 pr-4 text-right font-medium">Total booked</th>
+                    <th className="py-2 pr-4 text-right font-medium">Paid so far</th>
+                    <th className="py-2 pr-4 text-right font-medium">Outstanding</th>
+                    <th className="py-2 pr-4 text-right font-medium">Cash collected</th>
+                    <th className="py-2 text-right font-medium">Books</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="rows-in">
+                  {data?.months.map((m) => (
+                    <tr key={m.month} className="border-b border-border-light transition-colors last:border-0 hover:bg-primary-bg/30">
+                      <td className="py-2.5 pr-4 font-medium text-text-primary">{revenueMonthLabel(m.month)}</td>
+                      <td className="py-2.5 pr-4 text-text-secondary">
+                        {m.ordersBooked}
+                        {m.ordersNotPriced > 0 && <span className="ml-1 text-xs text-warning-text">({m.ordersNotPriced} not priced)</span>}
+                      </td>
+                      <td className="figure py-2.5 pr-4 text-right text-text-primary">{formatCurrency(m.total)}</td>
+                      <td className="figure py-2.5 pr-4 text-right text-success">{formatCurrency(m.paidSoFar)}</td>
+                      <td className="figure py-2.5 pr-4 text-right text-warning">{formatCurrency(m.outstanding)}</td>
+                      <td className="figure py-2.5 pr-4 text-right font-semibold text-text-primary">{formatCurrency(m.cashCollected)}</td>
+                      <td className="py-2.5 text-right">
+                        <BooksCell m={m} canClose={canClose} onOpen={() => setBooksMonth(m.month)} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Phones and tablets: a card per month (two across on tablets). */}
+            <ul className="rows-in grid md:grid-cols-2 lg:hidden">
+              {data?.months.map((m) => (
+                <li key={m.month} className={`${CARD_GRID_CELL} py-3.5 md:odd:pr-4 md:even:pl-4`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium text-text-primary">{revenueMonthLabel(m.month)}</div>
+                      <div className="text-xs text-text-muted">
+                        {m.ordersBooked} {m.ordersBooked === 1 ? "order" : "orders"}
+                        {m.ordersNotPriced > 0 && <span className="text-warning-text"> · {m.ordersNotPriced} not priced</span>}
+                      </div>
+                    </div>
+                    <BooksCell m={m} canClose={canClose} onOpen={() => setBooksMonth(m.month)} />
+                  </div>
+                  <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] text-text-muted">
+                    <div>
+                      <dt>Total booked</dt>
+                      <dd className="figure text-sm text-text-primary">{formatCurrency(m.total)}</dd>
+                    </div>
+                    <div>
+                      <dt>Paid so far</dt>
+                      <dd className="figure text-sm text-success">{formatCurrency(m.paidSoFar)}</dd>
+                    </div>
+                    <div>
+                      <dt>Outstanding</dt>
+                      <dd className="figure text-sm text-warning">{formatCurrency(m.outstanding)}</dd>
+                    </div>
+                    <div>
+                      <dt>Cash collected</dt>
+                      <dd className="figure text-sm text-text-primary">{formatCurrency(m.cashCollected)}</dd>
+                    </div>
+                  </dl>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
         {data && <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} className="mt-2 -mx-4 -mb-4" />}
@@ -225,7 +259,9 @@ function BooksCell({ m, canClose, onOpen }: { m: LedgerMonth; canClose: boolean;
   }
   if (!m.books.ended) return <span className="text-[11px] text-text-muted">Running</span>;
   return canClose ? (
-    <Button variant="outline" className="px-2 py-1 text-[11px]" onClick={onOpen} aria-label={`Close ${label}`}>
+    // Compact in the desktop table (the button's own padding wins over a plain
+    // override, hence !), a full-size tap target on the phone and tablet cards.
+    <Button variant="outline" className="lg:px-2.5! lg:py-1! lg:text-[11px]!" onClick={onOpen} aria-label={`Close ${label}`}>
       Close…
     </Button>
   ) : (
@@ -246,7 +282,7 @@ function MonthPicker({ label, value, years, onChange }: { label: string; value: 
             </option>
           ))}
         </Select>
-        <Select aria-label={`${label} year`} className="w-auto" value={year} onChange={(e) => onChange(`${e.target.value}-${month}`)}>
+        <Select aria-label={`${label} year`} className="w-auto min-w-24" value={year} onChange={(e) => onChange(`${e.target.value}-${month}`)}>
           {years.map((y) => (
             <option key={y} value={y}>
               {y}

@@ -5,15 +5,19 @@ import {
   getTimelineSummary,
   granularLabel,
   paidFraction,
+  stageIndex,
   subtractMoney,
+  isPositiveMoney,
   PAYMENT_STATUSES,
+  GRANULAR_STATUS_VALUES,
   productCategoryDisplayName,
   type Order,
   type Role,
 } from "../../../lib/domain";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
+import { ButtonLink } from "../../../components/ui/Button";
 import { StatusPill } from "../../../components/ui/StatusPill";
+import { ProgressRing } from "../../../components/ui/ProgressRing";
 import { Icon, type IconName } from "../../../components/ui/Icon";
 import { OrderQrCode } from "./OrderQrCode";
 import { PaymentLedger } from "./PaymentLedger";
@@ -24,6 +28,7 @@ import { OrderStatusTracker } from "./OrderStatusTracker";
 import { OrderStatusControl } from "./OrderStatusControl";
 import { StatusAdvancePrompt } from "./StatusAdvancePrompt";
 import { PrintOrderButton } from "./PrintOrderButton";
+import { StageProgress } from "./StageProgress";
 
 function WorkChip({ icon, label, active }: { icon: IconName; label: string; active: boolean }) {
   return (
@@ -37,6 +42,11 @@ function WorkChip({ icon, label, active }: { icon: IconName; label: string; acti
       {active && <Icon name="check" size={13} className="ml-0.5" />}
     </span>
   );
+}
+
+/** Timeline pills read better in sentence case than the shouting labels. */
+function sentence(label: string): string {
+  return label.charAt(0) + label.slice(1).toLowerCase();
 }
 
 export function OrderDetailView({
@@ -77,7 +87,6 @@ export function OrderDetailView({
   const payment = PAYMENT_STATUSES.find((p) => p.value === order.paymentStatus);
   const timeline = getTimelineSummary(order);
 
-  // Payment progress (visual bar) — only meaningful when the caller can see money.
   // Money stays as 2dp strings; arithmetic goes through the money helpers.
   // No price yet (ADR 0008): the money figures read "Price not set", not ₹0.
   const priced = order.totalAmount !== null && order.totalAmount !== undefined;
@@ -86,6 +95,7 @@ export function OrderDetailView({
   const paid = order.amountPaid ?? subtractMoney(total, outstanding);
   const paidPct = priced ? Math.round(paidFraction(paid, total) * 100) : 0;
   const delivered = order.productionStatus === "delivered";
+  const stageNumber = stageIndex(order.productionStatus) + 1;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -95,92 +105,95 @@ export function OrderDetailView({
         <StatusAdvancePrompt orderId={order.id} currentStatus={order.productionStatus} role={role} priceSet={order.priceSet} />
       )}
 
-      {/* Action row (kept on the light background, above the hero). */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link href="/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-primary">
           <Icon name="chevron-right" size={16} className="rotate-180" /> All Orders
         </Link>
-        <div className="flex flex-wrap gap-2">
+        {/* Phones: the two prints side by side, Edit across the full width. */}
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <PrintOrderButton />
-          <Link href={`/orders/${order.id}/label`}>
-            <Button variant="outline">
-              <Icon name="printer" size={16} /> Print Label
-            </Button>
-          </Link>
+          <ButtonLink href={`/orders/${order.id}/label`} variant="outline">
+            <Icon name="printer" size={16} /> Print Label
+          </ButtonLink>
           {canEdit && (
-            <Link href={`/orders/${order.id}/edit`}>
-              <Button>
-                <Icon name="edit" size={16} /> Edit Order
-              </Button>
-            </Link>
+            <ButtonLink href={`/orders/${order.id}/edit`} className="col-span-2">
+              <Icon name="edit" size={16} /> Edit Order
+            </ButtonLink>
           )}
         </div>
       </div>
 
-      {/* Order heading on white paper, with the gold hairline: who it's for, what it
-          is, and the four facts that matter, in the same ledger strip as the dashboard. */}
-      {/* Brand hero: the order's identity on the burgundy of the logo, with a gold
-          hairline, and its four key facts on a darker band beneath. Prints plain. */}
-      <div className="card-accent-top gradient-primary mb-4 overflow-hidden rounded-app-lg text-white shadow-app-lg print:bg-none print:text-black print:shadow-none print:ring-1 print:ring-neutral-300">
-        <div className="px-5 pt-6 pb-5 sm:px-7">
-          <div className="flex flex-wrap items-center gap-2 text-[13px]">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 font-medium text-white ring-1 ring-white/20 print:text-black">
-              <Icon name="shirt" size={13} />
-              {categoryName}
-            </span>
-            <span className="rounded-full bg-gold/25 px-2.5 py-1 font-semibold tracking-wide text-gold-light ring-1 ring-gold-light/30 print:text-black">
-              {order.orderNumber}
-            </span>
-          </div>
-          <h1 className="mt-3 font-serif text-[30px] leading-tight text-white sm:text-[38px] print:text-black">{order.customerName}</h1>
-          <p className="mt-1 text-sm text-white/75 print:text-neutral-600">Bill No. {order.billNumber}</p>
-        </div>
-        <div>
-          <div className="stagger-in grid grid-cols-2 gap-px bg-white/10 sm:grid-cols-4 print:bg-neutral-200">
-            <HeroStat icon="layers" label="Stage" value={granularLabel(order.productionStatus)} />
-            <HeroStat icon="hourglass" label="Timeline" value={timeline.daysRemainingLabel} />
-            {canSeePayment ? (
-              <>
-                <HeroStat icon="rupee" label="Total" value={priced ? formatCurrency(total) : "Price not set"} />
-                <HeroStat icon="wallet" label="Outstanding" value={priced ? formatCurrency(outstanding) : "—"} />
-              </>
-            ) : (
-              <>
-                <HeroStat icon="calendar" label="Booked" value={formatDateOnly(order.bookingDate)} />
-                <HeroStat icon="calendar-clock" label="Due" value={formatDateOnly(order.dueDate)} />
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <Card className="mb-4">
-        <CardHeader icon="📅" iconTone="amber" title="Order Timeline" subtitle="Production progress, booking, and due date" />
-        <CardBody className="flex flex-col gap-5">
-          <OrderStatusTracker status={order.productionStatus} />
-          <div className="grid grid-cols-2 gap-4 border-t border-border-light pt-4 sm:grid-cols-4">
-            <SummaryItem icon="calendar" label="Booking Date" value={formatDateOnly(order.bookingDate)} />
-            <SummaryItem icon="calendar-clock" label="Delivery Due Date" value={formatDateOnly(order.dueDate)} />
-            <SummaryItem icon="hourglass" label="Days Remaining" value={timeline.daysRemainingLabel} />
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-app bg-gold-bg text-gold">
-                <Icon name="clock" size={16} />
+      {/* The order's header on the hero band (the brand's dark red, gold outline)
+          -- who it's for, its labels, how much is paid -- and its four facts in
+          hairline-divided cells. Prints plain. */}
+      <section aria-label="Order summary" className="hero-band mb-5">
+        <div className="relative flex flex-wrap items-center justify-between gap-5 px-6 pt-7 pb-5 sm:px-7">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-[12px]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 font-medium text-white ring-1 ring-white/20 print:text-black">
+                <Icon name="shirt" size={13} />
+                {categoryName}
               </span>
-              <div>
-                <div className="text-xs font-medium text-text-muted">Timeline Status</div>
-                <div className="mt-1">
-                  <StatusPill label={timeline.statusLabel} tone={timeline.tone} />
-                </div>
-              </div>
+              <span className="rounded-full bg-gold/25 px-2.5 py-1 font-semibold tracking-wide text-gold-light ring-1 ring-gold-light/40 print:text-black">
+                {order.orderNumber}
+              </span>
+              <StatusPill label={sentence(timeline.statusLabel)} tone={timeline.tone} />
+              {canSeePayment && payment && (
+                <StatusPill
+                  label={payment.label}
+                  tone={order.paymentStatus === "fully_paid" ? "green" : order.paymentStatus === "not_priced" ? "gray" : "amber"}
+                />
+              )}
             </div>
+            <h1 className="animate-rise mt-3 font-serif text-[30px] leading-tight text-white sm:text-[38px] print:text-black">{order.customerName}</h1>
+            <p className="mt-1.5 text-sm text-white/75 print:text-neutral-600">
+              Bill No. {order.billNumber} · Booked {formatDateOnly(order.bookingDate)} · Due {formatDateOnly(order.dueDate)}
+            </p>
           </div>
+          {canSeePayment && priced && <ProgressRing percent={paidPct} label="paid" tone={paidPct >= 100 ? "success" : "gold"} onDark />}
+        </div>
+        <div className="hero-cells stagger-in grid-cols-2 border-t border-white/10 sm:grid-cols-4">
+          <Fact label="Stage">
+            <StageProgress status={order.productionStatus} onDark />
+          </Fact>
+          <Fact
+            label="Timeline"
+            value={timeline.daysRemainingLabel}
+            tone={timeline.remainingDays !== null && timeline.remainingDays < 0 ? "text-(--on-dark-error)" : "text-white"}
+          />
+          {canSeePayment ? (
+            <>
+              <Fact label="Total" value={priced ? formatCurrency(total) : "Price not set"} tone={priced ? "text-white" : "text-(--on-dark-muted)"} />
+              <Fact
+                label="Outstanding"
+                value={priced ? formatCurrency(outstanding) : "—"}
+                tone={priced && isPositiveMoney(outstanding) ? "text-(--on-dark-warning)" : priced ? "text-(--on-dark-success)" : "text-(--on-dark-muted)"}
+              />
+            </>
+          ) : (
+            <>
+              <Fact label="Booked" value={formatDateOnly(order.bookingDate)} />
+              <Fact label="Due" value={formatDateOnly(order.dueDate)} />
+            </>
+          )}
+        </div>
+      </section>
+
+      <Card className="mb-5">
+        <CardHeader
+          icon={<Icon name="layers" size={17} />}
+          title="Production progress"
+          subtitle={`Stage ${stageNumber} of ${GRANULAR_STATUS_VALUES.length} · ${granularLabel(order.productionStatus)}`}
+        />
+        <CardBody>
+          <OrderStatusTracker status={order.productionStatus} />
         </CardBody>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="stagger-in flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[2fr_1fr]">
+        <div className="stagger-in flex flex-col gap-5">
           <Card>
-            <CardHeader icon="📌" iconTone="purple" title="Customer Details" subtitle={order.orderNumber} />
+            <CardHeader icon={<Icon name="user" size={17} />} title="Customer" subtitle={order.orderNumber} />
             <CardBody className="divide-y divide-border-light py-2">
               <InfoRow icon="user" label="Customer" value={order.customerName} />
               <InfoRow icon="phone" label="Phone" value={order.phone} figure />
@@ -191,7 +204,7 @@ export function OrderDetailView({
           </Card>
 
           <Card>
-            <CardHeader icon="👗" iconTone="pink" title="Product Details" subtitle="Category, notes, and work requirements" />
+            <CardHeader icon={<Icon name="shirt" size={17} />} title="Product" subtitle="Category, details and work needed" />
             <CardBody className="divide-y divide-border-light py-2">
               <InfoRow icon="shirt" label="Category" value={categoryName} />
               <InfoRow icon="file" label="Order Details" value={order.orderDetails} multiline />
@@ -211,7 +224,7 @@ export function OrderDetailView({
           </Card>
 
           <Card>
-            <CardHeader icon="📝" iconTone="blue" title="Instructions" subtitle="Designer notes and delivery context" />
+            <CardHeader icon={<Icon name="edit" size={17} />} title="Instructions" subtitle="Designer notes and delivery context" />
             <CardBody className="divide-y divide-border-light py-1">
               <InfoRow
                 icon="palette"
@@ -229,14 +242,21 @@ export function OrderDetailView({
               />
             </CardBody>
           </Card>
+
+          <Card>
+            <CardHeader icon={<Icon name="image" size={17} />} title="Reference images" subtitle="Uploaded with the order" />
+            <CardBody>
+              <ImageGallery images={order.images} />
+            </CardBody>
+          </Card>
         </div>
 
-        <div className="stagger-in flex flex-col gap-4">
+        <div className="stagger-in flex flex-col gap-5">
           <Card>
-            <CardHeader icon="🏭" iconTone="green" title="Production Details" subtitle="Status and payment" />
-            <CardBody className="flex flex-col gap-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted">Status</span>
+            <CardHeader icon={<Icon name="factory" size={17} />} title="Production stage" subtitle={`Stage ${stageNumber} of ${GRANULAR_STATUS_VALUES.length}`} />
+            <CardBody className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs whitespace-nowrap text-text-muted">Current stage</span>
                 {canChangeStatus ? (
                   <>
                     <span className="print:hidden">
@@ -250,38 +270,7 @@ export function OrderDetailView({
                   <StatusPill label={granularLabel(order.productionStatus)} />
                 )}
               </div>
-              {canSeePayment ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-text-muted">Payment</span>
-                    <StatusPill
-                      label={payment?.label ?? order.paymentStatus ?? ""}
-                      tone={order.paymentStatus === "fully_paid" ? "green" : order.paymentStatus === "not_priced" ? "gray" : "amber"}
-                    />
-                  </div>
-                  {/* Visual paid-vs-total progress. */}
-                  <div className="mt-1 rounded-app border border-border-light bg-app-bg/50 p-3">
-                    <div className="mb-2 flex items-baseline justify-between">
-                      <span className="figure text-[15px] text-success">
-                        {formatCurrency(paid)} <span className="text-xs font-medium text-text-muted">paid</span>
-                      </span>
-                      <span className="figure text-sm text-text-secondary">{paidPct}%</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary-bg ring-1 ring-inset ring-border">
-                      <div
-                        className={`grow-x h-full rounded-full ${order.paymentStatus === "fully_paid" ? "bg-success" : "gradient-gold"}`}
-                        style={{ width: `${paidPct}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="divide-y divide-border-light">
-                    <InfoRow icon="rupee" label="Total" value={priced ? formatCurrency(total) : "Price not set"} figure={priced} />
-                    <InfoRow icon="wallet" label="Outstanding" value={priced ? formatCurrency(outstanding) : "—"} figure={priced} />
-                  </div>
-                </>
-              ) : (
-                <p className="text-xs text-text-muted">Payment details are not visible for your role.</p>
-              )}
+              {!canSeePayment && <p className="text-xs text-text-muted">Payment details are not visible for your role.</p>}
             </CardBody>
           </Card>
 
@@ -310,58 +299,37 @@ export function OrderDetailView({
 
           {/* The detailed status-history feed is row-scoped server-side (and
               names who changed what), so it's hidden for a view-only outsider --
-              the visual OrderStatusTracker above already shows the current stage.
+              the tracker above already shows the current stage.
               key={order.updatedAt} forces a fresh fetch after a status change
               (the orders_set_updated_at trigger bumps it), avoiding a stale list. */}
           {!viewOnly && <OrderTimeline orderId={order.id} key={order.updatedAt} />}
 
           <Card>
-            <CardHeader icon="📱" iconTone="purple" title="Order QR" subtitle="Quick access for the team" />
+            <CardHeader icon={<Icon name="qr" size={17} />} title="Order QR" subtitle="Scan to open this order" />
             <CardBody>
               {/* ?scan=1 marks this as a QR entry -- the order page shows the
                   "product received / advance stage" popup only for scans. */}
               <OrderQrCode path={`/orders/${order.id}?scan=1`} />
             </CardBody>
           </Card>
-
-          <Card>
-            <CardHeader icon="🖼️" iconTone="pink" title="Image Gallery" subtitle="Uploaded reference images" />
-            <CardBody>
-              <ImageGallery images={order.images} />
-            </CardBody>
-          </Card>
         </div>
       </div>
     </div>
   );
 }
 
-function HeroStat({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+/** One cell of the header's figure strip, on the hero band. */
+function Fact({ label, value, tone = "text-white", children }: { label: string; value?: string; tone?: string; children?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 bg-[#4a1020]/55 px-5 py-4 sm:px-7 print:bg-white">
-      <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-app bg-white/10 text-gold-light ring-1 ring-inset ring-white/15 sm:flex">
-        <Icon name={icon} size={18} />
-      </span>
-      <div className="min-w-0">
-        <div className="text-xs font-medium text-white/70 print:text-neutral-500">{label}</div>
-        <div className="figure mt-0.5 text-[16px] leading-snug text-white sm:text-[17px] print:text-black" title={value}>
+    <div className="hero-cell px-6 py-4 sm:px-7">
+      <div className="text-[12px] font-medium text-white/70 print:text-neutral-500">{label}</div>
+      {children ? (
+        <div className="mt-2">{children}</div>
+      ) : (
+        <div className={`figure mt-1 text-[19px] leading-snug ${tone}`} title={value}>
           {value}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function SummaryItem({ icon, label, value }: { icon: IconName; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-app bg-gold-bg text-gold">
-        <Icon name={icon} size={16} />
-      </span>
-      <div className="min-w-0">
-        <div className="text-xs font-medium text-text-muted">{label}</div>
-        <div className="figure mt-0.5 text-[15px] text-text-primary">{value}</div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { formatDateOnly, productCategoryDisplayName, type Order } from "../../../lib/domain";
-import { Button } from "../../../components/ui/Button";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 
 /** Physical sticker dimensions -- printed, then stuck on the order's processing box. */
 const LABEL_W = "8.5in";
@@ -57,9 +56,9 @@ export function CustomerLabel({ order }: { order: Order }) {
       `}</style>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <Link href={`/orders/${order.id}`}>
-          <Button variant="outline">← Back to Order</Button>
-        </Link>
+        <ButtonLink href={`/orders/${order.id}`} variant="outline">
+          ← Back to Order
+        </ButtonLink>
         <Button onClick={() => window.print()}>🖨️ Print Label</Button>
       </div>
 

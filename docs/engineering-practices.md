@@ -24,7 +24,7 @@ when it is broken. The API and database have their own page
 | Practice | Why |
 | --- | --- |
 | **Pages are server components that check access and then render client islands.** | The access check runs before any page code reaches a user who shouldn't see it; only interactive parts ship JavaScript. |
-| **A bundle budget: ≤ 300 KB of first-load JS per page, gzipped** (`npm run check:bundle`). All 26 pages pass at 182–252 KB, of which 168 KB is React plus the Next runtime shared by every page. | Phones on shop Wi-Fi feel every kilobyte. The check catches one heavy import quietly landing on every page. |
+| **A bundle budget: ≤ 300 KB of first-load JS per page, gzipped** (`npm run check:bundle`). All 31 pages pass at 182–271 KB, of which 168 KB is React plus the Next runtime shared by every page. | Phones on shop Wi-Fi feel every kilobyte. The check catches one heavy import quietly landing on every page. |
 | **Few dependencies** (Next, React, zod, decimal.js, qrcode.react, dnd-kit). | Every dependency is download size and upgrade work. Prefer a small local helper (the calendar maths, the debounce hook). |
 | **Fonts via `next/font`** (self-hosted and preloaded). | No layout shift, and no call to Google on every page view. |
 | **Photos are compressed on the device before upload** (longest edge 1600 px, JPEG 0.8) and **lazy-loaded** when shown. | A 6 MB phone photo becomes about 300 KB; lists never load photos at all. |
@@ -42,7 +42,7 @@ when it is broken. The API and database have their own page
 - Every data view has **loading, empty and error states, with a retry**, plus route-level error boundaries. *Why:* a slow or down API never produces a blank screen.
 - **Shared primitives instead of copy-paste**: `Modal` (focus trap, Escape, scroll lock, bottom sheet on phones), `Pager`, `Card`, `Button`. *Why:* fix a bug once and every screen gets the fix.
 - Labelled inputs, `aria-live` status lines, ARIA combobox and listbox, and keyboard support.
-- **Mobile layouts are tested**, for example the calendar shows 1 month on a phone and tables become cards.
+- **Phone and tablet layouts are tested**: the calendar shows 1 month on a phone, lists are cards below `lg` (two across on tablets), the sidebar is a drawer below 1280 px, and e2e fails any main page that scrolls sideways at 390, 768 or 1024 px. *Why:* most staff work on phones and tablets.
 
 ## 5. Security
 

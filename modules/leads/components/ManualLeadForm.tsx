@@ -9,7 +9,7 @@ import { leadsApi } from "../api/leadsApi";
 import { notifyLeadsChanged } from "./LeadsBadgeProvider";
 import { DesignerPicker } from "./DesignerPicker";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
 import { Select, Textarea } from "../../../components/ui/Select";
 import { Icon } from "../../../components/ui/Icon";
@@ -104,11 +104,9 @@ export function ManualLeadForm() {
       </Card>
 
       <div className="flex justify-end gap-2">
-        <Link href="/leads">
-          <Button type="button" variant="ghost">
-            Cancel
-          </Button>
-        </Link>
+        <ButtonLink href="/leads" variant="ghost">
+          Cancel
+        </ButtonLink>
         <Button type="submit" disabled={saving}>
           <Icon name="plus" size={16} /> {saving ? "Adding..." : "Add lead"}
         </Button>

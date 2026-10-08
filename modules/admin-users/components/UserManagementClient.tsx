@@ -5,7 +5,7 @@ import Link from "next/link";
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import { ROLE_LABELS, ROLES, type Role } from "../../../lib/domain";
 import { usersApi, type StaffUser } from "../api/usersApi";
-import { Button } from "../../../components/ui/Button";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 import { Pager } from "../../../components/ui/Pager";
 import { Icon } from "../../../components/ui/Icon";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
@@ -103,7 +103,7 @@ export default function UserManagementClient() {
           <h1 className="page-title">User Management</h1>
           <p className="text-sm text-text-muted">Create staff accounts and manage roles. Owner/Manager only.</p>
         </div>
-        <Button onClick={() => setCreateOpen((v) => !v)}>
+        <Button className="max-sm:w-full" onClick={() => setCreateOpen((v) => !v)}>
           {createOpen ? (
             "Cancel"
           ) : (
@@ -216,7 +216,7 @@ export default function UserManagementClient() {
             </ul>
 
             {/* Desktop: full table */}
-            <div className="hidden overflow-x-auto lg:block">
+            <div className="relative hidden overflow-x-auto lg:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-primary-bg/70 text-left text-xs font-semibold text-primary/85">
@@ -243,12 +243,10 @@ export default function UserManagementClient() {
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-right">
-                        <Link href={`/admin/users/${u.id}`}>
-                          <Button variant="outline" className="px-3 py-1.5 text-xs">
-                            Manage
-                            <Icon name="chevron-right" size={14} />
-                          </Button>
-                        </Link>
+                        <ButtonLink href={`/admin/users/${u.id}`} variant="outline" className="px-3 py-1.5 text-xs">
+                          Manage
+                          <Icon name="chevron-right" size={14} />
+                        </ButtonLink>
                       </td>
                     </tr>
                   ))}

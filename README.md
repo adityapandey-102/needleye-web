@@ -81,7 +81,7 @@ modules/
     components/                 # LoginForm (with a show/hide password toggle), RegisterForm, ResetPasswordForm, UpdatePasswordForm
     api/authApi.ts                # every HTTP call the Auth module makes -- login/logout/qrLogin also own writing/clearing the session cookies
   orders/
-    components/                 # OrderForm (create+edit; no price -- pricing comes after saving), PricingCard + PricingDialog (Add pricing now? / set / raise / discount with the double-check alert, price history), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient, OrderStatCards (clickable dashboard cards), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
+    components/                 # OrderForm (create+edit; no price -- pricing comes after saving), PricingCard + PricingDialog (Add pricing now? / set / raise / discount with the double-check alert, price history), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient + OrdersTable (the one order table: cards on phones and tablets, a table on desktop, StageProgress bars), dashboard/ (DashboardOverview: KpiStrip, PipelineCard, DeliveriesCard, MoneyStrip), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
@@ -159,10 +159,26 @@ key/value rows (`InfoRow`) carry an icon and hairline dividers. Long text sits
 in a soft inset panel, and empty notes show muted and italic. The order page
 hero and the dashboard money band sit on the brand burgundy with gold accents.
 
-**Responsiveness is mobile/tablet-first** (most staff are on phones/tablets):
-the sidebar collapses to a drawer behind a glass header that carries the brand
-for context, filter bars stack, and wide data tables render as **stacked cards
-below `lg`** (see `OrdersListClient`) instead of forcing horizontal scroll.
+**Responsiveness is mobile/tablet-first** (most staff are on phones/tablets),
+checked at 360 / 768 / 1024 / 1280 px:
+- **The sidebar is fixed only from `xl` (1280 px).** Below that -- phones and
+  tablets, upright or sideways -- it is a drawer behind a glass header that
+  carries the brand. So every desktop (`lg:`) layout gets at least ~940 px:
+  1024 px without the sidebar, or 1280 px with it.
+- **No list scrolls sideways on a phone or tablet.** Lists are cards below
+  `lg` -- one column on phones, two from `md` (`CARD_GRID_CELL` in
+  `components/ui/Card.tsx` draws the hairlines) -- and a table from `lg`:
+  orders (`OrdersTable`), pending payments, leads, the monthly ledger; Ledger
+  Activity switches at `md`. A table that is still wider than its card
+  scrolls inside it (`relative overflow-x-auto`: `relative`, or its
+  `sr-only` labels widen the page).
+- **Headers wrap instead of squeezing:** `CardHeader` moves its action to its
+  own line when it doesn't fit beside the title, and `wideAction` gives
+  segmented tabs that whole line on phones. A page header's buttons use
+  `.page-actions` (in a row beside the title; full width and stacked on
+  phones). Filter bars stack.
+- The e2e smoke suite opens the main pages at 390, 768 and 1024 px and fails if
+  any of them scrolls sideways.
 
 **Brand mark:** `components/shell/BrandMark.tsx` renders the logo from
 **`public/Needleye-logo.png`**; if it's missing (or 404s) it degrades to a
@@ -342,17 +358,42 @@ ledger (unpaid → advance_paid → fully_paid), so it can't drift. Instead:
 
 ### Dashboard navigation & revenue reporting
 
-`OrderStatCards.tsx` (self-fetching, on `/orders`) renders the summary as
-clickable cards -- Total, This Month, Active, In Production, **Ready for
-Delivery** (in Ready now), **Delivered** (this month only, not all time),
-Overdue, Urgent, and **Price Not Set** (roles that see prices) -- each opening a **dedicated focused page** (not the full
-orders list): most link to `/orders/bucket/[bucket]` (`BucketOrdersClient`,
-just the filtered table + pagination, no dashboard stats), while the payment
-cards link to `/orders/pending-payments` (`PendingPaymentsClient`) -- a
-payment-focused table (total / paid / outstanding / next-payment / due status)
-with an **Overdue / Upcoming** filter backed by the API's
-`payment_overdue`/`payment_upcoming` buckets. Payment cards are absent for
-`master_tailor`, mirroring the API's field stripping.
+The orders dashboard (`/orders`, `modules/orders/components/dashboard/`) is
+`DashboardOverview` -- one `GET /orders/stats` (row-scoped) -- above the orders
+list:
+- **At a glance** (`KpiStrip`): Active orders, Due in 3 days, Overdue, Ready
+  for delivery, Delivered this month -- one light board with the gold top line,
+  each figure opening its list.
+- **Production pipeline** (`PipelineCard`): the API's `pipeline` counts as a
+  numbered stepper (Design → Received → On the floor → Final checks → Ready),
+  each with what it holds, its count and its share on one scale; the step
+  holding the most orders is drawn in the brand red ("Most orders").
+- **Deliveries · next 14 days** (`DeliveriesCard`, roles that can book): orders
+  due per day from `GET /orders/delivery-load` against the capacity line, in the
+  brand's tones (light rose, wine when filling, oxblood when full, gold for
+  today), plus This week / Next week / Full days.
+- **Payments** (`MoneyStrip`, roles that see payments): Collected and
+  Outstanding (Owner, Accountant) with the share of the booked value
+  collected, Pending payments, Price not set.
+
+The chart maths is in `lib/domain/utils/dashboard.ts` (unit-tested); the
+greeting uses the shop's clock (`SHOP_TIME_ZONE`), not the server's. Every
+figure opens a **dedicated focused page**: `/orders/bucket/[bucket]`
+(`BucketOrdersClient`) or `/orders/pending-payments` (`PendingPaymentsClient`,
+with All outstanding / Overdue / Upcoming and a paid bar per order). All
+order lists share `OrdersTable` (order, customer, team, stage with its
+`StageProgress` bar, due date and timeline, payment; a row opens the order).
+Payment figures are absent for `master_tailor`, mirroring the API's field
+stripping.
+
+**The hero band** (`.hero-band` in `globals.css`): the brand red of the main
+buttons (`--gradient-primary`) with a gold outline and top line, for the
+numbers that matter most -- the dashboard's Payments, the Revenue page's
+month, an order's header (`OrderDetailView`, with a `ProgressRing` of how much
+is paid). On it, meaning uses the brand's tones (gold, apricot, rose -- no
+green). Navigation that looks like a button is `ButtonLink` (one element; a
+button inside a link is invalid HTML). The previous design is tagged
+`design-classic` -- `git checkout design-classic -- <path>` restores a screen.
 
 `/revenue` (`modules/revenue/RevenueClient.tsx`, owner_manager/accountant only,
 gated by `reports:financial`) reads the API's daily ledger (needleye-api ADR
@@ -576,15 +617,24 @@ the orders dashboard. Decisions: needleye-api `docs/adr/0007-leads-and-public-en
 `app/(public)/enquiry` -- Needle Eye's couture house page for customers
 (`EnquiryLanding`), in a luxury theme of its own -- noir, ivory and champagne
 gold, the `.lux` classes in `globals.css`; the staff app keeps its palette.
-Sections: the hero (the tagline "Beauty finds its form", the moving **garment
-rail** and the form in the first view), the atelier (Sakina Ahmed's story and
-quote), bridal collections, the brides gallery, signature fabrics with the
+Sections: the hero (the tagline "Beauty finds its form" and the moving
+**garment rail**, three columns on desktop), the atelier (Sakina Ahmed's story
+and quote), bridal collections, the brides gallery, signature fabrics with the
 studio photo, the seven-step bridal design process, testimonials, and the
 studio's address / phone / email / directions / Instagram, Facebook and
 YouTube. The page also carries the shop's details as schema.org
 `ClothingStore` data for search engines. `/enquiry` is in the session proxy's
 no-session list.
 
+- **The form is a popup** (`EnquiryDialog`, a native `<dialog>` shown with
+  `showModal()`): it opens the moment the page does, and from every "Book a
+  consultation" link (`a[href="#enquiry"]`); focus stays inside, Esc closes,
+  and "See our work" / "More about us" close it and glide to that section.
+  On desktop a bride photo sits beside the form. The form is in the page's
+  noir and gold (`EnquiryForm tone="lux"`, `.lux-form`).
+- **While browsing** (`FloatingConsult`): once the hero is scrolled past, a
+  "Book a consultation" pill floats at the bottom -- the brand red with a gold
+  ring running round it and a soft shine (`.lux-chase`), on phones too.
 - **Words and facts:** `modules/leads/content/needleEye.ts` -- taken from the
   shop's previous website (needleye.in: Home, About us, Contact, Fabrics,
   Bridal Collections). Edit there, not in the layout; nothing on the page is

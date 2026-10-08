@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   formatCurrency,
@@ -15,7 +14,7 @@ import { ordersApi } from "../../orders/api/ordersApi";
 import { downloadCsv } from "../export";
 import { useToast } from "../../../components/ui/Toast";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
 import { Icon } from "../../../components/ui/Icon";
 
@@ -196,7 +195,7 @@ export function LedgerActivity() {
 
           <div>
             <label className="mb-1 block text-[11px] font-medium text-text-muted">Year</label>
-            <Select className="w-auto" value={year} onChange={(e) => changeYear(Number(e.target.value))}>
+            <Select className="w-auto min-w-24" value={year} onChange={(e) => changeYear(Number(e.target.value))}>
               {years.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -231,7 +230,7 @@ export function LedgerActivity() {
             </div>
           )}
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="grid w-full grid-cols-2 items-center gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap">
             {canExport ? (
               <>
                 <Button
@@ -247,15 +246,19 @@ export function LedgerActivity() {
                     <Icon name="printer" size={14} /> Export PDF
                   </Button>
                 ) : (
-                  <Link href={`/revenue/ledger-print?from=${from}&to=${to}`} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="px-3 py-1.5 text-xs">
-                      <Icon name="printer" size={14} /> Export PDF
-                    </Button>
-                  </Link>
+                  <ButtonLink
+                    href={`/revenue/ledger-print?from=${from}&to=${to}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outline"
+                    className="px-3 py-1.5 text-xs"
+                  >
+                    <Icon name="printer" size={14} /> Export PDF
+                  </ButtonLink>
                 )}
               </>
             ) : (
-              <span className="text-[11px] text-text-muted">Choose Month or Week to export</span>
+              <span className="col-span-2 text-[11px] text-text-muted">Choose Month or Week to export</span>
             )}
           </div>
         </div>
@@ -277,7 +280,7 @@ export function LedgerActivity() {
           <div className="py-10 text-center text-sm text-text-muted">No payment activity in this period.</div>
         ) : (
           <div className={`transition-opacity ${loading ? "pointer-events-none opacity-50" : "opacity-100"}`}>
-            <div className="overflow-x-auto">
+            <div className="relative hidden overflow-x-auto md:block">
               <table className="w-full min-w-140 text-sm">
                 <thead>
                   <tr className="border-b border-border-light text-left text-xs text-text-muted">
@@ -305,6 +308,24 @@ export function LedgerActivity() {
                 </tbody>
               </table>
             </div>
+            {/* Phones: one entry per change -- what, on which order, when, by whom. */}
+            <ul className="rows-in divide-y divide-border-light md:hidden">
+              {events.map((ev) => (
+                <li key={ev.id} className="py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <ActionBadge action={ev.action} />
+                      <span className="truncate font-medium text-text-primary">{ev.orderNumber ?? "—"}</span>
+                    </div>
+                    <span className="shrink-0 text-[11px] text-text-muted">{formatDate(ev.at)}</span>
+                  </div>
+                  <div className="mt-1 text-text-secondary">
+                    <ChangeCell event={ev} />
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-text-muted">by {ev.actorName ?? "—"}</div>
+                </li>
+              ))}
+            </ul>
 
             <div className="mt-3 flex items-center justify-between text-xs text-text-muted">
               <span>

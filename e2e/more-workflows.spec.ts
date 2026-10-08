@@ -95,7 +95,7 @@ test.describe.serial("more workflows", () => {
 
     // The dashboard's Ready card opens a list with this order in it.
     await page.goto("/orders");
-    await page.getByRole("link", { name: /Ready for Delivery/ }).click();
+    await page.getByRole("link", { name: /Ready for delivery/i }).click();
     await expect(page).toHaveURL(/\/orders\/bucket\/ready/);
     await expect(page.getByRole("cell", { name: customerName })).toBeVisible();
 
@@ -109,7 +109,7 @@ test.describe.serial("more workflows", () => {
     await expect(page.getByRole("cell", { name: customerName })).toBeVisible();
   });
 
-  test("an unpriced order: Price Not Set card, no payments, and Delivered asks for the total first", async () => {
+  test("an unpriced order: Price not set card, no payments, and Delivered asks for the total first", async () => {
     const unpricedName = `WF Unpriced ${Date.now()}`;
     const { order } = await api<{ order: { id: string } }>(ownerToken, "/orders", {
       method: "POST",
@@ -128,7 +128,7 @@ test.describe.serial("more workflows", () => {
     await api(ownerToken, `/orders/${order.id}/status`, { method: "PATCH", body: JSON.stringify({ status: "ready" }) });
 
     await page.goto("/orders");
-    await page.getByRole("link", { name: /Price Not Set/ }).click();
+    await page.getByRole("link", { name: /Price not set/i }).click();
     await expect(page).toHaveURL(/\/orders\/bucket\/not_priced/);
     await expect(page.getByRole("cell", { name: unpricedName })).toBeVisible();
 

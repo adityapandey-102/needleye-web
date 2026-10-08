@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { hasCapability } from "../../../lib/domain";
+import { greetingFor, hasCapability, SHOP_TIME_ZONE } from "../../../lib/domain";
 import { apiFetchServer } from "../../../lib/api/server";
-import { Button } from "../../../components/ui/Button";
+import { ButtonLink } from "../../../components/ui/Button";
 import { Icon } from "../../../components/ui/Icon";
 import { OrdersListClient } from "../../../modules/orders/components/OrdersListClient";
-import { OrderStatCards } from "../../../modules/orders/components/OrderStatCards";
+import { DashboardOverview } from "../../../modules/orders/components/dashboard/DashboardOverview";
 import { DeliveryCalendarButton } from "../../../modules/orders/components/DeliveryCalendarButton";
 
 export default async function OrdersPage({
@@ -17,27 +16,28 @@ export default async function OrdersPage({
   // Workers have no dashboard -- send them to their scan landing.
   if (profile.role === "worker") redirect("/scan");
   const { bucket } = await searchParams;
+  const today = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: SHOP_TIME_ZONE }).format(new Date());
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="page-title">Orders</h1>
-          <p className="text-sm text-text-muted">An at-a-glance view of every order in your scope.</p>
+          <p className="text-sm text-text-muted">
+            {greetingFor(profile.fullName)} · {today}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="page-actions">
           {/* The delivery calendar with per-day order lists: owner and production manager. */}
           {(profile.role === "owner_manager" || profile.role === "production_manager") && <DeliveryCalendarButton />}
           {hasCapability(profile.role, "orders:create") && (
-            <Link href="/orders/new">
-              <Button>
-                <Icon name="sparkles" size={16} /> Create New Order
-              </Button>
-            </Link>
+            <ButtonLink href="/orders/new">
+              <Icon name="sparkles" size={16} /> Create New Order
+            </ButtonLink>
           )}
         </div>
       </div>
-      <OrderStatCards role={profile.role} />
+      <DashboardOverview role={profile.role} />
       <OrdersListClient role={profile.role} initialBucket={bucket} />
     </div>
   );

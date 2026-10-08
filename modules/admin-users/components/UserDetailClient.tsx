@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { formatDate, ROLE_LABELS, ROLES, type Role } from "../../../lib/domain";
 import { usersApi, type StaffUser } from "../api/usersApi";
-import { Button } from "../../../components/ui/Button";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 import { Icon } from "../../../components/ui/Icon";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { useToast } from "../../../components/ui/Toast";
@@ -140,11 +139,9 @@ export function UserDetailClient({ initialUser, currentUserId }: { initialUser: 
           <h1 className="page-title">{user.fullName}</h1>
           <p className="text-sm text-text-muted">{ROLE_LABELS[user.role]} · {user.email}</p>
         </div>
-        <Link href="/admin/users">
-          <Button variant="outline">
-            <Icon name="chevron-right" size={15} className="rotate-180" /> All Users
-          </Button>
-        </Link>
+        <ButtonLink href="/admin/users" variant="outline">
+          <Icon name="chevron-right" size={15} className="rotate-180" /> All Users
+        </ButtonLink>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
