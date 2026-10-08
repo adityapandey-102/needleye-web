@@ -43,3 +43,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Raw uploads: original photos and the old WordPress database dump. Never commit or
+# serve these -- the site uses optimized copies in public/brand.
+/public/new/
+*.sql

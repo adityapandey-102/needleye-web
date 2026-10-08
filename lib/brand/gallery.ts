@@ -28,12 +28,12 @@ export function loadBrandPhotos(dir = path.join(process.cwd(), "public", "brand"
     .map((file) => ({ src: `/brand/${encodeURIComponent(file)}`, alt: altFromFileName(file) }));
 }
 
-/** "03-red-bridal-lehenga.jpg" -> "Red bridal lehenga by Needleye". */
+/** "03-red-bridal-lehenga.jpg" -> "Red bridal lehenga by Needle Eye". */
 export function altFromFileName(file: string): string {
   const words = file
     .replace(PHOTO_FILE, "")
     .replace(/^\d+[-_\s]*/, "")
     .replace(/[-_]+/g, " ")
     .trim();
-  return words ? `${words.charAt(0).toUpperCase()}${words.slice(1)} by Needleye` : "A Needleye design";
+  return words ? `${words.charAt(0).toUpperCase()}${words.slice(1)} by Needle Eye` : "A Needle Eye design";
 }

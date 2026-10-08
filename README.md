@@ -85,7 +85,7 @@ modules/
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
-    components/RevenueClient.tsx   # owner_manager/accountant financial dashboard (/revenue): ThisMonthCards + MonthlyLedger (paged months, range totals, CSV/PDF) + LedgerActivity audit trail
+    components/RevenueClient.tsx   # owner_manager/accountant financial dashboard (/revenue): LedgerGuide (plain-words guide, text loaded on open) + BooksCheck (nightly check + Verify now) + ThisMonthCards + MonthlyLedger (paged months, range totals, Books column, CSV/PDF) + LedgerActivity audit trail; MonthBooksDialog closes / reopens a month
   reports/                       # owner-only (reports:staff) -- /reports
     components/                 # ReportPageHeader, TeamStatusCard (/reports/team: server-paged Working/Idle), ActivityFeedCard (/reports/activity: 7 days, each loaded when opened, in 5 category tabs), StaffReportClient + StaffPicker + WeeklyThroughputChart (/reports/staff: team -> searchable paged person list -> monthly report + SVG chart; /orders/staff-report redirects)
     requireReportsAccess.ts        # server-side owner-only gate shared by every /reports page
@@ -296,7 +296,8 @@ payment-status summary correct after an order edit + settling payment.
 + the assigned-designer check -- the same pattern already used for
 `canEdit`; `canCorrect` (Remove) from `payments:correct` -- owner and
 accountant only, and hidden once the order is delivered (payments are then
-final). An unpriced order shows "Set the order's price first" instead of the
+final) or for a payment dated in a closed month (`monthClosed`, shown as
+"Month closed" -- needleye-api ADR 0008 phase 5). An unpriced order shows "Set the order's price first" instead of the
 record form. Add/remove are real API calls (`paymentsApi.add`/`.remove`)
 against `needleye-api`'s ledger endpoints, which enforce the actual RBAC
 scoping -- these props only control whether the controls render, not whether
@@ -356,6 +357,14 @@ with an **Overdue / Upcoming** filter backed by the API's
 `/revenue` (`modules/revenue/RevenueClient.tsx`, owner_manager/accountant only,
 gated by `reports:financial`) reads the API's daily ledger (needleye-api ADR
 0008, phase 4) -- always **calendar months**:
+- **Revenue & Ledger guide** (`LedgerGuide`, top of the page): closed until
+  opened; then eight short sections in plain words for the Owner and the
+  Accountant -- the four numbers (with a worked example), prices, payments,
+  fixing a payment mistake, closing a month (and a monthly routine), the books
+  check, exports and history, quick answers. The text
+  (`LedgerGuideContent`) is loaded with `next/dynamic` only when the guide is
+  opened, so the page doesn't carry it. It states the rules the API enforces
+  (needleye-api ADR 0008) -- change it whenever a rule changes.
 - **This month** (`ThisMonthCards`): Total booked (orders booked this month, and
   how many aren't priced yet), Paid so far (on those orders), Outstanding, and
   Cash collected (all money received this month, any order).
@@ -365,6 +374,17 @@ gated by `reports:financial`) reads the API's daily ledger (needleye-api ADR
   not from summing the visible page. **Export CSV** fetches every month of the
   range (`ledgerMonthsToCsv`, unit-tested) and **Export PDF** opens the
   printable statement (`/revenue/print?from=YYYY-MM&to=YYYY-MM`).
+- **Books** (ADR 0008 phase 5): the **books check** bar (`BooksCheck`) shows
+  the latest check of the register against every order and payment -- run by
+  the database every night at 2:00 AM, or now with **Verify now** -- and what
+  didn't match, if anything; it warns when the nightly check is over 26 hours
+  old. The month table's **Books** column reads *Closed* (a finished month
+  whose books are closed), *Close…* (finished, open) or *Running* (this month).
+  Both open `MonthBooksDialog`, loaded on demand: the month's figures now, the
+  closing record beside them, every close and reopen, and the action the role
+  allows -- Close (Owner, Accountant: `ledger:close`) or Reopen with a reason
+  (Owner: `ledger:reopen`). The CSV gains a Books column (`booksLabel`) and the
+  PDF marks closed months.
 
 Below the history, **Ledger Activity** (`LedgerActivity.tsx`) is the payment
 audit trail: who recorded, edited, or removed a payment, when, on which order,
@@ -553,16 +573,31 @@ the orders dashboard. Decisions: needleye-api `docs/adr/0007-leads-and-public-en
 
 ### The public enquiry page (`/enquiry`, no login)
 
-`app/(public)/enquiry` -- a brand page for customers (`EnquiryLanding`): the
-logo and who Needleye is, the moving **garment rail** of designs, what Needleye
-makes, the four steps from enquiry to fitting, Instagram, and the form
-(`EnquiryForm`). `/enquiry` is in the session proxy's no-session list.
+`app/(public)/enquiry` -- Needle Eye's couture house page for customers
+(`EnquiryLanding`), in a luxury theme of its own -- noir, ivory and champagne
+gold, the `.lux` classes in `globals.css`; the staff app keeps its palette.
+Sections: the hero (the tagline "Beauty finds its form", the moving **garment
+rail** and the form in the first view), the atelier (Sakina Ahmed's story and
+quote), bridal collections, the brides gallery, signature fabrics with the
+studio photo, the seven-step bridal design process, testimonials, and the
+studio's address / phone / email / directions / Instagram, Facebook and
+YouTube. The page also carries the shop's details as schema.org
+`ClothingStore` data for search engines. `/enquiry` is in the session proxy's
+no-session list.
 
+- **Words and facts:** `modules/leads/content/needleEye.ts` -- taken from the
+  shop's previous website (needleye.in: Home, About us, Contact, Fabrics,
+  Bridal Collections). Edit there, not in the layout; nothing on the page is
+  invented. The brand is written "Needle Eye", as on the logo.
 - **Photos:** every image in `public/brand/` (file-name order; see the README
   there) -- read on the server (`lib/brand/gallery.ts`), so adding photos needs
-  no code change. With none, woven fabric swatches stand in. The first 14 are
-  Needleye's own studio pieces from its previous website; `public/studio/` holds
-  the showroom photo for "Our studio".
+  no code change; a section that prefers a photo by name falls back to another
+  if it's gone. With none, woven fabric swatches stand in. The current eight
+  are Needle Eye's own brides from its Instagram (WebP, about 1400 px tall,
+  under 200 KB; Instagram's carousel dots cropped away, photographers' credits
+  kept). `public/studio/` holds the fabric-library photo. Raw uploads go in
+  `public/new/`, which git ignores -- never commit originals or database dumps
+  (everything in `public/` is served to the internet as-is).
 - **Site icon:** `app/icon.png`, `app/apple-icon.png`, `app/favicon.ico` -- the
   logo's "N" emblem on the logo's sand colour (readable at tab size).
 - **Motion:** the rail is pure CSS transforms (`.rail-*` in `globals.css`) --

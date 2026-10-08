@@ -15,9 +15,9 @@ describe("loadBrandPhotos", () => {
     dir = mkdtempSync(path.join(tmpdir(), "brand-"));
     for (const f of ["10-sherwani.webp", "2-festive_anarkali.png", "1-bridal-lehenga.jpg", "notes.txt", ".DS_Store"]) writeFileSync(path.join(dir, f), "x");
     expect(loadBrandPhotos(dir)).toEqual([
-      { src: "/brand/1-bridal-lehenga.jpg", alt: "Bridal lehenga by Needleye" },
-      { src: "/brand/2-festive_anarkali.png", alt: "Festive anarkali by Needleye" },
-      { src: "/brand/10-sherwani.webp", alt: "Sherwani by Needleye" },
+      { src: "/brand/1-bridal-lehenga.jpg", alt: "Bridal lehenga by Needle Eye" },
+      { src: "/brand/2-festive_anarkali.png", alt: "Festive anarkali by Needle Eye" },
+      { src: "/brand/10-sherwani.webp", alt: "Sherwani by Needle Eye" },
     ]);
   });
 
@@ -28,6 +28,6 @@ describe("loadBrandPhotos", () => {
 
 describe("altFromFileName", () => {
   it("falls back when the name is only a number", () => {
-    expect(altFromFileName("07.jpg")).toBe("A Needleye design");
+    expect(altFromFileName("07.jpg")).toBe("A Needle Eye design");
   });
 });
