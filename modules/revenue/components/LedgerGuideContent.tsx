@@ -2,132 +2,124 @@ import type { ReactNode } from "react";
 
 /**
  * The Revenue & Ledger guide's text (loaded only when the guide is opened).
- * Written for the Owner and the Accountant, in plain words. Every rule here is
- * a rule the app enforces -- needleye-api ADR 0008 (phases 1-5). If a rule
- * changes, change this guide in the same change.
+ * Written for the Owner and the Accountant, in plain words and short steps.
+ * Every rule here is a rule the app enforces -- needleye-api ADR 0008 and its
+ * 2026-10-09 amendment. If a rule changes, change this guide in the same change.
  */
 export function LedgerGuideContent() {
   return (
     <div className="mt-3 space-y-2 text-sm text-text-secondary">
       <p className="text-xs text-text-muted">
-        This page is for the Owner and the Accountant. Every number here comes from the orders and payments entered in the app &mdash; nobody types
-        these numbers by hand.
+        For the Owner and the Accountant. Every number on this page comes from the orders and payments entered in the app &mdash; nobody types
+        them by hand.
       </p>
 
       <Section n={1} title="The 4 numbers" open>
-        <p>Every month shows four numbers:</p>
-        <ul className="list-disc space-y-1 pl-5">
-          <li>
-            <b>Total booked</b> &mdash; the price of all orders <i>booked</i> in that month (by booking date). An order without a price isn&rsquo;t
-            counted yet; it shows as &ldquo;not priced&rdquo;.
-          </li>
-          <li>
-            <b>Paid so far</b> &mdash; how much customers have paid <i>on those orders</i> up to today, even if they paid in a later month.
-          </li>
-          <li>
-            <b>Outstanding</b> &mdash; Total booked minus Paid so far: what is still to be collected on that month&rsquo;s orders.
-          </li>
-          <li>
-            <b>Cash collected</b> &mdash; all money <i>received</i> in that month, from any order, old or new.
-          </li>
-        </ul>
+        <Rows
+          rows={[
+            ["Total booked", "The price of every order booked in the month (by booking date). Orders without a price aren't counted yet."],
+            ["Paid so far", "What customers have paid on those orders, up to today — even if they paid in a later month."],
+            ["Outstanding", "Total booked minus Paid so far: still to collect on that month's orders."],
+            ["Cash collected", "All money received in the month, from any order, old or new."],
+          ]}
+        />
         <Example>
-          <p>An order is booked on 10 March for ₹10,000. The customer pays ₹4,000 on 10 March and ₹6,000 on 5 April.</p>
+          <p>Booked 10 March for ₹10,000. Paid ₹4,000 on 10 March and ₹6,000 on 5 April.</p>
           <ul className="mt-1 list-disc space-y-0.5 pl-5">
             <li>March: Total booked ₹10,000 · Paid so far ₹10,000 · Outstanding ₹0 · Cash collected ₹4,000</li>
-            <li>April: Cash collected ₹6,000 (the April payment). This order is not in April&rsquo;s Total booked.</li>
+            <li>April: Cash collected ₹6,000. The order isn&rsquo;t in April&rsquo;s Total booked.</li>
           </ul>
           <p className="mt-1">
-            So <b>Paid so far</b> and <b>Cash collected</b> are different on purpose: one follows the orders, the other follows the money.
+            Paid so far and Cash collected differ on purpose: one follows the orders, the other follows the money.
           </p>
         </Example>
-        <ul className="list-disc space-y-1 pl-5">
-          <li>Months are calendar months (the 1st to the last day), in Indian time.</li>
-          <li>The totals above the month table are for the whole range you picked, not only the page you can see.</li>
-        </ul>
+        <p className="text-xs text-text-muted">Months are calendar months, in Indian time. The totals above the table cover the whole range you picked.</p>
       </Section>
 
       <Section n={2} title="Prices">
-        <ul className="list-disc space-y-1 pl-5">
-          <li>A new order is saved without a price. The app then asks &ldquo;Add pricing now?&rdquo;.</li>
-          <li>The first price can be set by the Owner, the Accountant or the order&rsquo;s designer.</li>
-          <li>
-            After that, only the Owner or the Accountant can change it:
-            <ul className="mt-0.5 list-[circle] space-y-0.5 pl-5">
-              <li>
-                <b>Raise</b> the price &mdash; with a reason.
-              </li>
-              <li>
-                <b>Discount</b> (lower the price) &mdash; with a reason, and never below what the customer has already paid.
-              </li>
-            </ul>
-          </li>
-          <li>Before a price is saved, the app shows the amount in words, to double-check it.</li>
-          <li>A price of ₹0 means free work: the order counts as fully paid.</li>
-          <li>
-            An order can&rsquo;t be marked <b>Delivered</b> without a price. Once it is Delivered, the price is locked.
-          </li>
-          <li>Every price change is kept in the order&rsquo;s price history (on the order page): who, when and why.</li>
-        </ul>
+        <Steps
+          items={[
+            <>A new order is saved without a price; the app then asks &ldquo;Add pricing now?&rdquo;.</>,
+            <>
+              <b>Set price</b> (the first price): the Owner, the Accountant or the order&rsquo;s designer. The app shows the amount in words to
+              double-check it.
+            </>,
+            <>
+              <b>Correct price</b> (any later change, up or down): only the Owner or the Accountant, with a reason.
+            </>,
+            <>
+              A price can&rsquo;t go <b>below what has already been paid</b>. To go lower, first fix the payment (see 4), then correct the price.
+            </>,
+            <>₹0 means free work: the order counts as fully paid.</>,
+            <>
+              An order can&rsquo;t be marked <b>Delivered</b> without a price. Delivery doesn&rsquo;t lock anything &mdash; only closing the month
+              does (see 5).
+            </>,
+            <>Every price change is kept in the order&rsquo;s price history: who, when, why.</>,
+          ]}
+        />
       </Section>
 
       <Section n={3} title="Payments">
-        <ul className="list-disc space-y-1 pl-5">
-          <li>A payment can be recorded by the Owner, the Accountant, or the order&rsquo;s designer (on their own orders).</li>
-          <li>A payment can be recorded only after the order has a price.</li>
-          <li>A payment can&rsquo;t be more than what is left to pay.</li>
-          <li>The app records a payment with today&rsquo;s date.</li>
-          <li>
-            The payment status changes by itself: <b>Not priced</b> → <b>Unpaid</b> → <b>Advance paid</b> → <b>Fully paid</b>.
-          </li>
-          <li>If the order isn&rsquo;t fully paid, you can set the date of the next payment.</li>
-        </ul>
+        <Steps
+          items={[
+            <>Recorded by the Owner, the Accountant, or the order&rsquo;s designer (their own orders) &mdash; only once the order has a price.</>,
+            <>A payment can&rsquo;t be more than what is left to pay, and can&rsquo;t be dated in the future.</>,
+            <>
+              The status follows by itself: <b>Not priced</b> → <b>Unpaid</b> → <b>Advance paid</b> → <b>Fully paid</b>.
+            </>,
+            <>
+              The Owner or the Accountant can <b>remove</b> a payment &mdash; before or after delivery &mdash; unless its month is closed (🔒 Month
+              closed).
+            </>,
+          ]}
+        />
       </Section>
 
-      <Section n={4} title="Fixing a payment mistake">
-        <ul className="list-disc space-y-1 pl-5">
-          <li>Only the Owner or the Accountant can remove a payment.</li>
-          <li>
-            A payment can be removed only if the order is <b>not Delivered</b> and the payment&rsquo;s month is <b>not closed</b>.
-          </li>
-          <li>Wrong amount? Remove the payment and record the right amount. The new entry gets today&rsquo;s date.</li>
-          <li>
-            Nothing disappears from history: every payment recorded, edited or removed is listed in <b>Ledger Activity</b> (at the bottom of this page)
-            with who did it and when.
-          </li>
-          <li>Once an order is Delivered, its payments are final.</li>
-          <li>A price can&rsquo;t be lowered below what has already been paid &mdash; the app can&rsquo;t do this yet.</li>
-        </ul>
+      <Section n={4} title="Fixing a mistake">
+        <Rows
+          rows={[
+            ["Wrong payment amount", "Remove the payment, then record the right amount."],
+            ["Wrong price", "Correct price, with the reason."],
+            ["The price must go below what's paid", "1. Remove (or fix) the payment that's too much.  2. Correct the price."],
+            ["The mistake is in a closed month", "The Owner reopens the month (with a reason), it's fixed, then the month is closed again."],
+          ]}
+        />
+        <p className="text-xs text-text-muted">
+          Nothing disappears: every payment recorded, edited or removed is in <b>Ledger Activity</b>; every price change is in the order&rsquo;s
+          price history.
+        </p>
       </Section>
 
       <Section n={5} title="Closing a month">
         <p>
-          Closing a month means: <i>&ldquo;this month&rsquo;s money is checked and final&rdquo;</i>.
+          Closing means <i>&ldquo;this month is checked and final&rdquo;</i>. The Owner or the Accountant closes a month once it has ended: click{" "}
+          <b>Close…</b> in the month table, check the numbers, click <b>Close</b>.
         </p>
-        <ul className="list-disc space-y-1 pl-5">
-          <li>The Owner or the Accountant can close a month, once the month has ended.</li>
-          <li>
-            In the month table, click <b>Close…</b> on the month, check the numbers, then click <b>Close</b>.
-          </li>
-          <li>
-            After closing, <b>no payment dated in that month can be added, changed or removed</b>. The month shows 🔒 <b>Closed</b>.
-          </li>
-          <li>
-            The month&rsquo;s numbers at the moment of closing are saved as its <b>closing record</b>.
-          </li>
-          <li>
-            Closing doesn&rsquo;t lock that month&rsquo;s orders: a discount, or a customer paying later, can still change its Total booked, Paid so
-            far and Outstanding. Its <b>Cash collected</b> stays fixed.
-          </li>
-          <li>
-            To change something in a closed month, the <b>Owner</b> reopens it (click 🔒 Closed, write the reason, click Reopen), fixes it, and
-            closes it again.
-          </li>
-          <li>Every close and reopen is kept: who, when, and the reason.</li>
-        </ul>
+        <Rows
+          rows={[
+            ["Payments dated in that month", "Can't be added, changed or removed."],
+            ["Orders booked in that month", "Can't be repriced, and no order can be booked into or moved out of it."],
+            ["Still allowed", "Payments today on those orders (a customer paying later), in an open month."],
+          ]}
+        />
+        <Steps
+          items={[
+            <>
+              A month can&rsquo;t be closed while one of its orders has <b>no price</b> &mdash; price them first.
+            </>,
+            <>
+              The month&rsquo;s numbers when it closes are saved as its <b>closing record</b>.
+            </>,
+            <>
+              To change something, the <b>Owner</b> reopens the month (click 🔒 Closed, write the reason, Reopen), fixes it, and closes it again.
+              Every close and reopen is kept.
+            </>,
+          ]}
+        />
         <Example title="A good monthly routine">
           <ol className="list-decimal space-y-0.5 pl-5">
-            <li>In the first days of the new month, make sure all of last month&rsquo;s payments are entered.</li>
+            <li>In the first days of the new month, enter all of last month&rsquo;s payments and price every order.</li>
             <li>
               Check that the books bar says <b>Books verified</b> (or press <b>Verify now</b>).
             </li>
@@ -137,61 +129,76 @@ export function LedgerGuideContent() {
       </Section>
 
       <Section n={6} title="The books check">
-        <ul className="list-disc space-y-1 pl-5">
-          <li>Every night at 2:00 AM, the app checks the books by itself.</li>
-          <li>
-            It counts every order and payment again and compares them with the monthly numbers. It also checks that:
-            <ul className="mt-0.5 list-[circle] space-y-0.5 pl-5">
-              <li>no order is paid more than its price;</li>
-              <li>every order shows the right payment status;</li>
-              <li>every closed month still has the same cash as when it was closed.</li>
-            </ul>
-          </li>
-          <li>
-            <b>Books verified</b> means everything matches.
-          </li>
-          <li>
-            <b>The check found problems</b> means something doesn&rsquo;t match. Click <b>Details</b> to see which day and which number. Don&rsquo;t
-            close a month until it is fixed &mdash; tell your developer.
-          </li>
-          <li>
-            <b>Verify now</b> runs the same check at any time. The check only reads: it never changes a number.
-          </li>
-          <li>If the nightly check stops running, a warning appears in the books bar.</li>
-        </ul>
+        <Steps
+          items={[
+            <>Every night at 2:00 AM the app recounts every order and payment and compares them with the monthly numbers.</>,
+            <>It also checks that no order is paid more than its price, every payment status is right, and every closed month still matches its closing record.</>,
+            <>
+              <b>Books verified</b> = everything matches. <b>The check found problems</b> = click <b>Details</b> to see which day and which number;
+              don&rsquo;t close a month until it&rsquo;s fixed, and tell your developer.
+            </>,
+            <>
+              <b>Verify now</b> runs the same check any time. It only reads &mdash; it never changes a number.
+            </>,
+          ]}
+        />
       </Section>
 
       <Section n={7} title="Exports and history">
-        <ul className="list-disc space-y-1 pl-5">
-          <li>
-            <b>Export CSV</b> (opens in Excel) and <b>Export PDF</b> give every month of the range you picked. The Books column shows{" "}
-            <b>Closed</b>, <b>Open</b> (the month has ended but isn&rsquo;t closed) or <b>Running</b> (this month).
-          </li>
-          <li>
-            <b>Ledger Activity</b> lists every payment recorded, edited or removed: who, when, the amount and the method. It can be exported by month
-            or by week.
-          </li>
-          <li>
-            Changes to orders, prices and stages are in <b>Reports → Daily activity</b> (Owner).
-          </li>
-        </ul>
+        <Steps
+          items={[
+            <>
+              <b>Export CSV</b> (Excel) and <b>Export PDF</b> give every month of the range. The Books column says <b>Closed</b>, <b>Open</b> or{" "}
+              <b>Running</b> (this month).
+            </>,
+            <>
+              <b>Ledger Activity</b> lists every payment recorded, edited or removed &mdash; who, when, amount, method &mdash; and exports by month or
+              week.
+            </>,
+            <>
+              Order, price and stage changes are in <b>Reports → Daily activity</b> (Owner).
+            </>,
+          ]}
+        />
       </Section>
 
       <Section n={8} title="Quick answers">
         <dl className="space-y-2">
-          <Qa q="Why is a new order not in Total booked?">It has no price yet. Set the price and it is counted.</Qa>
+          <Qa q="Why is a new order not in Total booked?">It has no price yet. Set the price and it&rsquo;s counted.</Qa>
           <Qa q="A March order was paid in April. Where does it show?">In April&rsquo;s Cash collected, and in March&rsquo;s Paid so far.</Qa>
-          <Qa q="Why is there no Remove button on a payment?">
-            The order is Delivered, or the payment&rsquo;s month is closed (🔒 Month closed), or you aren&rsquo;t the Owner or the Accountant.
-          </Qa>
-          <Qa q="I need to fix a payment in a closed month.">
-            The Owner reopens the month with a reason, the payment is fixed, then the month is closed again.
-          </Qa>
+          <Qa q="Why can't I lower this price?">It would go below what&rsquo;s paid. Fix the payment first, then correct the price.</Qa>
+          <Qa q="Why is there no Remove button on a payment?">Its month is closed (🔒 Month closed), or you aren&rsquo;t the Owner or the Accountant.</Qa>
+          <Qa q="Why can't I close last month?">One of its orders has no price yet, or the month hasn&rsquo;t ended. Price the orders, then close.</Qa>
           <Qa q="The books check found problems.">Don&rsquo;t close any month. Open Details and share it with your developer.</Qa>
           <Qa q="Who can see this page?">Only the Owner and the Accountant.</Qa>
         </dl>
       </Section>
     </div>
+  );
+}
+
+/** A small two-column table: what -> what it means. */
+function Rows({ rows }: { rows: [string, string][] }) {
+  return (
+    <dl className="divide-y divide-border-light overflow-hidden rounded-app-sm border border-border-light">
+      {rows.map(([term, meaning]) => (
+        <div key={term} className="grid gap-0.5 px-3 py-2 sm:grid-cols-[13rem_1fr] sm:gap-3">
+          <dt className="font-semibold text-text-primary">{term}</dt>
+          <dd className="whitespace-pre-line">{meaning}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** A short list of rules, one line each. */
+function Steps({ items }: { items: ReactNode[] }) {
+  return (
+    <ul className="list-disc space-y-1 pl-5">
+      {items.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
   );
 }
 

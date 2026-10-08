@@ -23,6 +23,7 @@ import { StatusPill } from "../../../components/ui/StatusPill";
 import { ImageUploadGrid, type ImageSlotState } from "./ImageUploadGrid";
 import { ProductCategoryPicker } from "./ProductCategoryPicker";
 import { DeliveryDateField } from "./DeliveryDateField";
+import { CustomerLookup } from "./CustomerLookup";
 import { isApiErrorCode } from "../../../lib/api/client";
 import { compressImage } from "../../../lib/images/compressImage";
 import { useToast } from "../../../components/ui/Toast";
@@ -408,14 +409,27 @@ export function OrderForm({
             </div>
             <div>
               <FieldLabel required>Phone Number</FieldLabel>
-              <Input
-                type="tel"
-                maxLength={10}
-                disabled={!canEditContentFields}
-                value={form.phone}
-                onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="e.g. 9876543210"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="tel"
+                  maxLength={10}
+                  disabled={!canEditContentFields}
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  placeholder="e.g. 9876543210"
+                  className="min-w-40 flex-1"
+                />
+                {/* New orders only: copy a returning customer's details from an earlier order with this number. */}
+                {mode === "create" && (
+                  <CustomerLookup
+                    phone={form.phone}
+                    onFill={(match) => {
+                      set("customerName", match.customerName);
+                      // Later: also bring the customer's measurements from that order, once orders carry them.
+                    }}
+                  />
+                )}
+              </div>
               <FieldError>{errors.phone}</FieldError>
             </div>
             <div>
@@ -567,7 +581,7 @@ export function OrderForm({
 
         {/* Pricing is not part of the form (ADR 0008): a new order is priced
             right after saving, and a price only ever changes on the order page
-            (Set price / Raise price / Give discount). */}
+            (Set price / Correct price). */}
         {mode === "create" ? (
           <Card>
             <CardHeader icon="💳" iconTone="green" title="Pricing" subtitle="Comes next" />
@@ -594,7 +608,7 @@ export function OrderForm({
                 <p className="mt-1 text-[11px] text-text-muted">When the next payment is expected (for due tracking). Optional.</p>
               </div>
               <p className="text-[11px] text-text-muted">
-                The price changes on the order page (Set price, Raise price, Give discount); payments on its Payment Ledger.
+                The price changes on the order page (Set price, Correct price); payments on its Payment Ledger.
               </p>
             </CardBody>
           </Card>

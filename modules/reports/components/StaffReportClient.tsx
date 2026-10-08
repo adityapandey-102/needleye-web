@@ -228,7 +228,7 @@ export function StaffReportClient() {
 
 const TONES: Record<string, { chip: string; val: string }> = {
   primary: { chip: "bg-primary-bg text-primary ring-primary/10", val: "text-text-primary" },
-  success: { chip: "bg-success-bg text-success ring-success/15", val: "text-success" },
+  success: { chip: "bg-success text-white ring-success", val: "text-success" },
   error: { chip: "bg-error-bg text-error ring-error/15", val: "text-error" },
   amber: { chip: "bg-warning-bg text-warning ring-warning/15", val: "text-text-primary" },
   blue: { chip: "bg-info-bg text-info ring-info/15", val: "text-text-primary" },

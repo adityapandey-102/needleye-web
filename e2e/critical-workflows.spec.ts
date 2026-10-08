@@ -91,14 +91,14 @@ test.describe.serial("critical workflows", () => {
     const alert = pricing.getByRole("alert");
     await expect(alert).toContainText("Please be double sure this total is correct");
     await expect(alert).toContainText("Twenty-five thousand rupees");
-    await expect(alert).toContainText("Once the order is delivered, the price is locked.");
+    await expect(alert).toContainText("Corrections are allowed until this order’s month is closed in the books.");
     await pricing.getByRole("button", { name: /Save price/ }).click();
 
     await expect(page.getByText("Price set: ₹25,000.")).toBeVisible();
     await page.getByRole("dialog", { name: "Record a payment?" }).getByRole("button", { name: "Not now" }).click();
     await expect(page).toHaveURL(new RegExp(`/orders/${orderId}$`));
     // The order's own designer set its first price; they can't change it afterwards.
-    await expect(page.getByRole("button", { name: "Raise price" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Correct price" })).toHaveCount(0);
     await expect(page.getByText("Price set", { exact: true })).toBeVisible(); // the price history row
   });
 

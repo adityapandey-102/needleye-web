@@ -10,6 +10,7 @@ import type {
   OrderStatusHistoryEntry,
   PriceChange,
   StaffReport,
+  TimelineFilter,
   UpdateOrderInput,
 } from "../../../lib/domain";
 import { apiFetch, apiUpload } from "../../../lib/api/client";
@@ -25,6 +26,11 @@ export interface OrderListFilters {
   createdFrom?: string;
   /** Only orders due on this day (YYYY-MM-DD) -- the delivery calendar day list. */
   dueOn?: string;
+  /** The timeline pill's state: overdue | urgent | due_soon | on_track | delivered. */
+  timeline?: TimelineFilter;
+  /** Booked in this year (2000-2100) -- and, with bookedMonth (1-12), that month. bookedMonth needs bookedYear. */
+  bookedYear?: number;
+  bookedMonth?: number;
   limit?: number;
   offset?: number;
 }
@@ -38,6 +44,20 @@ export interface OrderListResult {
   offset: number;
 }
 
+/** One earlier order with the looked-up phone (GET /orders/customer-lookup). */
+export interface CustomerLookupMatch {
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  bookingDate: string;
+}
+
+export interface CustomerLookupResult {
+  phone: string;
+  /** Newest first, at most 5. */
+  matches: CustomerLookupMatch[];
+}
+
 /** All HTTP calls the Orders feature makes, in one place -- components never call apiFetch directly. */
 export const ordersApi = {
   list(filters: OrderListFilters = {}): Promise<OrderListResult> {
@@ -49,6 +69,11 @@ export const ordersApi = {
     if (filters.bucket) query.set("bucket", filters.bucket);
     if (filters.createdFrom) query.set("createdFrom", filters.createdFrom);
     if (filters.dueOn) query.set("dueOn", filters.dueOn);
+    if (filters.timeline) query.set("timeline", filters.timeline);
+    if (filters.bookedYear !== undefined) {
+      query.set("bookedYear", String(filters.bookedYear));
+      if (filters.bookedMonth !== undefined) query.set("bookedMonth", String(filters.bookedMonth));
+    }
     if (filters.limit !== undefined) query.set("limit", String(filters.limit));
     if (filters.offset !== undefined) query.set("offset", String(filters.offset));
     return apiFetch(`/orders?${query.toString()}`);
@@ -75,7 +100,12 @@ export const ordersApi = {
     return apiFetch(`/orders/${orderId}/history`);
   },
 
-  /** Set the first price, raise it, or give a discount -- the server decides which from the order's state (ADR 0008). */
+  /**
+   * Set the first price, or correct it (up or down, with a reason) -- the
+   * server decides which from the order's state. Refused below what's been
+   * collected (ORDER_TOTAL_BELOW_PAID) or while the order's booking month is
+   * closed in the books (ORDER_PRICE_MONTH_CLOSED).
+   */
   changePrice(orderId: string, totalAmount: string, reason?: string): Promise<{ order: Order; change: PriceChange }> {
     return apiFetch(`/orders/${orderId}/price`, {
       method: "PUT",
@@ -85,6 +115,15 @@ export const ordersApi = {
 
   priceHistory(orderId: string): Promise<{ history: PriceChange[] }> {
     return apiFetch(`/orders/${orderId}/price-history`);
+  },
+
+  /**
+   * "Fetch customer details" on the new-order form: earlier orders with this
+   * exact 10-digit phone, newest first (at most 5). Called only when the
+   * button is pressed -- never while typing.
+   */
+  customerLookup(phone: string): Promise<CustomerLookupResult> {
+    return apiFetch(`/orders/customer-lookup?${new URLSearchParams({ phone }).toString()}`);
   },
 
   stats(): Promise<OrderStats> {

@@ -52,18 +52,37 @@ export function PipelineCard({ pipeline, active, className = "" }: { pipeline: R
           </Link>
         }
       />
-      <ol className="stagger-in relative flex flex-1 flex-col justify-center gap-1.5 px-4 py-4 sm:px-5">
-        {/* The thread the steps hang on. */}
-        <span aria-hidden className="absolute top-8 bottom-8 left-8.25 w-px bg-border sm:left-9.25" />
+      <ol className="stagger-in flex flex-1 flex-col justify-center gap-1.5 px-4 py-4 sm:px-5">
         {segments.map((s, i) => (
-          <Step key={s.key} segment={s} step={i + 1} highlight={bottleneck?.key === s.key} />
+          <Step key={s.key} segment={s} step={i + 1} first={i === 0} last={i === segments.length - 1} highlight={bottleneck?.key === s.key} />
         ))}
       </ol>
     </Card>
   );
 }
 
-function Step({ segment: s, step, highlight }: { segment: PipelineSegment; step: number; highlight: boolean }) {
+/*
+ * The thread the steps hang on, drawn per step so it always meets the badge
+ * centres exactly, whatever each row's height or the card's padding: from the
+ * middle of the gap above (gap-1.5 = 6px, so 3px up) down to this badge's
+ * centre, and from the centre down to the middle of the gap below. x = the
+ * row's px-2.5 (10px) + half the 28px badge (14px) - half the 1px line.
+ */
+const THREAD = "pointer-events-none absolute left-[23.5px] w-px bg-border";
+
+function Step({
+  segment: s,
+  step,
+  first,
+  last,
+  highlight,
+}: {
+  segment: PipelineSegment;
+  step: number;
+  first: boolean;
+  last: boolean;
+  highlight: boolean;
+}) {
   const href = LINK[s.key];
   const body = (
     <>
@@ -105,7 +124,9 @@ function Step({ segment: s, step, highlight }: { segment: PipelineSegment; step:
     highlight ? "hero-band" : href ? "hover:bg-primary-bg/40" : ""
   }`;
   return (
-    <li>
+    <li className="relative">
+      {!first && <span aria-hidden className={`${THREAD} -top-0.75 bottom-1/2`} />}
+      {!last && <span aria-hidden className={`${THREAD} top-1/2 -bottom-0.75`} />}
       {href ? (
         <Link href={href} className={`${row} focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60`}>
           {body}

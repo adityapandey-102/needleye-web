@@ -81,7 +81,7 @@ modules/
     components/                 # LoginForm (with a show/hide password toggle), RegisterForm, ResetPasswordForm, UpdatePasswordForm
     api/authApi.ts                # every HTTP call the Auth module makes -- login/logout/qrLogin also own writing/clearing the session cookies
   orders/
-    components/                 # OrderForm (create+edit; no price -- pricing comes after saving), PricingCard + PricingDialog (Add pricing now? / set / raise / discount with the double-check alert, price history), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient + OrdersTable (the one order table: cards on phones and tablets, a table on desktop, StageProgress bars), dashboard/ (DashboardOverview: KpiStrip, PipelineCard, DeliveriesCard, MoneyStrip), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
+    components/                 # OrderForm (create+edit; no price -- pricing comes after saving), PricingCard + PricingDialog (Add pricing now? / set / correct with the double-check alert, price history), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient (search, designer, master, stage, timeline, booking year / month filters -- server-side, page reset on change) + OrdersTable (the one order table: cards on phones and tablets, a table on desktop, StageProgress bars), CustomerLookup (the new-order form's "Fetch customer details": on press only, pick an earlier order with that phone, fill the name), dashboard/ (DashboardOverview: KpiStrip, PipelineCard, DeliveriesCard, MoneyStrip), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
@@ -326,11 +326,13 @@ The order form has **no price**. Saving a new order lands on
 `PricingDialog` (the total) → **"Record a payment?"** (opens the ledger's record
 form). Typing a total shows an animated **"Please be double sure this total is
 correct: ₹X (amount in words)"** alert (`amountInWords`, Indian lakh/crore;
-`.price-alert` in `globals.css`, off under reduced motion) with the rule: the
-total can be raised (with a reason) or lowered only as a discount, by the Owner
-or Accountant, never below what's collected; delivered locks it. The card then
-shows the total, **Raise price** / **Give discount** for the Owner and
-Accountant until delivery, and the price history. The dialogs render through
+`.price-alert` in `globals.css`, off under reduced motion) with the rule: after
+the first price, the Owner or Accountant can **correct** it, up or down, with a
+reason -- never below what's collected (fix the payment first) and not while the
+order's booking month is closed in the books. Delivery locks nothing (owner,
+2026-10-09). The card then shows the total, **Correct price** for the Owner and
+Accountant, and the price history (older raise / discount rows read as
+corrections). The dialogs render through
 `components/ui/Portal` -- inside the animated card column a fixed overlay was
 trapped under the next card. Delivered without a price opens **"Set the order
 total first"** (`PRICE_REQUIRED_DIALOG`) from the status menu, the Kanban board
@@ -349,7 +351,7 @@ ledger (unpaid → advance_paid → fully_paid), so it can't drift. Instead:
 - **Due tracking + overpaid guard (both directions)** --
   `lib/domain/utils/paymentDue.ts` derives Upcoming / Due&nbsp;Today / Overdue
   (with a day count) from `nextPaymentDate` + outstanding. The record form
-  blocks a payment exceeding the outstanding balance, and the discount dialog
+  blocks a payment exceeding the outstanding balance, and the correction dialog
   blocks going below what's already been collected -- so the ledger can never
   exceed the total (no "overpaid" order, which keeps collected revenue
   accurate). The API enforces both for real (`PAYMENT_EXCEEDS_TOTAL` /
@@ -368,10 +370,15 @@ list:
   numbered stepper (Design → Received → On the floor → Final checks → Ready),
   each with what it holds, its count and its share on one scale; the step
   holding the most orders is drawn in the brand red ("Most orders").
-- **Deliveries · next 14 days** (`DeliveriesCard`, roles that can book): orders
+- **Deliveries · next 2 months** (`DeliveriesCard`, roles that can book): orders
   due per day from `GET /orders/delivery-load` against the capacity line, in the
   brand's tones (light rose, wine when filling, oxblood when full, gold for
-  today), plus This week / Next week / Full days.
+  today). The 60 days scroll sideways inside the card, two weeks a screen (‹ ›
+  too), and **only what's on screen is fetched**: 14-day chunks load as they
+  scroll into view (IntersectionObserver, stale answers dropped, Retry on a
+  failed chunk). Below: This month / This week / Next week / Full days, from one
+  small request (today to the end of this month, at least two weeks) that also
+  serves the first screen. Helpers in `lib/domain/utils/dashboard.ts`.
 - **Payments** (`MoneyStrip`, roles that see payments): Collected and
   Outstanding (Owner, Accountant) with the share of the booked value
   collected, Pending payments, Price not set.
@@ -392,7 +399,14 @@ numbers that matter most -- the dashboard's Payments, the Revenue page's
 month, an order's header (`OrderDetailView`, with a `ProgressRing` of how much
 is paid). On it, meaning uses the brand's tones (gold, apricot, rose -- no
 green). Navigation that looks like a button is `ButtonLink` (one element; a
-button inside a link is invalid HTML). The previous design is tagged
+button inside a link is invalid HTML). On phones the order header is a tidy
+stack (number and category with a small paid ring, the name, Bill no. / Booked /
+Due as a list, the pills, then a 2x2 of facts).
+
+**Green** is one solid colour, `#41a85f` (`--color-success`): green badges are
+solid with white text (`StatusPill` tone `green`), never a pale mint; the soft
+`--color-success-bg` tint is only for large panels. The sidebar lists only
+screens that exist (no "soon" placeholders). The previous design is tagged
 `design-classic` -- `git checkout design-classic -- <path>` restores a screen.
 
 `/revenue` (`modules/revenue/RevenueClient.tsx`, owner_manager/accountant only,

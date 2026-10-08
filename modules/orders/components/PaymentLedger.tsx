@@ -26,7 +26,7 @@ import { Icon } from "../../../components/ui/Icon";
 import { OPEN_PAYMENT_FORM_EVENT } from "./PricingCard";
 
 const TONE_CLASSES: Record<string, string> = {
-  green: "border-green-200 bg-green-50 text-green-800",
+  green: "border-success bg-success text-white",
   amber: "border-amber-200 bg-amber-50 text-amber-800",
   red: "border-red-200 bg-red-50 text-red-800",
   gray: "border-border-light bg-app-bg/70 text-text-secondary",
@@ -36,7 +36,7 @@ interface PaymentLedgerProps {
   orderId: string;
   /** Record payments (owner, accountant, the order's own designer). */
   canManage: boolean;
-  /** Remove a payment (owner, accountant) -- only before the order is delivered (ADR 0008). */
+  /** Remove a payment (owner, accountant) -- unless it's dated in a month whose books are closed (ADR 0008). */
   canCorrect?: boolean;
   /** Order's total (2dp money string; null = not priced yet), and its payment schedule -- for the outstanding + due-status summary and overpayment guard. */
   orderTotal: string | null;
@@ -59,7 +59,7 @@ export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTot
   // total / status / due-date the summary reads are ALWAYS consistent with the
   // payments -- never a stale server-component prop (which can lag after an
   // order edit or another payment). The props seed the first paint only.
-  const [orderFields, setOrderFields] = useState({ totalAmount: orderTotal, paymentStatus, nextPaymentDate, productionStatus: "" });
+  const [orderFields, setOrderFields] = useState({ totalAmount: orderTotal, paymentStatus, nextPaymentDate });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +82,6 @@ export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTot
         totalAmount: order.totalAmount ?? null,
         paymentStatus: order.paymentStatus ?? null,
         nextPaymentDate: order.nextPaymentDate,
-        productionStatus: order.productionStatus,
       });
       setError(null);
     } catch (err) {
@@ -103,7 +102,6 @@ export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTot
             totalAmount: order.totalAmount ?? null,
             paymentStatus: order.paymentStatus ?? null,
             nextPaymentDate: order.nextPaymentDate,
-            productionStatus: order.productionStatus,
           });
           setError(null);
         }
@@ -128,7 +126,6 @@ export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTot
   }, []);
 
   const notPriced = orderFields.totalAmount === null;
-  const delivered = orderFields.productionStatus === "delivered";
 
   const paid = addMoney(...payments.map((p) => p.amount));
   const due = getPaymentDue({
@@ -262,7 +259,7 @@ export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTot
                   key={p.id}
                   className="flex items-center justify-between gap-3 rounded-app border border-border-light bg-card px-3 py-2.5 text-sm transition-colors hover:border-primary/20 hover:bg-primary-bg/20"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success-bg text-success">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success text-white">
                     <Icon name="receipt" size={16} />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -273,8 +270,8 @@ export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTot
                     </div>
                     {p.notes && <div className="mt-0.5 text-[11px] text-text-muted italic">{p.notes}</div>}
                   </div>
+                  {/* Delivery locks nothing -- only the books do: a payment dated in a closed month is final. */}
                   {canCorrect &&
-                    !delivered &&
                     (p.monthClosed ? (
                       // ADR 0008 phase 5: dated in a month whose books are closed -- the API refuses changes.
                       <span
@@ -297,9 +294,6 @@ export function PaymentLedger({ orderId, canManage, canCorrect = false, orderTot
             <p className="rounded-app border border-dashed border-amber-300 bg-amber-50/60 px-3 py-2 text-xs text-amber-900">
               Set the order&rsquo;s price first &mdash; then payments can be recorded.
             </p>
-          )}
-          {delivered && payments.length > 0 && (
-            <p className="text-[11px] text-text-muted">Delivered &mdash; recorded payments are final and can&rsquo;t be edited or removed.</p>
           )}
 
           {canManage &&

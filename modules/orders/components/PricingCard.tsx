@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { formatCurrency, formatDate, type PriceChange, type PriceChangeKind } from "../../../lib/domain";
+import { formatCurrency, formatDate, PRICE_CHANGE_LABEL, type PriceAction, type PriceChange } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
@@ -12,22 +12,20 @@ import { useToast } from "../../../components/ui/Toast";
 import { PricingDialog } from "./PricingDialog";
 import { Portal } from "../../../components/ui/Portal";
 
-const KIND_LABEL: Record<PriceChangeKind, string> = { set: "Price set", raise: "Price raised", discount: "Discount given" };
-
 /** Dispatched after the price is first set, so the Payment Ledger opens its "record payment" form (next step of the flow). */
 export const OPEN_PAYMENT_FORM_EVENT = "needleye:open-payment-form";
 
 /**
- * The order's price (ADR 0008): "Price not set" until priced; then Raise /
- * Give discount for the Owner and Accountant until delivery locks it; and the
- * price history (who, when, from -> to, why). Opened with `askNow` right after
+ * The order's price (ADR 0008): "Price not set" until priced; then "Correct
+ * price" (up or down, with a reason) for the Owner and Accountant -- delivered
+ * or not; only a closed booking month in the books stops it (the API says so);
+ * and the price history (who, when, from -> to, why). Opened with `askNow` right after
  * an order is created: "Add pricing now?" -> the price -> "Record a payment?".
  */
 export function PricingCard({
   orderId,
   total,
   collected,
-  delivered,
   canSet,
   canAdjust,
   askNow,
@@ -35,7 +33,8 @@ export function PricingCard({
   orderId: string;
   total: string | null;
   collected: string;
-  delivered: boolean;
+  /** Unused since delivery stopped locking the price -- kept so OrderDetailView's props still fit. */
+  delivered?: boolean;
   canSet: boolean;
   canAdjust: boolean;
   /** The page was opened right after creating the order (?pricing=1). */
@@ -44,7 +43,7 @@ export function PricingCard({
   const router = useRouter();
   const pathname = usePathname();
   const { showToast } = useToast();
-  const [dialog, setDialog] = useState<PriceChangeKind | null>(null);
+  const [dialog, setDialog] = useState<PriceAction | null>(null);
   const [step, setStep] = useState<"ask" | "next" | null>(askNow && total === null && canSet ? "ask" : null);
   const [history, setHistory] = useState<PriceChange[] | null>(null);
 
@@ -67,18 +66,13 @@ export function PricingCard({
 
   return (
     <Card>
-      <CardHeader icon="💳" iconTone="green" title="Pricing" subtitle={delivered ? "Locked — the order is delivered" : "Order total"} />
+      <CardHeader icon="💳" iconTone="green" title="Pricing" subtitle="Order total" />
       <CardBody className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           {total === null ? (
             <StatusPill label="Price not set" tone="amber" />
           ) : (
             <span className="figure text-[22px] text-text-primary">{formatCurrency(total)}</span>
-          )}
-          {delivered && total !== null && (
-            <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-              <Icon name="shield" size={13} /> Price locked
-            </span>
           )}
         </div>
 
@@ -89,22 +83,17 @@ export function PricingCard({
           </p>
         )}
 
-        {!delivered && (
+        {((total === null && canSet) || (total !== null && canAdjust)) && (
           <div className="flex flex-wrap gap-2 print:hidden">
-            {total === null && canSet && (
+            {total === null ? (
               <Button onClick={() => setDialog("set")} className="px-3 py-1.5 text-xs">
                 <Icon name="rupee" size={14} /> Set price
               </Button>
-            )}
-            {total !== null && canAdjust && (
-              <>
-                <Button variant="outline" onClick={() => setDialog("raise")} className="px-3 py-1.5 text-xs">
-                  <Icon name="trending-up" size={14} /> Raise price
-                </Button>
-                <Button variant="outline" onClick={() => setDialog("discount")} className="px-3 py-1.5 text-xs">
-                  Give discount
-                </Button>
-              </>
+            ) : (
+              // One action for any later change, up or down -- there are no discounts any more.
+              <Button variant="outline" onClick={() => setDialog("correction")} className="px-3 py-1.5 text-xs">
+                <Icon name="edit" size={14} /> Correct price
+              </Button>
             )}
           </div>
         )}
@@ -114,7 +103,7 @@ export function PricingCard({
             {history.map((h) => (
               <li key={h.id} className="text-xs">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-                  <span className="font-semibold text-text-primary">{KIND_LABEL[h.kind]}</span>
+                  <span className="font-semibold text-text-primary">{PRICE_CHANGE_LABEL[h.kind] ?? "Price corrected"}</span>
                   <span className="figure text-text-secondary">
                     {h.previousTotal !== null && <>{formatCurrency(h.previousTotal)} → </>}
                     {formatCurrency(h.newTotal)}
@@ -172,7 +161,7 @@ export function PricingCard({
           onSaved={({ change }) => {
             const wasFirst = dialog === "set";
             setDialog(null);
-            showToast(`${KIND_LABEL[change.kind]}: ${formatCurrency(change.newTotal)}.`, "success");
+            showToast(`${PRICE_CHANGE_LABEL[change.kind] ?? "Price corrected"}: ${formatCurrency(change.newTotal)}.`, "success");
             router.refresh();
             // After the first price, offer the next step (payments) -- unless it's free work.
             if (wasFirst && change.newTotal !== "0.00") setStep("next");

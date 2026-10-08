@@ -47,8 +47,10 @@
   --color-text-muted: #75685d;
 
   /* Semantic -- tuned warmer/deeper to sit with the brand */
-  --color-success: #0f9d74;
-  --color-success-bg: #d7f0e5;
+  /* The owner's green. Badges/pills use it SOLID with white text (no pale
+   * mint chips); success-bg is only a soft tint of it for big panels. */
+  --color-success: #41a85f;
+  --color-success-bg: #e3f2e7;
   --color-warning: #d9861f;
   --color-warning-bg: #fbeacd;
   --color-warning-text: #85480c;

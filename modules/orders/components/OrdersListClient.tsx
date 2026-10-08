@@ -3,7 +3,19 @@
 import { useEffect, useState } from "react";
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import { useRouter } from "next/navigation";
-import { addMonthsIso, isoToday, longDateLabel, hasCapability, type OrderListItem, type Role } from "../../../lib/domain";
+import {
+  addMonthsIso,
+  GRANULAR_STATUSES,
+  hasCapability,
+  isoToday,
+  longDateLabel,
+  MONTH_OPTIONS,
+  revenueYears,
+  TIMELINE_FILTERS,
+  type OrderListItem,
+  type Role,
+  type TimelineFilter,
+} from "../../../lib/domain";
 import { useTeamMembers } from "../hooks/useTeamMembers";
 import { ordersApi } from "../api/ordersApi";
 import { Card, CardHeader } from "../../../components/ui/Card";
@@ -70,11 +82,17 @@ export function OrdersListClient({
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const [designerId, setDesignerId] = useState("");
   const [masterTailorId, setMasterTailorId] = useState("");
+  const [stage, setStage] = useState("");
+  const [timeline, setTimeline] = useState<TimelineFilter | "">("");
+  const [bookedYear, setBookedYear] = useState("");
+  const [bookedMonth, setBookedMonth] = useState("");
+  // Booking years on offer, newest first: this year back to 2020 (fixed for this visit).
+  const [years] = useState(() => revenueYears(new Date().getFullYear()).reverse());
 
   const { members: designers } = useTeamMembers("designer");
   const { members: masters } = useTeamMembers("master_tailor");
   const canSeePayment = hasCapability(role, "payments:read");
-  const filtered = Boolean(search.trim() || designerId || masterTailorId);
+  const filtered = Boolean(search.trim() || designerId || masterTailorId || stage || timeline || bookedYear);
 
   // Any filter or view change goes through these so it also resets to the
   // first page -- otherwise a filter that narrows the result set could leave
@@ -92,10 +110,32 @@ export function OrdersListClient({
     setMasterTailorId(value);
     setPage(0);
   }
+  function changeStage(value: string) {
+    setStage(value);
+    setPage(0);
+  }
+  function changeTimeline(value: TimelineFilter | "") {
+    setTimeline(value);
+    setPage(0);
+  }
+  function changeYear(value: string) {
+    setBookedYear(value);
+    // A month only means something within a year -- the API refuses one without the other.
+    if (!value) setBookedMonth("");
+    setPage(0);
+  }
+  function changeMonth(value: string) {
+    setBookedMonth(value);
+    setPage(0);
+  }
   function clearFilters() {
     setSearch("");
     setDesignerId("");
     setMasterTailorId("");
+    setStage("");
+    setTimeline("");
+    setBookedYear("");
+    setBookedMonth("");
     setPage(0);
   }
   function changeView(next: ViewMode) {
@@ -125,6 +165,10 @@ export function OrdersListClient({
           search: debouncedSearch || undefined,
           designerId: designerId || undefined,
           masterTailorId: masterTailorId || undefined,
+          status: stage || undefined,
+          timeline: timeline || undefined,
+          bookedYear: bookedYear ? Number(bookedYear) : undefined,
+          bookedMonth: bookedYear && bookedMonth ? Number(bookedMonth) : undefined,
           bucket: bucket || undefined,
           ...pagination,
         })
@@ -147,7 +191,7 @@ export function OrdersListClient({
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch, designerId, masterTailorId, bucket, view, page, kanbanFrom, reloadKey]);
+  }, [debouncedSearch, designerId, masterTailorId, stage, timeline, bookedYear, bookedMonth, bucket, view, page, kanbanFrom, reloadKey]);
 
   const subtitle = loading && orders.length === 0 ? "Loading…" : `${total.toLocaleString("en-IN")} ${total === 1 ? "order" : "orders"} · newest first`;
 
@@ -166,10 +210,11 @@ export function OrdersListClient({
         }
       />
 
-      {/* Search and team filters, in the card like the Revenue page's range picker:
-          stacked on phones, search over the two pickers on tablets, one row on desktop. */}
-      <div className="grid gap-3 border-b border-border-light px-5 py-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
-        <div className="relative sm:col-span-2 lg:min-w-55 lg:flex-1">
+      {/* Search, team and order filters, in the card like the Revenue page's range picker:
+          stacked on phones, two per row on tablets, two tidy rows of four columns on desktop
+          (search + team pickers, then stage / timeline / booking year / month). */}
+      <div className="grid gap-3 border-b border-border-light px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative sm:col-span-2">
           <Icon name="search" size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-muted" />
           <Input
             className="w-full pl-9"
@@ -179,7 +224,7 @@ export function OrdersListClient({
             onChange={(e) => changeSearch(e.target.value)}
           />
         </div>
-        <Select className="lg:w-auto" aria-label="Designer" value={designerId} onChange={(e) => changeDesigner(e.target.value)}>
+        <Select aria-label="Designer" value={designerId} onChange={(e) => changeDesigner(e.target.value)}>
           <option value="">All Designers</option>
           {designers.map((d) => (
             <option key={d.id} value={d.id}>
@@ -187,7 +232,7 @@ export function OrdersListClient({
             </option>
           ))}
         </Select>
-        <Select className="lg:w-auto" aria-label="Master tailor" value={masterTailorId} onChange={(e) => changeMaster(e.target.value)}>
+        <Select aria-label="Master tailor" value={masterTailorId} onChange={(e) => changeMaster(e.target.value)}>
           <option value="">All Masters</option>
           {masters.map((m) => (
             <option key={m.id} value={m.id}>
@@ -195,8 +240,41 @@ export function OrdersListClient({
             </option>
           ))}
         </Select>
+        <Select aria-label="Stage" value={stage} onChange={(e) => changeStage(e.target.value)}>
+          <option value="">All stages</option>
+          {GRANULAR_STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </Select>
+        <Select aria-label="Timeline" value={timeline} onChange={(e) => changeTimeline(e.target.value as TimelineFilter | "")}>
+          <option value="">Any timeline</option>
+          {TIMELINE_FILTERS.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </Select>
+        <Select aria-label="Booking year" value={bookedYear} onChange={(e) => changeYear(e.target.value)}>
+          <option value="">All years</option>
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </Select>
+        {/* Booked month needs a year first -- disabled (and "All months") until one is picked. */}
+        <Select aria-label="Booking month" value={bookedMonth} disabled={!bookedYear} onChange={(e) => changeMonth(e.target.value)}>
+          <option value="">All months</option>
+          {MONTH_OPTIONS.map((m) => (
+            <option key={m.value} value={String(Number(m.value))}>
+              {m.label}
+            </option>
+          ))}
+        </Select>
         {filtered && (
-          <button onClick={clearFilters} className="inline-flex items-center gap-1 justify-self-start text-xs font-medium text-primary hover:underline sm:col-span-2 lg:self-center">
+          <button onClick={clearFilters} className="inline-flex items-center gap-1 justify-self-start text-xs font-medium text-primary hover:underline sm:col-span-2 lg:col-span-4">
             <Icon name="x" size={13} /> Clear
           </button>
         )}

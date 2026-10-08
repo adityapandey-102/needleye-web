@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { amountInWords, formatCurrency, money, moneyGreaterThan, type Order, type PriceChange, type PriceChangeKind } from "../../../lib/domain";
+import { amountInWords, formatCurrency, validatePriceChange, type Order, type PriceAction, type PriceChange } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
 import { Button } from "../../../components/ui/Button";
 import { FieldError, FieldLabel, Input } from "../../../components/ui/Field";
@@ -9,28 +9,18 @@ import { Textarea } from "../../../components/ui/Select";
 import { Icon } from "../../../components/ui/Icon";
 import { Portal } from "../../../components/ui/Portal";
 
-const TITLES: Record<PriceChangeKind, { title: string; action: string; reasonHint: string }> = {
+const TITLES: Record<PriceAction, { title: string; action: string; reasonHint: string }> = {
   set: { title: "Set the order price", action: "Save price", reasonHint: "" },
-  raise: { title: "Raise the price", action: "Raise price", reasonHint: "e.g. extra embroidery the customer asked for" },
-  discount: { title: "Give a discount", action: "Give discount", reasonHint: "e.g. loyal customer, festive offer" },
+  correction: { title: "Correct the price", action: "Save correction", reasonHint: "e.g. extra embroidery added, or the price was typed wrong" },
 };
 
-/** Client mirror of the API's rules -- instant feedback only; the API decides (ADR 0008). */
-function validate(kind: PriceChangeKind, amount: string, reason: string, current: string | null, collected: string): string | null {
-  const value = amount.trim();
-  if (!/^\d+(\.\d{1,2})?$/.test(value)) return "Enter the total in rupees, e.g. 25000 or 25000.50.";
-  if (moneyGreaterThan(value, "9999999999.99")) return "That total is too large.";
-  if (kind === "raise" && current !== null && !moneyGreaterThan(value, current)) return `A raise must be more than ${formatCurrency(current)}.`;
-  if (kind === "discount" && current !== null && !moneyGreaterThan(current, value)) return `A discount must be less than ${formatCurrency(current)}.`;
-  if (moneyGreaterThan(collected, value)) return `It can't go below what's already been collected (${formatCurrency(collected)}).`;
-  if (kind !== "set" && reason.trim().length < 3) return kind === "raise" ? "Say why the price is being raised." : "Say why the discount is being given.";
-  return null;
-}
-
 /**
- * Set / raise / discount dialog. Shows the animated "please be double sure"
- * alert with the amount in words as soon as a valid total is typed -- the
- * shop's safeguard against a typo becoming a customer's price (ADR 0008).
+ * Set the first price, or correct it (up or down, with a reason). Shows the
+ * animated "please be double sure" alert with the amount in words as soon as
+ * a valid total is typed -- the shop's safeguard against a typo becoming a
+ * customer's price (ADR 0008). Delivery locks nothing; the API refuses a
+ * change while the order's booking month is closed in the books
+ * (ORDER_PRICE_MONTH_CLOSED) -- its message is shown as is.
  */
 export function PricingDialog({
   orderId,
@@ -41,7 +31,7 @@ export function PricingDialog({
   onSaved,
 }: {
   orderId: string;
-  kind: PriceChangeKind;
+  kind: PriceAction;
   currentTotal: string | null;
   collected: string;
   onClose: () => void;
@@ -55,11 +45,10 @@ export function PricingDialog({
 
   const typed = /^\d+(\.\d{1,2})?$/.test(amount.trim());
   const words = typed ? amountInWords(amount.trim()) : "";
-  const maxDiscount = currentTotal === null ? null : money(currentTotal).minus(money(collected)).toFixed(2);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const problem = validate(kind, amount, reason, currentTotal, collected);
+    const problem = validatePriceChange(kind, amount, reason, currentTotal, collected);
     if (problem) {
       setError(problem);
       return;
@@ -117,9 +106,7 @@ export function PricingDialog({
                 setError(null);
               }}
             />
-            {kind === "discount" && maxDiscount !== null && (
-              <p className="mt-1 text-[11px] text-text-muted">The lowest it can go is {formatCurrency(collected)} — a discount of up to {formatCurrency(maxDiscount)}.</p>
-            )}
+            {kind === "correction" && <p className="mt-1 text-[11px] text-text-muted">The lowest it can go is {formatCurrency(collected)}.</p>}
             {kind === "set" && <p className="mt-1 text-[11px] text-text-muted">₹0 means free work — nothing to collect.</p>}
           </div>
 
@@ -143,8 +130,8 @@ export function PricingDialog({
                   </p>
                   <p className="mt-0.5 text-[13px] font-medium text-text-secondary">({words})</p>
                   <p className="mt-2 text-xs text-text-secondary">
-                    The total can be raised (with a reason) or lowered only as a discount, by the Owner or Accountant, never below what&rsquo;s already been
-                    collected. Once the order is delivered, the price is locked.
+                    The Owner or Accountant can correct the total later, up or down, with a reason &mdash; never below what&rsquo;s already been
+                    collected. Corrections are allowed until this order&rsquo;s month is closed in the books.
                   </p>
                 </div>
               </div>

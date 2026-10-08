@@ -38,7 +38,7 @@ interface DayState {
 const TONE: Record<ActivitySentence["tone"], { icon: IconName; className: string }> = {
   order: { icon: "clipboard", className: "bg-primary-bg text-primary" },
   stage: { icon: "chevron-right", className: "bg-info-bg text-info" },
-  payment: { icon: "wallet", className: "bg-success-bg text-success" },
+  payment: { icon: "wallet", className: "bg-success text-white" },
   lead: { icon: "inbox", className: "bg-gold-bg text-gold" },
   account: { icon: "user", className: "bg-app-bg text-text-secondary" },
   session: { icon: "key", className: "bg-app-bg text-text-muted" },

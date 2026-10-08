@@ -199,7 +199,7 @@ export default function UserManagementClient() {
                         </span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${
-                            u.active ? "bg-success-bg text-success ring-success/15" : "bg-gray-pill-bg text-text-secondary ring-black/5"
+                            u.active ? "bg-success text-white ring-success" : "bg-gray-pill-bg text-text-secondary ring-black/5"
                           }`}
                         >
                           {u.active ? "Active" : "Deactivated"}
@@ -236,7 +236,7 @@ export default function UserManagementClient() {
                       <td className="px-4 py-2.5">
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs ${
-                            u.active ? "bg-success-bg text-success" : "bg-gray-pill-bg text-text-secondary"
+                            u.active ? "bg-success font-medium text-white" : "bg-gray-pill-bg text-text-secondary"
                           }`}
                         >
                           {u.active ? "Active" : "Deactivated"}

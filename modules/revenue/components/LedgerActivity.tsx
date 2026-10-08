@@ -353,7 +353,7 @@ export function LedgerActivity() {
 
 function ActionBadge({ action }: { action: LedgerEvent["action"] }) {
   const map = {
-    created: { label: "Recorded", cls: "bg-success-bg text-success" },
+    created: { label: "Recorded", cls: "bg-success text-white" },
     updated: { label: "Edited", cls: "bg-warning-bg text-warning" },
     deleted: { label: "Removed", cls: "bg-error-bg text-error" },
   } as const;

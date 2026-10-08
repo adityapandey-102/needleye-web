@@ -122,7 +122,7 @@ export function EnquiryForm({ tone = "light", titleId }: { tone?: "light" | "lux
     return (
       <div className="py-6 text-center" role="status">
         <div
-          className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${lux ? "bg-[rgba(197,164,101,0.15)] text-(--lux-gold-light) ring-1 ring-[rgba(232,213,166,0.4)]" : "bg-success-bg text-success"}`}
+          className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${lux ? "bg-[rgba(197,164,101,0.15)] text-(--lux-gold-light) ring-1 ring-[rgba(232,213,166,0.4)]" : "bg-success text-white"}`}
         >
           <Icon name="check-circle" size={28} />
         </div>

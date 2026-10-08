@@ -5,7 +5,7 @@ export const CAPABILITIES = [
   "orders:read",
   "orders:edit:customer_product_fields",
   "orders:edit:pricing_assignment",
-  // Pricing (ADR 0008): set = first price; adjust = raise or discount (with a reason).
+  // Pricing (ADR 0008): set = first price; adjust = correct it later, up or down (with a reason).
   "orders:price:set",
   "orders:price:adjust",
   // Production-flow stage tiers (see orderStatus.ts STAGE_CAPABILITY). Which
@@ -86,7 +86,7 @@ export const CAPABILITY_MATRIX: Record<Capability, Record<Role, CapabilityScope>
     production_manager: false,
     worker: false,
   },
-  // Raise / discount once priced: owner and accountant only.
+  // Correcting a price once set: owner and accountant only.
   "orders:price:adjust": {
     owner_manager: true,
     designer: false,

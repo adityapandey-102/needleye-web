@@ -154,7 +154,7 @@ export function UserDetailClient({ initialUser, currentUserId }: { initialUser: 
               <span className="text-xs text-text-muted">Status</span>
               <span
                 className={`rounded-full px-2 py-0.5 text-xs ${
-                  user.active ? "bg-success-bg text-success" : "bg-gray-pill-bg text-text-secondary"
+                  user.active ? "bg-success font-medium text-white" : "bg-gray-pill-bg text-text-secondary"
                 }`}
               >
                 {user.active ? "Active" : "Deactivated"}

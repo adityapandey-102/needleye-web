@@ -29,6 +29,8 @@ export * from "./utils/productCategorySearch";
 export * from "./utils/deliveryCalendar";
 export * from "./utils/dashboard";
 export * from "./utils/activityEvent";
+export * from "./utils/priceChange";
+export * from "./utils/orderListFilters";
 export * from "./validation/order";
 export * from "./validation/payment";
 export * from "./validation/user";

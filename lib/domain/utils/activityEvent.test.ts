@@ -53,10 +53,11 @@ describe("describeActivity (ADR 0008 categories)", () => {
 
   it("orders: price changes show before -> after and the reason", () => {
     expect(describeActivity(event({ kind: "price.set", details: { newTotal: "25000.00" } })).text).toBe("Set the price of ORD-2026-042: ₹25,000");
-    const raise = describeActivity(event({ kind: "price.raise", details: { previousTotal: "20000.00", newTotal: "25000.00", reason: "Extra work" } }));
-    expect(raise).toMatchObject({ text: "Raised the price of ORD-2026-042: ₹20,000 → ₹25,000", detail: "Extra work" });
-    expect(describeActivity(event({ kind: "price.discount", details: { previousTotal: "25000.00", newTotal: "22000.00", reason: "Offer" } })).tone).toBe(
-      "warning",
+    const fixed = describeActivity(event({ kind: "price.correction", details: { previousTotal: "20000.00", newTotal: "25000.00", reason: "Extra work" } }));
+    expect(fixed).toMatchObject({ text: "Corrected the price of ORD-2026-042: ₹20,000 → ₹25,000", detail: "Extra work", tone: "order" });
+    // Older rows read the same way.
+    expect(describeActivity(event({ kind: "price.discount", details: { previousTotal: "25000.00", newTotal: "22000.00", reason: "Offer" } })).text).toBe(
+      "Corrected the price of ORD-2026-042: ₹25,000 → ₹22,000",
     );
   });
 

@@ -65,6 +65,80 @@ export function busiestDay(series: DeliveryDay[]): DeliveryDay | null {
   return series.reduce<DeliveryDay | null>((best, d) => (d.count > 0 && (!best || d.count > best.count) ? d : best), null);
 }
 
+/** `date` moved by `n` days (negative goes back). */
+export function shiftDate(date: string, n: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + n)).toISOString().slice(0, 10);
+}
+
+/** The last day of `date`'s calendar month: "2026-02-10" -> "2026-02-28". */
+export function monthEnd(date: string): string {
+  const [y, m] = date.split("-").map(Number);
+  return new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10);
+}
+
+/** How many days `from`..`to` covers, both ends included (0 when `to` is before `from`). */
+export function daysInclusive(from: string, to: string): number {
+  return Math.max(0, Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1);
+}
+
+/** One slice of the deliveries chart, fetched on its own: days `offset`..`offset + length - 1` after the start. */
+export interface DeliveryChunk {
+  index: number;
+  from: string;
+  to: string;
+  /** Days from the window's first day to this chunk's first day. */
+  offset: number;
+  length: number;
+}
+
+/**
+ * Splits `horizon` days from `from` into chunks of `size` days (the last may be
+ * shorter), so the chart can fetch each one only when it scrolls into view.
+ */
+export function deliveryChunks(from: string, horizon: number, size: number): DeliveryChunk[] {
+  const chunks: DeliveryChunk[] = [];
+  for (let offset = 0, index = 0; offset < horizon; offset += size, index++) {
+    const length = Math.min(size, horizon - offset);
+    chunks.push({ index, from: shiftDate(from, offset), to: shiftDate(from, offset + length - 1), offset, length });
+  }
+  return chunks;
+}
+
+/**
+ * The one small window the deliveries summary needs: today to the end of this
+ * month, stretched to at least two weeks so "This week" and "Next week" are
+ * always inside it.
+ */
+export function deliverySummaryWindow(today: string): { from: string; to: string } {
+  const twoWeeks = shiftDate(today, 13);
+  const end = monthEnd(today);
+  return { from: today, to: end > twoWeeks ? end : twoWeeks };
+}
+
+export interface DeliverySummary {
+  /** Due from today to the end of this calendar month. */
+  thisMonth: number;
+  /** Due in the next 7 days, today included. */
+  thisWeek: number;
+  /** Due in days 8-14. */
+  nextWeek: number;
+  /** Days at capacity in the whole window. */
+  fullDays: number;
+}
+
+/** The summary's four numbers from a series that starts today (see deliverySummaryWindow). */
+export function deliverySummary(series: DeliveryDay[], today: string): DeliverySummary {
+  const end = monthEnd(today);
+  const sum = (days: DeliveryDay[]) => days.reduce((n, d) => n + d.count, 0);
+  return {
+    thisMonth: sum(series.filter((d) => d.date >= today && d.date <= end)),
+    thisWeek: sum(series.slice(0, 7)),
+    nextWeek: sum(series.slice(7, 14)),
+    fullDays: series.filter((d) => d.level === "full").length,
+  };
+}
+
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -73,6 +147,13 @@ export function dayLabel(date: string): { weekday: string; day: number; short: s
   const [y, m, d] = date.split("-").map(Number);
   const weekday = WEEKDAYS[new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay()]!;
   return { weekday, day: d!, short: `${weekday} ${d} ${MONTHS[m! - 1]}` };
+}
+
+/** A short date range: "9 – 22 Oct", or "26 Oct – 8 Nov" across a month end. */
+export function rangeLabel(from: string, to: string): string {
+  const a = dayLabel(from).short.split(" ");
+  const b = dayLabel(to).short.split(" ");
+  return a[2] === b[2] ? `${a[1]} – ${b[1]} ${b[2]}` : `${a[1]} ${a[2]} – ${b[1]} ${b[2]}`;
 }
 
 /** Share of the booked value already collected, 0-100 with one decimal (0 when nothing is booked). */

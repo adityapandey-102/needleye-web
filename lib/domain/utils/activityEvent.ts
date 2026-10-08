@@ -147,21 +147,16 @@ export function describeActivity(event: ActivityEvent): ActivitySentence {
 
     case "price.set":
       return { ...base, text: `Set the price of ${order}: ${money(d.newTotal)}`, orderId, tone: "order" };
+    // Any change after the first price is a correction (older rows say raise / discount).
+    case "price.correction":
     case "price.raise":
-      return {
-        ...base,
-        text: `Raised the price of ${order}: ${money(d.previousTotal)} → ${money(d.newTotal)}`,
-        detail: asString(d.reason),
-        orderId,
-        tone: "order",
-      };
     case "price.discount":
       return {
         ...base,
-        text: `Gave a discount on ${order}: ${money(d.previousTotal)} → ${money(d.newTotal)}`,
+        text: `Corrected the price of ${order}: ${money(d.previousTotal)} → ${money(d.newTotal)}`,
         detail: asString(d.reason),
         orderId,
-        tone: "warning",
+        tone: "order",
       };
 
     // -- Stages --------------------------------------------------------------

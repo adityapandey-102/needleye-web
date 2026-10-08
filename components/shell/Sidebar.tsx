@@ -36,7 +36,7 @@ export function Sidebar({
   // "Create New Order", not also "All Orders" (/orders is a prefix of it).
   const activeHref = sections
     .flatMap((sec) => sec.items.map((i) => i.href))
-    .filter((href): href is string => !!href && (pathname === href || !!pathname?.startsWith(href + "/")))
+    .filter((href) => pathname === href || !!pathname?.startsWith(href + "/"))
     .sort((x, y) => y.length - x.length)[0];
 
   async function handleSignOut() {
@@ -78,20 +78,7 @@ export function Sidebar({
                 {section.label}
               </div>
               {section.items.map((item) => {
-                const isActive = !!item.href && item.href === activeHref;
-                if (item.comingSoon || !item.href) {
-                  return (
-                    <div
-                      key={item.label}
-                      className="flex cursor-not-allowed items-center gap-3 rounded-app px-3 py-2 text-[13.5px] text-white/28"
-                      title="Coming soon"
-                    >
-                      <Icon emoji={item.icon} size={16} strokeWidth={1.5} className="opacity-80" />
-                      {item.label}
-                      <span className="ml-auto font-serif text-[11px] text-white/35 italic">soon</span>
-                    </div>
-                  );
-                }
+                const isActive = item.href === activeHref;
                 return (
                   <Link
                     key={item.label}

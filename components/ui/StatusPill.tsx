@@ -3,7 +3,7 @@ export type PillTone = "purple" | "pink" | "green" | "amber" | "blue" | "gray" |
 const TONE_CLASSES: Record<PillTone, string> = {
   purple: "bg-primary-bg text-primary",
   pink: "bg-accent-bg text-text-secondary",
-  green: "bg-success-bg text-success",
+  green: "bg-success text-white",
   amber: "bg-warning-bg text-warning-text",
   blue: "bg-info-bg text-info",
   gray: "bg-gray-pill-bg text-text-secondary",

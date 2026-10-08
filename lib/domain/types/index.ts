@@ -130,7 +130,15 @@ export interface OrderStats {
   pipeline?: { design: number; received: number; production: number; checks: number; ready: number };
 }
 
-export type PriceChangeKind = "set" | "raise" | "discount";
+/**
+ * "set" = the first price; "correction" = any later change, up or down (Owner /
+ * Accountant, with a reason). "raise" / "discount" only appear on older history
+ * rows from before discounts were dropped -- they read as corrections too.
+ */
+export type PriceChangeKind = "set" | "correction" | "raise" | "discount";
+
+/** The two price changes that can be made now (what PUT /orders/:id/price records). */
+export type PriceAction = "set" | "correction";
 
 /** One row of an order's price history (GET /orders/:id/price-history). */
 export interface PriceChange {

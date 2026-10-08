@@ -34,7 +34,7 @@ function WorkChip({ icon, label, active }: { icon: IconName; label: string; acti
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset transition-colors ${
-        active ? "bg-success-bg text-success ring-success/25" : "bg-gray-pill-bg text-text-muted opacity-80 ring-black/5"
+        active ? "bg-success text-white ring-success" : "bg-gray-pill-bg text-text-muted opacity-80 ring-black/5"
       }`}
     >
       <Icon name={icon} size={14} />
@@ -97,6 +97,23 @@ export function OrderDetailView({
   const delivered = order.productionStatus === "delivered";
   const stageNumber = stageIndex(order.productionStatus) + 1;
 
+  // Rendered in one place on phones and another on wider screens (see the hero band).
+  const statusPills = (
+    <>
+      <StatusPill label={sentence(timeline.statusLabel)} tone={timeline.tone} />
+      {canSeePayment && payment && (
+        <StatusPill
+          label={payment.label}
+          tone={order.paymentStatus === "fully_paid" ? "green" : order.paymentStatus === "not_priced" ? "gray" : "amber"}
+        />
+      )}
+    </>
+  );
+  const paidRing =
+    canSeePayment && priced
+      ? (size: number) => <ProgressRing percent={paidPct} label="paid" tone={paidPct >= 100 ? "success" : "gold"} size={size} onDark />
+      : null;
+
   return (
     <div className="mx-auto max-w-6xl">
       {/* Only when reached via a QR scan: prompt whoever received the garment to
@@ -125,36 +142,54 @@ export function OrderDetailView({
 
       {/* The order's header on the hero band (the brand's dark red, gold outline)
           -- who it's for, its labels, how much is paid -- and its four facts in
-          hairline-divided cells. Prints plain. */}
+          hairline-divided cells. Prints plain. On phones it stacks into a tidy
+          column: labels + a small ring, the name, a key/value list instead of the
+          run-on "Bill No. · Booked · Due" line, the status pills, then a 2x2 grid. */}
       <section aria-label="Order summary" className="hero-band mb-5">
-        <div className="relative flex flex-wrap items-center justify-between gap-5 px-6 pt-7 pb-5 sm:px-7">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-[12px]">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 font-medium text-white ring-1 ring-white/20 print:text-black">
-                <Icon name="shirt" size={13} />
-                {categoryName}
-              </span>
-              <span className="rounded-full bg-gold/25 px-2.5 py-1 font-semibold tracking-wide text-gold-light ring-1 ring-gold-light/40 print:text-black">
-                {order.orderNumber}
-              </span>
-              <StatusPill label={sentence(timeline.statusLabel)} tone={timeline.tone} />
-              {canSeePayment && payment && (
-                <StatusPill
-                  label={payment.label}
-                  tone={order.paymentStatus === "fully_paid" ? "green" : order.paymentStatus === "not_priced" ? "gray" : "amber"}
-                />
-              )}
+        <div className="relative flex flex-wrap items-center justify-between gap-5 px-5 pt-6 pb-5 sm:px-7 sm:pt-7">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 text-[12px]">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 font-medium text-white ring-1 ring-white/20 print:text-black">
+                  <Icon name="shirt" size={13} />
+                  {categoryName}
+                </span>
+                <span className="rounded-full bg-gold/25 px-2.5 py-1 font-semibold tracking-wide text-gold-light ring-1 ring-gold-light/40 print:text-black">
+                  {order.orderNumber}
+                </span>
+                {/* Wider screens: the status pills sit in this row; phones give them a row of their own below. */}
+                <span className="hidden sm:contents">{statusPills}</span>
+              </div>
+              {paidRing && <div className="sm:hidden">{paidRing(64)}</div>}
             </div>
-            <h1 className="animate-rise mt-3 font-serif text-[30px] leading-tight text-white sm:text-[38px] print:text-black">{order.customerName}</h1>
-            <p className="mt-1.5 text-sm text-white/75 print:text-neutral-600">
+            <h1 className="animate-rise mt-3 font-serif text-[24px] leading-tight text-white sm:text-[38px] print:text-black">{order.customerName}</h1>
+            <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-1 text-[13px] sm:hidden">
+              <dt className="text-white/60 print:text-neutral-500">Bill no.</dt>
+              <dd className="font-medium wrap-break-word text-white print:text-black">{order.billNumber}</dd>
+              <dt className="text-white/60 print:text-neutral-500">Booked</dt>
+              <dd className="font-medium text-white print:text-black">{formatDateOnly(order.bookingDate)}</dd>
+              <dt className="text-white/60 print:text-neutral-500">Due</dt>
+              <dd className="font-medium text-white print:text-black">{formatDateOnly(order.dueDate)}</dd>
+            </dl>
+            <p className="mt-1.5 hidden text-sm text-white/75 sm:block print:text-neutral-600">
               Bill No. {order.billNumber} · Booked {formatDateOnly(order.bookingDate)} · Due {formatDateOnly(order.dueDate)}
             </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2 sm:hidden">{statusPills}</div>
           </div>
-          {canSeePayment && priced && <ProgressRing percent={paidPct} label="paid" tone={paidPct >= 100 ? "success" : "gold"} onDark />}
+          {paidRing && <div className="hidden sm:block">{paidRing(96)}</div>}
         </div>
         <div className="hero-cells stagger-in grid-cols-2 border-t border-white/10 sm:grid-cols-4">
-          <Fact label="Stage">
-            <StageProgress status={order.productionStatus} onDark />
+          <Fact label="Stage" aside={`${stageNumber}/${GRANULAR_STATUS_VALUES.length}`}>
+            {/* Phones and tablets (narrow cells): the stage name gets the cell's full width (its
+                counter moved up beside the label) and StageProgress draws just the bar; wide
+                screens show StageProgress whole, as before. */}
+            <div className="flex flex-col">
+              <StageProgress status={order.productionStatus} onDark headerClassName="max-lg:hidden" />
+              {/* Shown first by CSS; after the bar in the page, so the visible name comes first on desktop. */}
+              <div className="order-first text-[15px] leading-snug font-medium text-white lg:hidden print:text-black">
+                {granularLabel(order.productionStatus)}
+              </div>
+            </div>
           </Fact>
           <Fact
             label="Timeline"
@@ -319,14 +354,30 @@ export function OrderDetailView({
 }
 
 /** One cell of the header's figure strip, on the hero band. */
-function Fact({ label, value, tone = "text-white", children }: { label: string; value?: string; tone?: string; children?: React.ReactNode }) {
+function Fact({
+  label,
+  aside,
+  value,
+  tone = "text-white",
+  children,
+}: {
+  label: string;
+  /** A small note at the label's right -- below lg only (wide cells show it in the value). */
+  aside?: string;
+  value?: string;
+  tone?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="hero-cell px-6 py-4 sm:px-7">
-      <div className="text-[12px] font-medium text-white/70 print:text-neutral-500">{label}</div>
+    <div className="hero-cell min-w-0 px-4 py-3.5 sm:px-7 sm:py-4">
+      <div className="flex items-baseline justify-between gap-2 text-[12px] font-medium text-white/70 print:text-neutral-500">
+        <span>{label}</span>
+        {aside && <span className="shrink-0 text-[11px] font-normal text-white/60 tabular-nums lg:hidden">{aside}</span>}
+      </div>
       {children ? (
-        <div className="mt-2">{children}</div>
+        <div className="mt-1 sm:mt-2">{children}</div>
       ) : (
-        <div className={`figure mt-1 text-[19px] leading-snug ${tone}`} title={value}>
+        <div className={`figure mt-1 text-[17px] leading-snug sm:text-[19px] ${tone}`} title={value}>
           {value}
         </div>
       )}

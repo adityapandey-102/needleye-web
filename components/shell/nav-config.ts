@@ -2,10 +2,9 @@ import { hasCapability, type Capability, type Role } from "../../lib/domain";
 
 interface NavItem {
   label: string;
-  href?: string;
+  href: string;
   icon: string;
   requires?: Capability;
-  comingSoon?: boolean;
   /** Shows a red count bubble (see modules/leads/components/LeadsBadgeProvider). */
   badge?: "leads";
 }
@@ -29,21 +28,11 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [{ label: "Leads", href: "/leads", icon: "inbox", requires: "leads:read", badge: "leads" }],
   },
   {
-    label: "Production",
-    items: [
-      { label: "Stitching Queue", icon: "🧵", comingSoon: true },
-      { label: "Hand Work", icon: "✋", comingSoon: true },
-      { label: "Machine Work", icon: "⚙️", comingSoon: true },
-      { label: "Quality Check", icon: "✅", comingSoon: true },
-    ],
-  },
-  {
+    // Only real pages live here -- no greyed-out "soon" placeholders.
     label: "Business",
     items: [
       { label: "Revenue & Ledger", href: "/revenue", icon: "💰", requires: "reports:financial" },
-      { label: "Purchases", icon: "🛒", comingSoon: true },
       { label: "Reports", href: "/reports", icon: "📊", requires: "reports:staff" },
-      { label: "Team", icon: "👥", comingSoon: true },
     ],
   },
   {
