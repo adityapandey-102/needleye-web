@@ -387,7 +387,11 @@ The chart maths is in `lib/domain/utils/dashboard.ts` (unit-tested); the
 greeting uses the shop's clock (`SHOP_TIME_ZONE`), not the server's. Every
 figure opens a **dedicated focused page**: `/orders/bucket/[bucket]`
 (`BucketOrdersClient`) or `/orders/pending-payments` (`PendingPaymentsClient`,
-with All outstanding / Overdue / Upcoming and a paid bar per order). All
+with All outstanding / Overdue / Upcoming and a paid bar per order). Both have a
+search box (`OrderSearchBar`: customer, bill number or order ID; debounced,
+searched by the server, back to page 1). Every pipeline step opens its own list
+(`pipeline_design` / `_received` / `_production` / `_checks`, and `ready`), and the
+Owner's board starts with **All orders** (every order ever booked, `/orders/bucket/all`). All
 order lists share `OrdersTable` (order, customer, team, stage with its
 `StageProgress` bar, due date and timeline, payment; a row opens the order).
 Payment figures are absent for `master_tailor`, mirroring the API's field

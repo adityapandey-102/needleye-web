@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency, formatDateOnly, getPaymentDue, paidFraction, type OrderListItem } from "../../../lib/domain";
@@ -11,6 +12,7 @@ import { Pager } from "../../../components/ui/Pager";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { Icon } from "../../../components/ui/Icon";
 import { OrdersEmpty, OrdersTableSkeleton } from "./OrdersTable";
+import { OrderSearchBar } from "./OrderSearchBar";
 
 const PAGE_SIZE = 20;
 
@@ -36,9 +38,17 @@ export function PendingPaymentsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
 
   function changeTab(next: string) {
     setBucket(next);
+    setPage(0);
+  }
+
+  /** A new search starts again from page 1 (only the typing is debounced). */
+  function changeSearch(value: string) {
+    setSearch(value);
     setPage(0);
   }
 
@@ -47,7 +57,7 @@ export function PendingPaymentsClient() {
     const run = async () => {
       setLoading(true);
       try {
-        const data = await ordersApi.list({ bucket, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+        const data = await ordersApi.list({ bucket, search: debouncedSearch || undefined, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
         if (!cancelled) {
           setOrders(data.orders);
           setTotal(data.total);
@@ -63,7 +73,7 @@ export function PendingPaymentsClient() {
     return () => {
       cancelled = true;
     };
-  }, [bucket, page, reloadKey]);
+  }, [bucket, debouncedSearch, page, reloadKey]);
 
   return (
     <Card>
@@ -90,6 +100,7 @@ export function PendingPaymentsClient() {
           </div>
         }
       />
+      <OrderSearchBar value={search} onChange={changeSearch} />
 
       {error ? (
         <div className="m-5 flex items-center justify-between rounded-app-sm border border-error/30 bg-error-bg/40 px-3 py-2 text-sm text-error">
@@ -101,7 +112,11 @@ export function PendingPaymentsClient() {
       ) : loading && orders.length === 0 ? (
         <OrdersTableSkeleton />
       ) : orders.length === 0 ? (
-        <OrdersEmpty title="Nothing to collect here" hint="No order in this view has money outstanding." />
+        debouncedSearch ? (
+          <OrdersEmpty title="No orders match" hint="Try another name, bill number or order ID." />
+        ) : (
+          <OrdersEmpty title="Nothing to collect here" hint="No order in this view has money outstanding." />
+        )
       ) : (
         <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
           <div className="grid md:grid-cols-2 lg:hidden">

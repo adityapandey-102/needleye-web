@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import { hasCapability, type OrderListItem, type Role } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
 import { Card, CardHeader } from "../../../components/ui/Card";
 import { Pager } from "../../../components/ui/Pager";
 import { Icon } from "../../../components/ui/Icon";
 import { OrdersEmpty, OrdersTable, OrdersTableSkeleton } from "./OrdersTable";
+import { OrderSearchBar } from "./OrderSearchBar";
 
 const PAGE_SIZE = 20;
 
 /**
  * A focused, single-bucket order list: the orders in one dashboard bucket,
- * paged, in the same table as All orders. Reached from the dashboard's
- * figures (/orders/bucket/[bucket]).
+ * paged, in the same table as All orders, with a search over them (debounced,
+ * searched by the server). Reached from the dashboard's figures
+ * (/orders/bucket/[bucket]).
  */
 export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Role }) {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
@@ -22,6 +25,14 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+
+  /** A new search starts again from page 1 (only the typing is debounced). */
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(0);
+  }
 
   const canSeePayment = hasCapability(role, "payments:read");
 
@@ -30,7 +41,12 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
     const run = async () => {
       setLoading(true);
       try {
-        const data = await ordersApi.list({ bucket, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+        const data = await ordersApi.list({
+          bucket,
+          search: debouncedSearch || undefined,
+          limit: PAGE_SIZE,
+          offset: page * PAGE_SIZE,
+        });
         if (!cancelled) {
           setOrders(data.orders);
           setTotal(data.total);
@@ -46,15 +62,16 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
     return () => {
       cancelled = true;
     };
-  }, [bucket, page, reloadKey]);
+  }, [bucket, debouncedSearch, page, reloadKey]);
 
   return (
     <Card>
       <CardHeader
         icon={<Icon name="list" size={17} />}
         title="Matching orders"
-        subtitle={loading && orders.length === 0 ? "Loading…" : `${total.toLocaleString("en-IN")} ${total === 1 ? "order" : "orders"}`}
+        subtitle={loading && orders.length === 0 ? "Loading…" : `${total.toLocaleString("en-IN")} ${total === 1 ? "order" : "orders"}${debouncedSearch ? " match the search" : ""}`}
       />
+      <OrderSearchBar value={search} onChange={changeSearch} />
       {error ? (
         <div className="m-5 flex items-center justify-between rounded-app-sm border border-error/30 bg-error-bg/40 px-3 py-2 text-sm text-error">
           <span>{error}</span>
@@ -65,7 +82,11 @@ export function BucketOrdersClient({ bucket, role }: { bucket: string; role: Rol
       ) : loading && orders.length === 0 ? (
         <OrdersTableSkeleton />
       ) : orders.length === 0 ? (
-        <OrdersEmpty title="Nothing here right now" hint="No orders are in this view at the moment." />
+        debouncedSearch ? (
+          <OrdersEmpty title="No orders match" hint="Try another name, bill number or order ID." />
+        ) : (
+          <OrdersEmpty title="Nothing here right now" hint="No orders are in this view at the moment." />
+        )
       ) : (
         <OrdersTable orders={orders} canSeePayment={canSeePayment} dimmed={loading} />
       )}

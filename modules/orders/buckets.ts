@@ -12,6 +12,7 @@ export interface BucketMeta {
 
 /** Generic order buckets rendered by /orders/bucket/[bucket]. Payment buckets live on the dedicated /orders/pending-payments page instead. */
 export const BUCKET_META: Record<string, BucketMeta> = {
+  all: { title: "All Orders", subtitle: "Every order, newest first" },
   active: { title: "Active Orders", subtitle: "Not yet delivered" },
   production: { title: "In Production", subtitle: "Falls / Kutchu → Alteration" },
   completed: { title: "Completed Orders", subtitle: "Delivered to the customer" },
@@ -22,6 +23,11 @@ export const BUCKET_META: Record<string, BucketMeta> = {
   urgent: { title: "Urgent Orders", subtitle: "Due within the next 3 days" },
   this_month: { title: "Booked This Month", subtitle: "Orders created this calendar month" },
   not_priced: { title: "Price Not Set", subtitle: "Orders still waiting for their price — they can't take payments or be delivered" },
+  // The dashboard pipeline's steps (the same stages each step counts).
+  pipeline_design: { title: "Design", subtitle: "Design pending or approved" },
+  pipeline_received: { title: "Received", subtitle: "With the production manager" },
+  pipeline_production: { title: "On the Floor", subtitle: "Falls / Kutchu → Finishing" },
+  pipeline_checks: { title: "Final Checks", subtitle: "Quality check · Alteration" },
 };
 
 export function bucketMeta(bucket: string): BucketMeta {

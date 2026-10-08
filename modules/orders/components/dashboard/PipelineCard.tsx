@@ -22,9 +22,12 @@ const NOTE: Record<PipelineKey, string> = {
   ready: "Awaiting pickup",
 };
 
-/** Where a step leads, when there's a list for it. */
+/** Where each step leads: its own list of orders (the same stages it counts). */
 const LINK: Partial<Record<PipelineKey, string>> = {
-  production: "/orders/bucket/production",
+  design: "/orders/bucket/pipeline_design",
+  received: "/orders/bucket/pipeline_received",
+  production: "/orders/bucket/pipeline_production",
+  checks: "/orders/bucket/pipeline_checks",
   ready: "/orders/bucket/ready",
 };
 
