@@ -154,7 +154,9 @@ function changeText(ev: LedgerEvent): string {
         : `${paymentMethodLabel(ev.before.method)} → ${paymentMethodLabel(ev.after.method)}`;
     return `${amount} · ${method}`;
   }
-  return ev.snapshot ? `${formatCurrency(ev.snapshot.amount)} · ${paymentMethodLabel(ev.snapshot.method)}` : "—";
+  return ev.snapshot
+    ? `${formatCurrency(ev.snapshot.amount)} · ${paymentMethodLabel(ev.snapshot.method)}${ev.snapshot.paidAt ? ` · paid ${formatDateOnly(ev.snapshot.paidAt)}` : ""}`
+    : "—";
 }
 
 function PrintStat({ label, value }: { label: string; value: string }) {

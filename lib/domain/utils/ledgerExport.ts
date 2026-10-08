@@ -87,7 +87,19 @@ export function ledgerCsvCell(value: string | number, { isMoney = false }: { isM
 
 /** The CSV the Ledger Activity "Export CSV" button downloads. */
 export function ledgerEventsToCsv(events: LedgerEvent[], options: { from: string; to: string; timeZone: string }): string {
-  const header = ["When", "Who", "Action", "Order", "Amount", "Method", "Previous amount", "Previous method", "Effect on collected"];
+  const header = [
+    "When",
+    "Who",
+    "Action",
+    "Order",
+    "Amount",
+    "Method",
+    "Paid on",
+    "Previous amount",
+    "Previous method",
+    "Previous paid on",
+    "Effect on collected",
+  ];
   const lines: string[] = [header.map((h) => ledgerCsvCell(h)).join(",")];
 
   for (const ev of events) {
@@ -99,8 +111,10 @@ export function ledgerEventsToCsv(events: LedgerEvent[], options: { from: string
       [ev.orderNumber ?? "", false],
       [now?.amount ?? "", true],
       [now ? paymentMethodLabel(now.method) : "", false],
+      [now?.paidAt ?? "", false],
       [ev.action === "updated" ? (ev.before?.amount ?? "") : "", true],
       [ev.action === "updated" && ev.before ? paymentMethodLabel(ev.before.method) : "", false],
+      [ev.action === "updated" ? (ev.before?.paidAt ?? "") : "", false],
       [ledgerEffect(ev), true],
     ];
     lines.push(cells.map(([v, isMoney]) => ledgerCsvCell(v, { isMoney })).join(","));
@@ -108,7 +122,7 @@ export function ledgerEventsToCsv(events: LedgerEvent[], options: { from: string
 
   const t = ledgerTotals(events);
   const totalRow = (label: string, count: number, amount: string) =>
-    [ledgerCsvCell(label), "", "", ledgerCsvCell(`${count} entries`), "", "", "", "", ledgerCsvCell(amount, { isMoney: true })].join(",");
+    [ledgerCsvCell(label), "", "", ledgerCsvCell(`${count} entries`), "", "", "", "", "", "", ledgerCsvCell(amount, { isMoney: true })].join(",");
   lines.push("");
   lines.push(ledgerCsvCell(`Period ${options.from} to ${options.to}`));
   lines.push(totalRow("Total recorded", t.recordedCount, t.recordedAmount));

@@ -3,14 +3,20 @@ import { formatLedgerWhen, ledgerCsvCell, ledgerEffect, ledgerEventsToCsv, ledge
 import type { LedgerEvent } from "../types";
 
 const base = { actorName: "Asha", orderId: "o1", orderNumber: "ORD-2026-007" };
-const recorded: LedgerEvent = { ...base, id: "1", action: "created", at: "2026-06-30T18:45:00.000Z", snapshot: { amount: "500.00", method: "cash" } };
+const recorded: LedgerEvent = {
+  ...base,
+  id: "1",
+  action: "created",
+  at: "2026-06-30T18:45:00.000Z",
+  snapshot: { amount: "500.00", method: "cash", paidAt: "2026-07-01" },
+};
 const edited: LedgerEvent = {
   ...base,
   id: "2",
   action: "updated",
   at: "2026-06-12T05:00:00.000Z",
-  before: { amount: "500.00", method: "cash" },
-  after: { amount: "450.00", method: "upi" },
+  before: { amount: "500.00", method: "cash", paidAt: "2026-06-11" },
+  after: { amount: "450.00", method: "upi", paidAt: "2026-06-12" },
 };
 const removed: LedgerEvent = { ...base, id: "3", action: "deleted", at: "2026-06-10T05:00:00.000Z", snapshot: { amount: "200.00", method: "upi" } };
 
@@ -60,20 +66,21 @@ describe("ledgerEventsToCsv", () => {
   it("writes the table's columns for every row, then the period totals", () => {
     const csv = ledgerEventsToCsv([recorded, edited, removed], { from: "2026-06-01", to: "2026-06-30", timeZone: "Asia/Kolkata" });
     const lines = csv.split("\n");
-    expect(lines[0]).toBe("When,Who,Action,Order,Amount,Method,Previous amount,Previous method,Effect on collected");
-    expect(lines[1]).toMatch(/^"1 Jul 2026, 12:15\s?am",Asha,Recorded,ORD-2026-007,500.00,Cash,,,500.00$/i);
-    expect(lines[2]).toContain(",Edited,ORD-2026-007,450.00,UPI,500.00,Cash,-50.00");
-    expect(lines[3]).toContain(",Removed,ORD-2026-007,200.00,UPI,,,-200.00");
+    expect(lines[0]).toBe("When,Who,Action,Order,Amount,Method,Paid on,Previous amount,Previous method,Previous paid on,Effect on collected");
+    expect(lines[1]).toMatch(/^"1 Jul 2026, 12:15\s?am",Asha,Recorded,ORD-2026-007,500.00,Cash,2026-07-01,,,,500.00$/i);
+    expect(lines[2]).toContain(",Edited,ORD-2026-007,450.00,UPI,2026-06-12,500.00,Cash,2026-06-11,-50.00");
+    // An event without a paid-on date (an older API): the column is just empty.
+    expect(lines[3]).toContain(",Removed,ORD-2026-007,200.00,UPI,,,,,-200.00");
     expect(csv).toContain("Period 2026-06-01 to 2026-06-30");
-    expect(csv).toContain("Total recorded,,,1 entries,,,,,500.00");
-    expect(csv).toContain("Total removed,,,1 entries,,,,,-200.00");
-    expect(csv).toContain("Net change from edits,,,1 entries,,,,,-50.00");
-    expect(csv).toContain("Net change,,,3 entries,,,,,250.00");
+    expect(csv).toContain("Total recorded,,,1 entries,,,,,,,500.00");
+    expect(csv).toContain("Total removed,,,1 entries,,,,,,,-200.00");
+    expect(csv).toContain("Net change from edits,,,1 entries,,,,,,,-50.00");
+    expect(csv).toContain("Net change,,,3 entries,,,,,,,250.00");
   });
 
   it("still produces a header and zero totals for an empty period", () => {
     const csv = ledgerEventsToCsv([], { from: "2026-06-01", to: "2026-06-07", timeZone: "Asia/Kolkata" });
     expect(csv.split("\n")[0]).toContain("When,Who,Action");
-    expect(csv).toContain("Net change,,,0 entries,,,,,0.00");
+    expect(csv).toContain("Net change,,,0 entries,,,,,,,0.00");
   });
 });

@@ -40,13 +40,19 @@ test.describe.serial("owner reports", () => {
     expect(searches).toHaveLength(1);
     expect(searches[0]).toContain("q=zzqq");
 
-    // Daily activity: days are closed until opened; opening Today loads it.
+    // Daily activity: days are closed until opened; opening Today loads its Orders tab (with every
+    // tab's count); each other tab loads its own page when chosen (ADR 0008 categories).
     await page.goto("/reports/activity");
     const today = page.getByRole("button", { name: /^Today/ });
     await expect(today).toHaveAttribute("aria-expanded", "false");
-    const loaded = page.waitForResponse((r) => r.url().includes("/reports/activity?") && r.status() === 200);
+    const loaded = page.waitForResponse((r) => r.url().includes("/reports/activity?") && r.url().includes("category=orders") && r.status() === 200);
     await today.click();
     await loaded;
+    await expect(page.getByRole("tab", { name: /^Orders/ })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText(/^Created order ORD-/).first()).toBeVisible(); // earlier suites booked orders today
+    const accounts = page.waitForResponse((r) => r.url().includes("category=accounts") && r.status() === 200);
+    await page.getByRole("tab", { name: /^Sign-ins & accounts/ }).click();
+    await accounts;
     await expect(page.getByText("Signed in").first()).toBeVisible();
 
     // Staff report: pick a team, then the paged, searchable person list.

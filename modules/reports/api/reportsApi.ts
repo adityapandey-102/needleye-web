@@ -1,4 +1,4 @@
-import type { ActivityDay, ActivityDays, StaffActivity, TrackedStaffRole } from "../../../lib/domain";
+import type { ActivityCategory, ActivityDay, ActivityDays, StaffActivity, TrackedStaffRole } from "../../../lib/domain";
 
 export interface StaffActivityFilters {
   q?: string;
@@ -29,9 +29,9 @@ export const reportsApi = {
     return apiFetch("/reports/activity-days");
   },
 
-  /** One page of one day's activity (payment events excluded). */
-  activity(day: string, offset = 0, limit = 50): Promise<ActivityDay> {
-    const query = new URLSearchParams({ day, offset: String(offset), limit: String(limit) });
+  /** One page of one category of one day, plus every category's count for that day (the tabs). */
+  activity(day: string, category: ActivityCategory, offset = 0, limit = 50): Promise<ActivityDay> {
+    const query = new URLSearchParams({ day, category, offset: String(offset), limit: String(limit) });
     return apiFetch(`/reports/activity?${query.toString()}`);
   },
 };

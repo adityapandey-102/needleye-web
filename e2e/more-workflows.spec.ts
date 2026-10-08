@@ -219,8 +219,9 @@ test.describe.serial("more workflows", () => {
     const file = await download;
     expect(file.suggestedFilename()).toMatch(/^needleye-ledger-\d{4}-\d{2}-01-to-\d{4}-\d{2}-\d{2}\.csv$/);
     const csv = await (await import("node:fs/promises")).readFile((await file.path())!, "utf8");
-    expect(csv).toContain("When,Who,Action,Order,Amount,Method,Previous amount,Previous method,Effect on collected");
-    expect(csv).toMatch(new RegExp(`,Recorded,${order.orderNumber},300\\.00,Cash,,,300\\.00`));
+    expect(csv).toContain("When,Who,Action,Order,Amount,Method,Paid on,Previous amount,Previous method,Previous paid on,Effect on collected");
+    // ... Amount, Method, Paid on (today), no previous values for a new payment, Effect.
+    expect(csv).toMatch(new RegExp(`,Recorded,${order.orderNumber},300\\.00,Cash,\\d{4}-\\d{2}-\\d{2},,,,300\\.00`));
     expect(csv).toContain("Net change,,,");
 
     // PDF: the printable page for the same month lists our payment.

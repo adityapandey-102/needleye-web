@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   formatCurrency,
   formatDate,
+  formatDateOnly,
   ledgerEventsToCsv,
   PAYMENT_METHODS,
   type LedgerEvent,
@@ -360,6 +361,7 @@ function ChangeCell({ event }: { event: LedgerEvent }) {
           </span>
         )}
         {!amountChanged && !methodChanged && <span className="ml-1 text-text-muted">· {methodLabel(event.after.method)}</span>}
+        {event.after.paidAt && <PaidOn now={event.after.paidAt} before={event.before.paidAt} />}
       </span>
     );
   }
@@ -375,6 +377,17 @@ function ChangeCell({ event }: { event: LedgerEvent }) {
         {formatCurrency(snap.amount)}
       </span>{" "}
       <span className="text-text-muted">· {methodLabel(snap.method)}</span>
+      {snap.paidAt && <PaidOn now={snap.paidAt} />}
+    </span>
+  );
+}
+
+/** "· paid 08 Oct 2026", or "· paid 07 Oct 2026 → 08 Oct 2026" when an edit moved the date. */
+function PaidOn({ now, before }: { now: string; before?: string }) {
+  return (
+    <span className="ml-1 text-text-muted">
+      · paid {before && before !== now ? `${formatDateOnly(before)} → ` : ""}
+      {formatDateOnly(now)}
     </span>
   );
 }

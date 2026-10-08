@@ -192,6 +192,8 @@ export interface LedgerAmountSnapshot {
   /** Money as a 2dp string. */
   amount: string;
   method: string;
+  /** The payment's date (YYYY-MM-DD). Absent from an API older than ADR 0008 phase 3. */
+  paidAt?: string;
 }
 
 /** One payment-ledger activity event — GET /orders/ledger-events (reports:financial). */
@@ -273,25 +275,34 @@ export interface ActivityDays {
   days: string[];
 }
 
-/** One audited action in the owner's daily activity feed (never a payment event). */
+/** The daily activity feed's tabs -- each one its own log (needleye-api ADR 0008). */
+export type ActivityCategory = "orders" | "stages" | "payments" | "leads" | "accounts";
+
+/** One event in the owner's daily activity feed. */
 export interface ActivityEvent {
   id: string;
-  action: string;
-  entityType: string;
-  entityId: string | null;
+  category: ActivityCategory;
+  /** order.created, order.updated, price.raise, stage.moved, payment.updated, lead.assigned, auth.login, ... */
+  kind: string;
   /** ISO-8601 UTC. */
   at: string;
   actorName: string | null;
   actorRole: string | null;
+  orderId: string | null;
   orderNumber: string | null;
+  leadId: string | null;
+  leadNumber: string | null;
   targetName: string | null;
-  metadata: Record<string, unknown> | null;
+  /** The category's facts (an edit's changes, a price's before/after and reason, a stage's from/to...). */
+  details: Record<string, unknown> | null;
 }
 
-/** GET /reports/activity -- one page of one day. */
+/** GET /reports/activity -- one page of one category of one day, with every category's count. */
 export interface ActivityDay {
   day: string;
   timeZone: string;
+  category: ActivityCategory;
+  counts: Record<ActivityCategory, number>;
   events: ActivityEvent[];
   total: number;
   limit: number;

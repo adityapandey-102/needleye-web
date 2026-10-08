@@ -87,9 +87,9 @@ modules/
   revenue/
     components/RevenueClient.tsx   # owner_manager/accountant financial dashboard -- collected/outstanding + monthly accounting-cycle history + LedgerActivity audit trail (/revenue)
   reports/                       # owner-only (reports:staff) -- /reports
-    components/                 # ReportPageHeader, TeamStatusCard (/reports/team: server-paged Working/Idle), ActivityFeedCard (/reports/activity: 7 days, each loaded when opened), StaffReportClient + StaffPicker + WeeklyThroughputChart (/reports/staff: team -> searchable paged person list -> monthly report + SVG chart; /orders/staff-report redirects)
+    components/                 # ReportPageHeader, TeamStatusCard (/reports/team: server-paged Working/Idle), ActivityFeedCard (/reports/activity: 7 days, each loaded when opened, in 5 category tabs), StaffReportClient + StaffPicker + WeeklyThroughputChart (/reports/staff: team -> searchable paged person list -> monthly report + SVG chart; /orders/staff-report redirects)
     requireReportsAccess.ts        # server-side owner-only gate shared by every /reports page
-    api/reportsApi.ts              # staffActivity(), activityDays(), activity(day, offset) -- the staff report itself stays ordersApi.staffReport()
+    api/reportsApi.ts              # staffActivity(), activityDays(), activity(day, category, offset) -- the staff report itself stays ordersApi.staffReport()
   payments/
     api/paymentsApi.ts             # every HTTP call the Payments module makes -- mirrors needleye-api's own Payments module
   admin-users/
@@ -364,7 +364,7 @@ output is just the statement).
 Below the history, **Ledger Activity** (`LedgerActivity.tsx`) is the payment
 audit trail: who recorded, edited, or removed a payment, when, on which order,
 and what changed (a before→after for edits, a signed amount for a
-record/removal). Cascading **year → month → week** filters narrow the window
+record/removal), with the payment's paid-on date (also a column in the CSV). Cascading **year → month → week** filters narrow the window
 and the table pages through the matches (newest first), backed by
 `GET /orders/ledger-events`. Same `reports:financial` gate as the rest of the
 page.
@@ -503,11 +503,15 @@ opens its own page, which has a "← Reports" back link:
   - The old `/orders/staff-report` address redirects here. The All Orders page
     no longer has a Staff Report button, so Reports in the sidebar is the way in.
 - **Check daily activity** (`/reports/activity`, `ActivityFeedCard`): today
-  and the 6 days before it.
-  - A day loads only when opened, 50 actions at a time, with "Show more".
-  - Payment events are excluded (they're on Revenue & Ledger).
+  and the 6 days before it, in five tabs with counts -- **Orders** (created,
+  edited, pricing), **Stages**, **Payments**, **Leads**, **Sign-ins &
+  accounts** -- each its own log in the API (needleye-api ADR 0008).
+  - A day loads only when opened (its Orders tab, plus every tab's count);
+    another tab loads when chosen; 50 actions at a time, with "Show more".
   - `describeActivity` (`lib/domain/utils/activityEvent.ts`, unit tested)
-    turns each audit event into a sentence that links to the order.
+    turns each event into a sentence that links to the order or lead, with a
+    second line for the specifics: what an edit changed ("Due date: 20 Oct →
+    25 Oct · Designer: Sunita → Anita"), why a price moved, a payment's date.
   - Times use the shop's timezone, which the API returns.
 
 E2E: `e2e/reports.spec.ts` covers the three cards, the debounce (4 keystrokes
