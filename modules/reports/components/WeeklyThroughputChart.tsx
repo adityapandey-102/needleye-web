@@ -18,7 +18,7 @@ export function WeeklyThroughputChart({ weekly }: { weekly: StaffWeeklyPoint[] }
 
   const W = 720;
   const H = 240;
-  const pad = { top: 18, right: 16, bottom: 34, left: 30 };
+  const pad = { top: 18, right: 28, bottom: 34, left: 30 };
   const innerW = W - pad.left - pad.right;
   const innerH = H - pad.top - pad.bottom;
 
@@ -78,7 +78,8 @@ export function WeeklyThroughputChart({ weekly }: { weekly: StaffWeeklyPoint[] }
         </defs>
 
         {/* horizontal gridlines + y labels at 0 / mid / max */}
-        {[0, 0.5, 1].map((f) => {
+        {/* (no middle line when the top is 1 -- it would read "1" twice) */}
+        {[0, 0.5, 1].filter((f) => f !== 0.5 || maxY >= 2).map((f) => {
           const gy = pad.top + innerH - f * innerH;
           return (
             <g key={f}>

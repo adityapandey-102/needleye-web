@@ -2,18 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatCurrency, type StaffReport } from "../../../lib/domain";
+import { initialsOf } from "../../../lib/domain/utils/reports";
 import { ordersApi } from "../../orders/api/ordersApi";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
 import { Icon, type IconName } from "../../../components/ui/Icon";
 import { WeeklyThroughputChart } from "./WeeklyThroughputChart";
 import { StaffPicker } from "./StaffPicker";
+import { EmptyState, FigureBoard, LoadError, SectionIntro, SkeletonBoard, Spinner } from "./ReportParts";
 
 type StaffRole = "designer" | "master_tailor";
 
+const ROLES: StaffRole[] = ["designer", "master_tailor"];
 const ROLE_LABEL: Record<StaffRole, string> = { designer: "Designers", master_tailor: "Master Tailors" };
+const ROLE_ONE: Record<StaffRole, string> = { designer: "Designer", master_tailor: "Master Tailor" };
 const ROLE_ICON: Record<StaffRole, IconName> = { designer: "palette", master_tailor: "scissors" };
+// Beside the person list (lg+) the board is narrow, so two across until the screen is wide.
+const BOARD_COLUMNS = "grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 min-[1440px]:grid-cols-4";
 
 /** `YYYY-MM` for a Date, in local time. */
 function ym(d: Date): string {
@@ -30,11 +35,16 @@ function lastSixMonths(): { value: string; label: string }[] {
 }
 
 /**
- * Weekly staff-performance report with a lazy 3-step drill-down (owner/manager
- * only): pick a role -> pick a person -> view that person's report for a month.
- * A month dropdown (last 6 months) re-fetches ONLY the selected month; both the
- * cohort board (orders booked that month) and the weekly graph update together.
- * No all-staff / all-months aggregation ever runs.
+ * The Staff report, loaded step by step (owner/manager only): pick a team ->
+ * pick a person -> that person's month. Nothing loads until a team is chosen;
+ * the person list is searched and paged by the API; a person's report loads
+ * only for the month shown (the last 6 months, newest first), with the figures
+ * and the weekly graph updating together. No all-staff / all-months
+ * aggregation ever runs.
+ *
+ * Layout: from lg the list and the report sit side by side, so the owner can
+ * go person to person; on phones and tablets it's one step at a time, with a
+ * back button from the report to the list.
  */
 export function StaffReportClient() {
   const [role, setRole] = useState<StaffRole | null>(null);
@@ -47,19 +57,22 @@ export function StaffReportClient() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
+  function pickRole(r: StaffRole) {
+    if (r === role) return;
+    setRole(r);
+    backToList();
+  }
   function pickStaff(id: string) {
+    if (id === staffId) return;
     setStaffId(id);
     setMonth(months[0]!.value);
     setReport(null);
+    setReportError(null);
   }
   function backToList() {
     setStaffId(null);
     setReport(null);
     setReportError(null);
-  }
-  function backToRoles() {
-    setRole(null);
-    backToList();
   }
 
   useEffect(() => {
@@ -83,184 +96,178 @@ export function StaffReportClient() {
     };
   }, [staffId, month, reloadKey]);
 
-  // ---- Step 1: pick a role ----
+  const intro = (
+    <SectionIntro
+      id="staff-report-heading"
+      title="Staff report"
+      description="One designer's or master tailor's month: orders booked, completed, overdue and pending payment."
+    />
+  );
+
+  // ---- Step 1: pick a team (nothing has loaded yet) ----
   if (!role) {
     return (
-      <Card accent>
-        <CardHeader icon="bar-chart" iconTone="gold" title="Staff Weekly Report" subtitle="Choose a team to review" />
-        <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {(["designer", "master_tailor"] as StaffRole[]).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRole(r)}
-              className="group relative flex items-center gap-4 overflow-hidden rounded-app-lg border border-border bg-card p-5 text-left transition-colors duration-150 hover:border-accent-light focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
-            >
-              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-app-lg bg-primary-bg text-primary ring-1 ring-inset ring-primary/10">
-                <Icon name={ROLE_ICON[r]} size={26} />
-              </div>
-              <div className="relative min-w-0 flex-1">
-                <div className="font-serif text-lg font-bold text-text-primary">{ROLE_LABEL[r]}</div>
-                <div className="text-xs text-text-muted">See per-person monthly workload &amp; trends</div>
-              </div>
-              <Icon name="chevron-right" size={20} className="relative shrink-0 text-primary/40 transition-transform group-hover:translate-x-0.5" />
-            </button>
-          ))}
-        </CardBody>
-      </Card>
-    );
-  }
-
-  const crumb = (
-    <div className="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-text-muted">
-      <button onClick={backToRoles} className="font-medium text-primary hover:underline">
-        Staff Report
-      </button>
-      <Icon name="chevron-right" size={14} className="text-text-muted" />
-      {staffId ? (
-        <button onClick={backToList} className="font-medium text-primary hover:underline">
-          {ROLE_LABEL[role]}
-        </button>
-      ) : (
-        <span className="font-medium text-text-secondary">{ROLE_LABEL[role]}</span>
-      )}
-      {staffId && report && (
-        <>
-          <Icon name="chevron-right" size={14} className="text-text-muted" />
-          <span className="font-medium text-text-secondary">{report.staff.fullName}</span>
-        </>
-      )}
-    </div>
-  );
-
-  // ---- Step 2: pick a person ----
-  if (!staffId) {
-    return (
-      <div>
-        {crumb}
-        <Card>
-          <CardHeader icon="👥" iconTone="blue" title={ROLE_LABEL[role]} subtitle="Pick a person to see their report" />
-          <StaffPicker role={role} roleLabel={ROLE_LABEL[role]} onPick={pickStaff} />
+      <div className="flex flex-col gap-4">
+        {intro}
+        <Card accent>
+          <CardHeader icon="bar-chart" iconTone="gold" title="Choose a team" subtitle="Then pick a person to see their month" />
+          <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {ROLES.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => pickRole(r)}
+                className="group lift flex items-center gap-4 rounded-app-lg border border-border bg-card p-5 text-left hover:border-primary/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-app-lg bg-primary-bg text-primary ring-1 ring-primary/10 ring-inset">
+                  <Icon name={ROLE_ICON[r]} size={24} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-serif text-lg text-text-primary">{ROLE_LABEL[r]}</span>
+                  <span className="block text-xs text-text-muted">Each person&apos;s month: workload, completions and trends</span>
+                </span>
+                <Icon name="chevron-right" size={20} className="text-primary/40 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            ))}
+          </CardBody>
         </Card>
       </div>
     );
   }
 
-  // ---- Step 3: the person's monthly report ----
   const monthLabel = months.find((m) => m.value === month)?.label ?? month;
-  const monthPicker = (
-    <div className="flex items-center gap-2">
-      {reportLoading && <Spinner />}
-      <Select className="w-auto" value={month} onChange={(e) => setMonth(e.target.value)}>
-        {months.map((m) => (
-          <option key={m.value} value={m.value}>
-            {m.label}
-          </option>
-        ))}
-      </Select>
-    </div>
-  );
 
   return (
-    <div>
-      {crumb}
+    <div className="flex flex-col gap-4">
+      {intro}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)]">
+        {/* The team's people -- on phones/tablets only until someone is picked. */}
+        <Card className={`overflow-hidden ${staffId ? "hidden lg:block" : ""}`} regionLabel={`${ROLE_LABEL[role]} list`}>
+          <div role="group" aria-label="Team" className="m-3 mb-0 grid grid-cols-2 rounded-app border border-border bg-app-bg/70 p-0.5">
+            {ROLES.map((r) => (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={r === role}
+                onClick={() => pickRole(r)}
+                className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                  r === role ? "bg-card text-primary shadow-app" : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <Icon name={ROLE_ICON[r]} size={14} />
+                {ROLE_LABEL[r]}
+              </button>
+            ))}
+          </div>
+          <StaffPicker key={role} role={role} roleLabel={ROLE_LABEL[role]} selectedId={staffId} onPick={pickStaff} />
+        </Card>
 
-      {!report && reportLoading ? (
-        <Card>
-          <CardBody>
-            <div className="flex items-center gap-3 py-10 text-sm text-text-muted">
-              <Spinner /> Loading report…
+        {/* The picked person's month. */}
+        <div className={`min-w-0 ${staffId ? "" : "hidden lg:block"}`}>
+          {!staffId ? (
+            <div className="rounded-app-lg border border-dashed border-border bg-card/60">
+              <EmptyState
+                icon="bar-chart"
+                title={`Pick a ${ROLE_ONE[role].toLowerCase()} to see their month`}
+                hint="Orders booked, in production, completed and overdue, payments still owed, and a week-by-week graph."
+              />
             </div>
-          </CardBody>
-        </Card>
-      ) : !report && reportError ? (
-        <Card>
-          <CardBody className="flex items-center justify-between gap-3 text-sm text-error">
-            <span>{reportError}</span>
-            <Button variant="outline" className="px-3 py-1.5 text-xs" onClick={() => setReloadKey((k) => k + 1)}>
-              Retry
-            </Button>
-          </CardBody>
-        </Card>
-      ) : report ? (
-        <div className={`flex flex-col gap-4 ${reportLoading ? "opacity-60 transition-opacity" : "transition-opacity"}`}>
-          {/* Cohort board -- orders booked in the selected month */}
-          <Card>
-            <CardHeader
-              icon="🧑‍💼"
-              iconTone="purple"
-              title={report.staff.fullName}
-              subtitle={`${ROLE_LABEL[role].slice(0, -1)} · booked in ${monthLabel}`}
-              action={monthPicker}
-            />
-            <CardBody className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatTile icon="package" label="Booked" value={report.summary.booked} tone="primary" />
-              <StatTile icon="hammer" label="Active" value={report.summary.active} tone="amber" />
-              <StatTile icon="needle" label="In Production" value={report.summary.inProduction} tone="blue" />
-              <StatTile icon="check" label="Completed" value={report.summary.completed} tone="success" />
-              <StatTile icon="clock" label="Overdue" value={report.summary.overdue} tone="error" />
-              <StatTile icon="alert" label="Urgent" value={report.summary.urgent} tone="error" />
-              <StatTile icon="card" label="Payments Pending" value={report.summary.paymentPendingCount} tone="error" />
-              <StatTile icon="wallet" label="Pending Amount" value={formatCurrency(report.summary.paymentPendingAmount)} tone="error" />
-            </CardBody>
-          </Card>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={backToList}
+                className="inline-flex items-center gap-1 self-start text-sm font-medium text-primary hover:underline lg:hidden"
+              >
+                <Icon name="chevron-right" size={15} className="rotate-180" />
+                All {ROLE_LABEL[role].toLowerCase()}
+              </button>
 
-          {/* Weekly graph for the same month */}
-          <Card>
-            <CardHeader icon="📈" iconTone="green" title="Weekly throughput" subtitle={`Booked vs completed activity · ${monthLabel}`} />
-            <CardBody>
-              {reportError ? (
-                <div className="flex items-center justify-between gap-3 text-sm text-error">
-                  <span>{reportError}</span>
-                  <Button variant="outline" className="px-3 py-1.5 text-xs" onClick={() => setReloadKey((k) => k + 1)}>
-                    Retry
-                  </Button>
-                </div>
+              {!report && reportError ? (
+                <LoadError title="Couldn't load this report" message={reportError} onRetry={() => setReloadKey((k) => k + 1)} />
+              ) : !report ? (
+                <>
+                  <div className="h-18 animate-pulse rounded-app-lg bg-card" aria-hidden />
+                  <SkeletonBoard cells={8} columns={BOARD_COLUMNS} />
+                  <div className="h-64 animate-pulse rounded-app-lg bg-card" aria-label="Loading" />
+                </>
               ) : (
-                <WeeklyThroughputChart weekly={report.weekly} />
+                <div className={`flex flex-col gap-4 transition-opacity ${reportLoading ? "opacity-60" : ""}`} aria-busy={reportLoading}>
+                  <Card>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
+                      <span
+                        aria-hidden
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-bg text-sm font-bold text-primary ring-1 ring-primary/10 ring-inset"
+                      >
+                        {initialsOf(report.staff.fullName)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-serif text-lg leading-snug text-text-primary">{report.staff.fullName}</h3>
+                        <p className="text-xs text-text-muted">
+                          {ROLE_ONE[report.staff.role] ?? ROLE_ONE[role]} · orders booked in {monthLabel}
+                        </p>
+                      </div>
+                      <div className="flex w-full items-center gap-2 sm:w-auto">
+                        {reportLoading && <Spinner label="Loading the month" />}
+                        <Select aria-label="Month" className="sm:w-48" value={month} onChange={(e) => setMonth(e.target.value)}>
+                          {months.map((m) => (
+                            <option key={m.value} value={m.value}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {reportError && (
+                    <p role="alert" className="flex items-center justify-between gap-3 rounded-app border border-error/25 bg-error-bg/40 px-4 py-2 text-sm text-error">
+                      <span>{reportError}</span>
+                      <button type="button" onClick={() => setReloadKey((k) => k + 1)} className="font-semibold underline">
+                        Retry
+                      </button>
+                    </p>
+                  )}
+
+                  <FigureBoard
+                    label={`${report.staff.fullName}, ${monthLabel}`}
+                    columns={BOARD_COLUMNS}
+                    figures={[
+                      { key: "booked", icon: "package", label: "Booked", value: report.summary.booked },
+                      { key: "active", icon: "hammer", label: "Active", value: report.summary.active },
+                      { key: "production", icon: "needle", label: "In production", value: report.summary.inProduction },
+                      { key: "completed", icon: "check-circle", label: "Completed", value: report.summary.completed, tone: "success" },
+                      { key: "overdue", icon: "alert", label: "Overdue", value: report.summary.overdue, tone: report.summary.overdue > 0 ? "error" : "default" },
+                      { key: "urgent", icon: "flame", label: "Urgent", value: report.summary.urgent, tone: report.summary.urgent > 0 ? "warning" : "default" },
+                      {
+                        key: "pending",
+                        icon: "card",
+                        label: "Payments pending",
+                        value: report.summary.paymentPendingCount,
+                        tone: report.summary.paymentPendingCount > 0 ? "error" : "default",
+                      },
+                      {
+                        key: "amount",
+                        icon: "wallet",
+                        label: "Pending amount",
+                        value: formatCurrency(report.summary.paymentPendingAmount),
+                        tone: Number(report.summary.paymentPendingAmount) > 0 ? "error" : "default",
+                      },
+                    ]}
+                  />
+
+                  <Card>
+                    <CardHeader icon={<Icon name="trending-up" size={17} />} title="Weekly throughput" subtitle={`Booked vs completed, week by week · ${monthLabel}`} />
+                    <CardBody>
+                      <WeeklyThroughputChart weekly={report.weekly} />
+                    </CardBody>
+                  </Card>
+                </div>
               )}
-            </CardBody>
-          </Card>
+            </div>
+          )}
         </div>
-      ) : null}
-    </div>
-  );
-}
-
-const TONES: Record<string, { chip: string; val: string }> = {
-  primary: { chip: "bg-primary-bg text-primary ring-primary/10", val: "text-text-primary" },
-  success: { chip: "bg-success text-white ring-success", val: "text-success" },
-  error: { chip: "bg-error-bg text-error ring-error/15", val: "text-error" },
-  amber: { chip: "bg-warning-bg text-warning ring-warning/15", val: "text-text-primary" },
-  blue: { chip: "bg-info-bg text-info ring-info/15", val: "text-text-primary" },
-};
-
-function StatTile({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: IconName;
-  label: string;
-  value: string | number;
-  tone: keyof typeof TONES;
-}) {
-  const t = TONES[tone]!;
-  return (
-    <div
-      className="flex items-center gap-3 rounded-app-lg border border-border-light bg-card p-3"
-    >
-      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-app ring-1 ring-inset ${t.chip}`}>
-        <Icon name={icon} size={18} />
-      </div>
-      <div className="min-w-0">
-        <div className={`truncate text-xl font-extrabold tabular-nums ${t.val}`}>{value}</div>
-        <div className="text-[11px] text-text-muted">{label}</div>
       </div>
     </div>
   );
-}
-
-function Spinner() {
-  return <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary" aria-label="Loading" />;
 }

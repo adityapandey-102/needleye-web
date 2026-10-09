@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** The Staff Report moved to /reports/staff -- kept so old links and bookmarks still work. */
+/** The Staff Report moved to the Reports page -- kept so old links and bookmarks still work. */
 export default function OldStaffReportPage() {
-  redirect("/reports/staff");
+  redirect("/reports?view=staff");
 }

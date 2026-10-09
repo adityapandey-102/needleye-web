@@ -119,8 +119,16 @@ export interface OrderStats {
   inProduction: number;
   overdue: number;
   urgent: number;
+  /** Booked today (booking date = the shop's day) -- the dashboard's "Booked today". */
+  bookedToday: number;
+  /** Not yet delivered and due for delivery today (the shop's day) -- the dashboard's "Deliver today". */
+  dueToday: number;
   /** Absent entirely (not zero) when the API strips it server-side for a role without payments:read (master_tailor). */
   pendingPayments?: number;
+  /** Still owing, with the next payment date today. Absent like pendingPayments. */
+  paymentDueToday?: number;
+  /** Still owing, with the next payment date already past. Absent like pendingPayments. */
+  paymentOverdue?: number;
   /** Orders with no price yet. Absent like pendingPayments. */
   notPriced?: number;
   // Money as 2dp strings.
@@ -369,8 +377,12 @@ export interface StaffActivityRow {
 
 /** One page of GET /reports/staff-activity (searched, filtered and paged by the API). */
 export interface StaffActivity {
-  /** Look-back windows in days: designers by orders created, everyone else by stage moves. */
-  windows: { designerDays: number; floorDays: number };
+  /**
+   * The Working rule's look-back windows: designers by the undelivered orders
+   * they created in the last `designerDays` days; master tailors, production
+   * managers and workers by the latest stage move in the last `floorHours` hours.
+   */
+  windows: { designerDays: number; floorHours: number };
   /** Working / Idle across the search + role filter (ignores the status filter) -- the summary tiles. */
   counts: { working: number; idle: number };
   /** This page. */

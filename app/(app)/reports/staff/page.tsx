@@ -1,17 +1,9 @@
-import { requireReportsAccess } from "../../../../modules/reports/requireReportsAccess";
-import { ReportPageHeader } from "../../../../modules/reports/components/ReportPageHeader";
-import { StaffReportClient } from "../../../../modules/reports/components/StaffReportClient";
+import { redirect } from "next/navigation";
 
 /**
- * Owner-only staff report: role -> person (searched and paged) -> that
- * person's month. Moved here from /orders/staff-report, which now redirects.
+ * Staff report is now a section of the one Reports page -- this address is kept so
+ * old links and bookmarks still land on it. (/reports checks access.)
  */
-export default async function StaffReportPage() {
-  await requireReportsAccess();
-  return (
-    <div>
-      <ReportPageHeader title="Staff report" description="Each designer's and master tailor's month, one person at a time." />
-      <StaffReportClient />
-    </div>
-  );
+export default function OldStaffReportPage() {
+  redirect("/reports?view=staff");
 }

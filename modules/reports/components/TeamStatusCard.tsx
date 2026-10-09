@@ -1,29 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ROLE_LABELS, timeAgoLabel, type StaffActivity, type TrackedStaffRole } from "../../../lib/domain";
+import { ROLE_LABELS, timeAgoLabel, type StaffActivity, type StaffActivityRow, type TrackedStaffRole } from "../../../lib/domain";
+import { initialsOf, lookBackPhrase, workingShare } from "../../../lib/domain/utils/reports";
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from "../../../lib/hooks/useDebouncedValue";
 import { reportsApi } from "../api/reportsApi";
-import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
+import { Card, CardHeader, CARD_GRID_CELL } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Field";
 import { Select } from "../../../components/ui/Select";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { Pager } from "../../../components/ui/Pager";
 import { Icon } from "../../../components/ui/Icon";
-import { CountUp } from "../../../components/ui/CountUp";
+import { EmptyState, FigureBoard, LoadError, SectionIntro, SkeletonBoard, SkeletonRows, Spinner } from "./ReportParts";
 
 type StatusFilter = "" | "working" | "idle";
 
 const PAGE_SIZE = 20;
 const ROLE_ORDER: TrackedStaffRole[] = ["designer", "master_tailor", "production_manager", "worker"];
+const BOARD_COLUMNS = "grid-cols-2 lg:grid-cols-4";
 
 /**
- * Who is Working vs Idle right now, for active designers, master tailors,
- * production managers and workers (the owner and accountant are never listed).
- * The rules are the API's (needleye-api reports/domain): designers by the
- * undelivered orders they created in the last 45 days; everyone else by the
- * undelivered orders whose latest stage move was theirs in the last 30 days.
+ * Team status: who is Working vs Idle right now, for active designers, master
+ * tailors, production managers and workers (the owner and accountant are never
+ * listed). The rule is the API's (needleye-api reports/domain), and the
+ * look-back windows come back with every answer, so the explanation on screen
+ * always matches what the API used: designers by the undelivered orders they
+ * created in the last `designerDays` days; everyone else by the undelivered
+ * orders whose latest stage move was theirs in the last `floorHours` hours.
  *
  * Nothing is filtered in the browser: search (debounced), role, status and the
  * page all go to the API, which returns one page of 20 plus the totals -- so
@@ -85,74 +89,102 @@ export function TeamStatusCard() {
     setStatus(v);
     setPage(0);
   }
+  const reload = () => setReloadKey((k) => k + 1);
+
+  const filtered = Boolean(debouncedSearch || role || status);
 
   return (
-    <Card>
-      <CardHeader
-        icon={<Icon name="users" size={18} />}
-        iconTone="purple"
+    <div className="flex flex-col gap-4">
+      <SectionIntro
+        id="team-status-heading"
         title="Team status"
-        subtitle="Working vs idle, right now"
+        description="Who is working and who is idle right now, with the orders in each person's hands."
         action={
-          <Button variant="ghost" onClick={() => setReloadKey((k) => k + 1)} aria-label="Refresh team status" className="px-2.5">
-            <Icon name="refresh" size={16} />
+          <Button variant="outline" onClick={reload} disabled={loading} className="px-3! py-2! text-xs">
+            {loading && data ? <Spinner label="Refreshing" /> : <Icon name="refresh" size={14} />}
+            Refresh
           </Button>
         }
       />
-      <CardBody className="flex flex-col gap-4">
-        {error && !data ? (
-          <div className="py-10 text-center">
-            <p className="font-semibold text-text-primary">Couldn&apos;t load team status</p>
-            <p className="mt-1 text-sm text-text-muted">{error}</p>
-            <Button variant="outline" className="mt-4" onClick={() => setReloadKey((k) => k + 1)}>
-              Try again
-            </Button>
-          </div>
-        ) : !data ? (
-          <div className="flex flex-col gap-2" aria-busy>
-            {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="h-11 animate-pulse rounded-app-sm bg-app-bg" />
-            ))}
-          </div>
-        ) : (
-          <>
-            <p className="text-xs leading-relaxed text-text-muted">
-              <span className="font-semibold text-text-secondary">Working</span> means an undelivered order is in their hands.
-              Designers: they created it in the last {data.windows.designerDays} days. Master tailors, production managers and
-              workers: they made its latest stage move in the last {data.windows.floorDays} days. Everyone else is{" "}
-              <span className="font-semibold text-text-secondary">Idle</span>.
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-              <SummaryTile
-                label="Working"
-                value={data.counts.working}
-                tone="text-success"
-                active={status === "working"}
-                onClick={() => changeStatus(status === "working" ? "" : "working")}
-              />
-              <SummaryTile
-                label="Idle"
-                value={data.counts.idle}
-                tone="text-text-secondary"
-                active={status === "idle"}
-                onClick={() => changeStatus(status === "idle" ? "" : "idle")}
-              />
-            </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                aria-label="Search staff by name"
-                placeholder="Search by name"
-                value={search}
-                onChange={(e) => changeSearch(e.target.value)}
-                className="sm:max-w-xs"
-              />
-              <Select
-                aria-label="Filter by role"
-                value={role}
-                onChange={(e) => changeRole(e.target.value as TrackedStaffRole | "")}
-                className="sm:max-w-[13rem]"
-              >
+      {error && !data ? (
+        <LoadError title="Couldn't load team status" message={error} onRetry={reload} />
+      ) : !data ? (
+        <>
+          <SkeletonBoard cells={4} columns={BOARD_COLUMNS} />
+          <SkeletonRows rows={6} />
+        </>
+      ) : (
+        <>
+          <FigureBoard
+            label="Team at a glance"
+            columns={BOARD_COLUMNS}
+            figures={[
+              {
+                key: "working",
+                icon: "hammer",
+                label: "Working",
+                value: data.counts.working,
+                caption: "An order in their hands",
+                tone: "success",
+                pressed: status === "working",
+                onToggle: () => changeStatus(status === "working" ? "" : "working"),
+              },
+              {
+                key: "idle",
+                icon: "hourglass",
+                label: "Idle",
+                value: data.counts.idle,
+                caption: "Nothing in hand",
+                tone: "default",
+                pressed: status === "idle",
+                onToggle: () => changeStatus(status === "idle" ? "" : "idle"),
+              },
+              {
+                key: "team",
+                icon: "users",
+                label: role ? `${ROLE_LABELS[role]}s` : "Team",
+                value: data.counts.working + data.counts.idle,
+                caption: debouncedSearch ? `Matching “${debouncedSearch}”` : "Active staff tracked",
+              },
+              {
+                key: "share",
+                icon: "trending-up",
+                label: "Busy share",
+                value: `${workingShare(data.counts.working, data.counts.idle)}%`,
+                caption: "Of them working now",
+              },
+            ]}
+          />
+
+          <p className="flex gap-2.5 rounded-app border border-border-light bg-card/70 px-4 py-3 text-xs leading-relaxed text-text-muted">
+            <Icon name="clock" size={15} className="mt-px text-gold" />
+            <span>
+              <span className="font-semibold text-text-secondary">Working</span> means an undelivered order is in their hands —
+              designers: they booked it {lookBackPhrase(data.windows.designerDays, "day")}; master tailors, production managers and
+              workers: they moved it {lookBackPhrase(data.windows.floorHours, "hour")}. Everyone else is{" "}
+              <span className="font-semibold text-text-secondary">Idle</span>.
+            </span>
+          </p>
+
+          <Card regionLabel="Team members">
+            <CardHeader
+              icon={<Icon name="users" size={17} />}
+              title="Team members"
+              subtitle={`${data.total.toLocaleString("en-IN")} ${data.total === 1 ? "person" : "people"}${filtered ? " match these filters" : ""}`}
+            />
+            <div className="grid grid-cols-2 gap-2 border-b border-border-light p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:p-4">
+              <div className="relative col-span-2 sm:col-span-1">
+                <Icon name="search" size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-muted" />
+                <Input
+                  aria-label="Search staff by name"
+                  placeholder="Search by name"
+                  value={search}
+                  onChange={(e) => changeSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select aria-label="Filter by role" value={role} onChange={(e) => changeRole(e.target.value as TrackedStaffRole | "")} className="sm:w-52">
                 <option value="">All roles</option>
                 {ROLE_ORDER.map((r) => (
                   <option key={r} value={r}>
@@ -160,99 +192,124 @@ export function TeamStatusCard() {
                   </option>
                 ))}
               </Select>
-              <Select
-                aria-label="Filter by status"
-                value={status}
-                onChange={(e) => changeStatus(e.target.value as StatusFilter)}
-                className="sm:max-w-[10rem]"
-              >
+              <Select aria-label="Filter by status" value={status} onChange={(e) => changeStatus(e.target.value as StatusFilter)} className="sm:w-40">
                 <option value="">Everyone</option>
                 <option value="working">Working</option>
                 <option value="idle">Idle</option>
               </Select>
             </div>
 
-            {error && <p className="text-sm text-error">{error}</p>}
+            {error && (
+              <p role="alert" className="flex items-center justify-between gap-3 border-b border-error/20 bg-error-bg/40 px-4 py-2 text-sm text-error">
+                <span>{error}</span>
+                <button type="button" onClick={reload} className="font-semibold underline">
+                  Retry
+                </button>
+              </p>
+            )}
 
             {data.staff.length === 0 ? (
-              <p className="py-8 text-center text-sm text-text-muted">No staff match these filters.</p>
+              <EmptyState
+                icon="users"
+                title="No staff match these filters."
+                hint={filtered ? "Try another name, or clear the role or status filter." : "No active designers, tailors, production managers or workers yet."}
+              />
             ) : (
-              <div
-                className={`overflow-hidden rounded-app-sm border border-border-light transition-opacity ${loading ? "opacity-60" : ""}`}
-                aria-busy={loading}
-              >
-                <table className="w-full text-sm">
-                  <thead className="hidden bg-app-bg/60 text-left text-[11px] font-semibold text-text-muted sm:table-header-group">
+              <div className={`transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}>
+                {/* Phones and tablets: one card per person (two across from md). */}
+                <ul className="grid grid-cols-1 md:grid-cols-2 lg:hidden">
+                  {data.staff.map((s) => (
+                    <li key={s.id} className={`px-4 py-3.5 ${CARD_GRID_CELL}`}>
+                      <div className="flex items-center gap-3">
+                        <Avatar row={s} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-text-primary">{s.fullName}</p>
+                          <p className="text-xs text-text-muted">{ROLE_LABELS[s.role]}</p>
+                        </div>
+                        <StatusBadge row={s} />
+                      </div>
+                      <dl className="mt-3 grid grid-cols-3 gap-2 rounded-app-sm bg-app-bg/60 px-3 py-2 text-xs">
+                        <Fact label="In hand" value={String(s.openOrders)} />
+                        <Fact label="Last work" value={timeAgoLabel(s.lastWorkAt)} title={s.lastWorkAt} />
+                        <Fact label="Last seen" value={timeAgoLabel(s.lastSeenAt)} title={s.lastSeenAt} />
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Desktop: a table. */}
+                <table className="hidden w-full text-sm lg:table">
+                  <thead className="bg-app-bg/60 text-left text-[11px] font-semibold tracking-wide text-text-muted uppercase">
                     <tr>
-                      <th className="px-4 py-2.5">Name</th>
+                      <th className="px-5 py-2.5">Name</th>
                       <th className="px-4 py-2.5">Status</th>
                       <th className="px-4 py-2.5 text-right">Orders in hand</th>
                       <th className="px-4 py-2.5">Last work</th>
-                      <th className="px-4 py-2.5">Last seen</th>
+                      <th className="px-5 py-2.5">Last seen</th>
                     </tr>
                   </thead>
                   <tbody className="rows-in divide-y divide-border-light">
                     {data.staff.map((s) => (
-                      <tr key={s.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 sm:table-row sm:p-0">
-                        <td className="min-w-0 flex-1 sm:px-4 sm:py-3">
-                          <p className="font-semibold text-text-primary">{s.fullName}</p>
-                          <p className="text-xs text-text-muted">{ROLE_LABELS[s.role]}</p>
+                      <tr key={s.id} className="transition-colors hover:bg-primary-bg/25">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar row={s} />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-text-primary">{s.fullName}</p>
+                              <p className="text-xs text-text-muted">{ROLE_LABELS[s.role]}</p>
+                            </div>
+                          </div>
                         </td>
-                        <td className="sm:px-4 sm:py-3">
-                          <StatusPill label={s.status === "working" ? "Working" : "Idle"} tone={s.status === "working" ? "green" : "gray"} />
+                        <td className="px-4 py-3">
+                          <StatusBadge row={s} />
                         </td>
-                        <td className="w-full text-xs text-text-secondary tabular-nums sm:w-auto sm:px-4 sm:py-3 sm:text-right sm:text-sm">
-                          <span className="sm:hidden">Orders in hand: </span>
-                          {s.openOrders}
-                        </td>
-                        <td className="text-xs text-text-secondary sm:px-4 sm:py-3 sm:text-sm" title={s.lastWorkAt ?? undefined}>
-                          <span className="sm:hidden">Last work: </span>
+                        <td className="figure px-4 py-3 text-right text-base text-text-primary">{s.openOrders}</td>
+                        <td className="px-4 py-3 text-text-secondary" title={s.lastWorkAt ?? undefined}>
                           {timeAgoLabel(s.lastWorkAt)}
                         </td>
-                        <td className="text-xs text-text-secondary sm:px-4 sm:py-3 sm:text-sm" title={s.lastSeenAt ?? undefined}>
-                          <span className="sm:hidden">· Last seen: </span>
+                        <td className="px-5 py-3 text-text-secondary" title={s.lastSeenAt ?? undefined}>
                           {timeAgoLabel(s.lastSeenAt)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
               </div>
             )}
-          </>
-        )}
-      </CardBody>
-    </Card>
+            <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
+          </Card>
+        </>
+      )}
+    </div>
   );
 }
 
-function SummaryTile({
-  label,
-  value,
-  tone,
-  active,
-  onClick,
-}: {
-  label: string;
-  value: number;
-  tone: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+/** Initials in a ring: green while Working, plain while Idle. */
+function Avatar({ row }: { row: StaffActivityRow }) {
+  const working = row.status === "working";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`rounded-app border px-4 py-3 text-left transition-colors ${
-        active ? "border-primary/40 bg-primary-bg" : "border-border-light bg-card hover:bg-app-bg"
+    <span
+      aria-hidden
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-2 ${
+        working ? "bg-primary-bg text-primary ring-success" : "bg-app-bg text-text-muted ring-border"
       }`}
     >
-      <p className="text-[11px] font-semibold text-text-muted">{label}</p>
-      <p className={`figure mt-1 text-[26px] leading-none ${tone}`}>
-        <CountUp to={value} />
-      </p>
-    </button>
+      {initialsOf(row.fullName)}
+    </span>
+  );
+}
+
+function StatusBadge({ row }: { row: StaffActivityRow }) {
+  return <StatusPill label={row.status === "working" ? "Working" : "Idle"} tone={row.status === "working" ? "green" : "gray"} />;
+}
+
+function Fact({ label, value, title }: { label: string; value: string; title?: string | null }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10.5px] font-medium text-text-muted">{label}</dt>
+      <dd className="truncate font-semibold text-text-secondary" title={title ?? undefined}>
+        {value}
+      </dd>
+    </div>
   );
 }

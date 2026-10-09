@@ -142,6 +142,50 @@ test.describe.serial("more workflows", () => {
     await expect(page.getByText("Ready").first()).toBeVisible(); // still Ready
   });
 
+  test("Today: an order to deliver and a payment to collect today, on the dashboard and Pending payments' Due today tab", async () => {
+    // The shop's day, as the API counts "today".
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+    const todayName = `WF Today ${Date.now()}`;
+    await api(ownerToken, "/orders", {
+      method: "POST",
+      body: JSON.stringify({
+        customerName: todayName,
+        phone: "9123456712",
+        billNumber: `WF-TD-${Date.now()}`,
+        dueDate: today,
+        nextPaymentDate: today,
+        designerId: designer.id,
+        masterTailorId: master.id,
+        productCategory: "saree",
+        orderDetails: "Due-today fixture",
+        totalAmount: "1500.00",
+        productionStatus: "design_pending",
+        // Today may already be at the delivery capacity.
+        confirmedWithProductionManager: true,
+      }),
+    });
+
+    // The dashboard's Today board: each cell opens its list (newest first, so the new order is on page 1).
+    await page.goto("/orders");
+    const todayBoard = page.getByRole("region", { name: "Today" });
+    await expect(todayBoard.getByRole("link", { name: /Payment overdue/ })).toHaveAttribute("href", "/orders/pending-payments?tab=overdue");
+    await todayBoard.getByRole("link", { name: /Deliver today/ }).click();
+    await expect(page).toHaveURL(/\/orders\/bucket\/due_today/);
+    await expect(page.getByRole("cell", { name: todayName })).toBeVisible();
+
+    await page.goto("/orders");
+    await page.getByRole("region", { name: "Today" }).getByRole("link", { name: /Collect today/ }).click();
+    await expect(page).toHaveURL(/\/orders\/pending-payments\?tab=today/);
+    await expect(page.getByRole("button", { name: "Due today" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("cell", { name: new RegExp(todayName) })).toBeVisible();
+    // The search works within the tab; another tab writes itself into the address.
+    await page.getByPlaceholder("Search customer, bill number, or order ID").fill(todayName);
+    await expect(page.getByRole("cell", { name: new RegExp(todayName) })).toBeVisible();
+    await page.getByRole("button", { name: "Upcoming" }).click();
+    await expect(page).toHaveURL(/\?tab=upcoming/);
+    await expect(page.getByText("No orders match")).toBeVisible();
+  });
+
   test("Kanban: last 2 months only, 50 per page, and paging works", async () => {
     await page.goto("/orders");
     const boardLoad = page.waitForResponse((r) => r.url().includes("/orders?") && r.url().includes("createdFrom="));

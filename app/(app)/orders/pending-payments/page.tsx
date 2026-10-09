@@ -8,13 +8,17 @@ import { Icon } from "../../../../components/ui/Icon";
 /**
  * Dedicated pending-payments page -- roles with payment visibility only
  * (payments:read; master_tailor has none). A focused table of orders with an
- * outstanding balance, filterable by overdue / upcoming, no dashboard stats.
+ * outstanding balance, filterable by due today / overdue / upcoming, no
+ * dashboard stats. `?tab=today|overdue|upcoming` opens that tab (the
+ * dashboard's Collect today and Payment overdue link here).
  */
-export default async function PendingPaymentsPage() {
+export default async function PendingPaymentsPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   const { profile } = await apiFetchServer("/auth/me");
   if (!hasCapability(profile.role, "payments:read")) {
     redirect("/orders");
   }
+  const params = await searchParams;
+  const tab = typeof params.tab === "string" ? params.tab : undefined;
 
   return (
     <div>
@@ -28,7 +32,8 @@ export default async function PendingPaymentsPage() {
           All Orders
         </ButtonLink>
       </div>
-      <PendingPaymentsClient />
+      {/* Keyed by the tab, so following a link to another tab of this page starts that tab afresh. */}
+      <PendingPaymentsClient key={tab ?? ""} initialTab={tab} />
     </div>
   );
 }

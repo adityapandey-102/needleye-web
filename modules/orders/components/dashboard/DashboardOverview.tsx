@@ -7,9 +7,11 @@ import { KpiStrip } from "./KpiStrip";
 import { PipelineCard } from "./PipelineCard";
 import { DeliveriesCard } from "./DeliveriesCard";
 import { MoneyStrip } from "./MoneyStrip";
+import { TodayBoard } from "./TodayBoard";
 
 /**
- * The orders dashboard (above the list): today's five numbers, the production
+ * The orders dashboard (above the list): today's five numbers, today's work
+ * (what to deliver, what to collect and the overdue payments), the production
  * pipeline and the next two weeks of deliveries, and payments. One stats call
  * (GET /orders/stats, row-scoped by role); the deliveries chart loads its own
  * data for the roles that may book orders. Money appears only for roles that
@@ -56,6 +58,7 @@ export function DashboardOverview({ role }: { role: Role }) {
   return (
     <div className="mb-6 space-y-5">
       <KpiStrip stats={stats} showAllOrders={role === "owner_manager"} />
+      <TodayBoard stats={stats} />
       {(stats.pipeline || canSeeDeliveries) && (
         <div className={`grid gap-5 ${stats.pipeline && canSeeDeliveries ? "lg:grid-cols-12" : ""}`}>
           {stats.pipeline && <PipelineCard className={canSeeDeliveries ? "lg:col-span-7" : ""} pipeline={stats.pipeline} active={stats.active} />}
@@ -75,6 +78,7 @@ function OverviewSkeleton() {
           <div key={i} className={`skeleton h-[104px] ${i === 0 ? "col-span-2 sm:col-span-1" : ""}`} />
         ))}
       </div>
+      <div className="skeleton mt-7 h-26 rounded-app-lg" />
       <div className="grid gap-5 lg:grid-cols-12">
         <div className="skeleton h-56 rounded-app-lg lg:col-span-7" />
         <div className="skeleton h-56 rounded-app-lg lg:col-span-5" />

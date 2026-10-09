@@ -81,13 +81,13 @@ modules/
     components/                 # LoginForm (with a show/hide password toggle), RegisterForm, ResetPasswordForm, UpdatePasswordForm
     api/authApi.ts                # every HTTP call the Auth module makes -- login/logout/qrLogin also own writing/clearing the session cookies
   orders/
-    components/                 # OrderForm (create+edit; no price -- pricing comes after saving), PricingCard + PricingDialog (Add pricing now? / set / correct with the double-check alert, price history), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient (search, designer, master, stage, timeline, booking year / month filters -- server-side, page reset on change) + OrdersTable (the one order table: cards on phones and tablets, a table on desktop, StageProgress bars), CustomerLookup (the new-order form's "Fetch customer details": on press only, pick an earlier order with that phone, fill the name), dashboard/ (DashboardOverview: KpiStrip, PipelineCard, DeliveriesCard, MoneyStrip), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
+    components/                 # OrderForm (create+edit; no price -- pricing comes after saving), PricingCard + PricingDialog (Add pricing now? / set / correct with the double-check alert, price history), DeliveryDateField + DeliveryCalendar (due date with delivery-capacity check, full-day dialog, 2-month load calendar), ProductCategoryPicker (catalogue dialog: 47 categories / 6 collections, browse or debounced search), OrdersListClient (search, designer, master, stage, timeline, booking year / month filters -- server-side, page reset on change) + OrdersTable (the one order table: cards on phones and tablets, a table on desktop, StageProgress bars), CustomerLookup (the new-order form's "Fetch customer details": on press only, pick an earlier order with that phone, fill the name), dashboard/ (DashboardOverview: KpiStrip, TodayBoard, PipelineCard, DeliveriesCard, MoneyStrip), BucketOrdersClient (focused /orders/bucket/[bucket] view), PendingPaymentsClient (dedicated collections view), OrderDetailView, ImageGallery/ImageUploadGrid, OrderQrCode, CustomerLabel (8.5x2.75in box sticker), PaymentLedger
     hooks/useTeamMembers.ts       # designer/master-tailor lookup, replaces hardcoded name lists
     api/ordersApi.ts               # every HTTP call the Orders module makes (list is paginated -- returns { orders, total, limit, offset }; also stats(), revenue(), staffReport(), ledgerEvents())
   revenue/
     components/RevenueClient.tsx   # owner_manager/accountant financial dashboard (/revenue): LedgerGuide (plain-words guide, text loaded on open) + BooksCheck (nightly check + Verify now) + ThisMonthCards + MonthlyLedger (paged months, range totals, Books column, CSV/PDF) + LedgerActivity audit trail; MonthBooksDialog closes / reopens a month
   reports/                       # owner-only (reports:staff) -- /reports
-    components/                 # ReportPageHeader, TeamStatusCard (/reports/team: server-paged Working/Idle), ActivityFeedCard (/reports/activity: 7 days, each loaded when opened, in 5 category tabs), StaffReportClient + StaffPicker + WeeklyThroughputChart (/reports/staff: team -> searchable paged person list -> monthly report + SVG chart; /orders/staff-report redirects)
+    components/                 # ReportsView (/reports?view=team|staff|activity: tabs, only the open one mounted + lazily loaded), ReportParts (section heading, figure board, states), TeamStatusCard (server-paged Working/Idle), StaffReportClient + StaffPicker + WeeklyThroughputChart (team -> searchable paged person list -> monthly report + SVG chart), ActivityFeedCard (7 days, each loaded when opened, in 5 category tabs); /reports/team|staff|activity and /orders/staff-report redirect
     requireReportsAccess.ts        # server-side owner-only gate shared by every /reports page
     api/reportsApi.ts              # staffActivity(), activityDays(), activity(day, category, offset) -- the staff report itself stays ordersApi.staffReport()
   payments/
@@ -366,6 +366,15 @@ list:
 - **At a glance** (`KpiStrip`): Active orders, Due in 3 days, Overdue, Ready
   for delivery, Delivered this month -- one light board with the gold top line,
   each figure opening its list.
+- **Today** (`TodayBoard`, the same light board and cell, `BoardCellLink`):
+  **Booked today** (`bookedToday` → `/orders/bucket/booked_today`), **Deliver
+  today** (`dueToday`: not yet delivered, due today →
+  `/orders/bucket/due_today`) and, for roles that see payments, **Collect
+  today** (`paymentDueToday` → Pending payments' Due today tab) and **Payment
+  overdue** (`paymentOverdue` → its Overdue tab). Four cells are 2 + 2 on
+  phones and one row from tablets up; two (no payments) sit side by side.
+  Counts only, from the same stats call -- no extra requests. "Today" is the
+  shop's day (the API decides). Both boards use the same compact cell.
 - **Production pipeline** (`PipelineCard`): the API's `pipeline` counts as a
   numbered stepper (Design → Received → On the floor → Final checks → Ready),
   each with what it holds, its count and its share on one scale; the step
@@ -387,7 +396,11 @@ The chart maths is in `lib/domain/utils/dashboard.ts` (unit-tested); the
 greeting uses the shop's clock (`SHOP_TIME_ZONE`), not the server's. Every
 figure opens a **dedicated focused page**: `/orders/bucket/[bucket]`
 (`BucketOrdersClient`) or `/orders/pending-payments` (`PendingPaymentsClient`,
-with All outstanding / Overdue / Upcoming and a paid bar per order). Both have a
+with All outstanding / Due today / Overdue / Upcoming -- buckets `pending_payment`
+/ `payment_due_today` / `payment_overdue` / `payment_upcoming`, where Upcoming
+means after today -- and a paid bar per order; `?tab=today|overdue|upcoming`
+opens a tab and choosing one writes it back to the address, and a payment
+bucket's `/orders/bucket/...` link redirects to its tab). Both have a
 search box (`OrderSearchBar`: customer, bill number or order ID; debounced,
 searched by the server, back to page 1). Every pipeline step opens its own list
 (`pipeline_design` / `_received` / `_production` / `_checks`, and `ready`), and the
@@ -564,42 +577,70 @@ paging.
 ### Reports (owner only)
 
 "Reports" in the sidebar opens `/reports`, which is owner_manager only
-(`reports:staff`): the menu item is hidden from other roles, and every
-reports page redirects them (`modules/reports/requireReportsAccess.ts`).
+(`reports:staff`): the menu item is hidden from other roles, and the page
+redirects them (`modules/reports/requireReportsAccess.ts`).
 
-`/reports` is a home page with **three cards**; it fetches nothing. Each card
-opens its own page, which has a "← Reports" back link:
+`/reports` is **one page with three tabs** (`ReportsView`): **Team status**,
+**Staff report** and **Daily activity**. The open tab is in the URL
+(`/reports?view=team|staff|activity`, Team status by default), so links and the
+Back button land on the same report; switching tabs uses the browser history
+(no server round trip). The tab bar is an ARIA tablist: arrow keys, Home and
+End move between tabs, Enter or Space opens one.
 
-- **Check team status** (`/reports/team`, `TeamStatusCard`): every active
-  designer, master tailor, production manager and worker as **Working** or
-  **Idle**. The rule is the API's: designers by undelivered orders they created
-  in the last 45 days, everyone else by undelivered orders whose latest stage
-  move was theirs in the last 30 days.
+**Each report loads only when it's opened.** Only the open tab is mounted, and
+each section is its own `next/dynamic` chunk, so a tab that is never opened
+downloads neither its code nor its data. The old addresses `/reports/team`,
+`/reports/staff`, `/reports/activity` and `/orders/staff-report` redirect to
+the matching tab.
+
+Every section has the same structure (`ReportParts.tsx`): a heading, a board
+of headline figures in the dashboard's style, then the detail. Each has
+loading skeletons, an empty state, and an error state with Try again.
+
+- **Team status** (`TeamStatusCard`): every active designer, master tailor,
+  production manager and worker as **Working** or **Idle**. The rule is the
+  API's, and the API returns its windows (`windows: { designerDays,
+  floorHours }`), so the explanation on screen always matches it. Designers
+  are Working if they created an undelivered order in the last 30 days.
+  Master tailors, production managers and workers are Working if they made
+  the latest stage move on an undelivered order in the last 24 hours.
+  - Figures: Working and Idle (these double as filters), the team size and
+    the busy share.
   - **Search (debounced), role, status and page (20 a page) are all sent to the
     API.** Nothing is filtered in the browser, so it stays fast however big
-    the team gets.
-  - The Working/Idle tiles show the API's counts and double as filters.
-- **Check staff report** (`/reports/staff`, `StaffReportClient`): pick a team,
-  then a person, then their month.
+    the team gets. People show as cards on phones and tablets, and as a table
+    from `lg`.
+- **Staff report** (`StaffReportClient`): pick a team, then a person, then
+  their month. Nothing loads until a team is chosen.
   - The person list (`StaffPicker`) is searchable (debounced) and paged (15 a
-    page) through the same API endpoint with `role=`. It loads only after a
-    team is chosen.
-  - The old `/orders/staff-report` address redirects here. The All Orders page
-    no longer has a Staff Report button, so Reports in the sidebar is the way in.
-- **Check daily activity** (`/reports/activity`, `ActivityFeedCard`): today
-  and the 6 days before it, in five tabs with counts -- **Orders** (created,
-  edited, pricing), **Stages**, **Payments**, **Leads**, **Sign-ins &
-  accounts** -- each its own log in the API (needleye-api ADR 0008).
-  - A day loads only when opened (its Orders tab, plus every tab's count);
-    another tab loads when chosen; 50 actions at a time, with "Show more".
+    page) through the same API endpoint with `role=`. It also shows each
+    person's Working/Idle status.
+  - From `lg`, the list and the report sit side by side. On phones and
+    tablets you see one step at a time, with a back link.
+  - The month (the last 6) re-fetches only that month: eight figures (booked,
+    active, in production, completed, overdue, urgent, payments pending and
+    the amount) plus the weekly booked-vs-completed SVG chart.
+- **Daily activity** (`ActivityFeedCard`): today and the 6 days before it.
+  Each day has five tabs with counts, shown as figure tiles: **Orders**
+  (created, edited, pricing), **Stages**, **Payments**, **Leads**,
+  **Sign-ins & accounts**. Each tab is its own log in the API (needleye-api
+  ADR 0008).
+  - Only the list of days loads up front. A day loads when it's opened (its
+    Orders tab, plus every tab's count). Another tab loads when it's chosen,
+    50 actions at a time, with "Show more". The figures at the top only add
+    up the days already opened; they never fetch anything themselves.
   - `describeActivity` (`lib/domain/utils/activityEvent.ts`, unit tested)
     turns each event into a sentence that links to the order or lead, with a
     second line for the specifics: what an edit changed ("Due date: 20 Oct →
     25 Oct · Designer: Sunita → Anita"), why a price moved, a payment's date.
   - Times use the shop's timezone, which the API returns.
 
-E2E: `e2e/reports.spec.ts` covers the three cards, the debounce (4 keystrokes
-→ exactly 1 request), paging and access.
+`lib/domain/utils/reports.ts` (unit tested) has the URL's view parsing, the
+plain-words look-back phrase and avatar initials.
+
+E2E: `e2e/reports.spec.ts` covers the tabs and the URL, Back, that each tab
+loads only when opened, the debounce (4 keystrokes → exactly 1 request),
+paging, the old addresses redirecting, and access.
 
 ### Leads (owner and designers)
 

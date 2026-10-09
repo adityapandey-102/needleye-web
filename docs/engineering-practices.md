@@ -16,7 +16,7 @@ when it is broken. The API and database have their own page
 | **Lists are paginated by the server; nothing is filtered in the browser.** | Loading everything and then filtering works with 20 rows and breaks with 2,000. The server returns one page plus a total. | `components/ui/Pager.tsx` (shared), orders, users, bucket views, team status, staff picker. |
 | **Any filter change goes back to page 1, in the same event handler.** | Otherwise a narrower filter can leave you on an empty page 5. Doing it in the handler, not an effect, avoids a wasted fetch. | `changeSearch` / `changeRole` / … in each list. |
 | **Stale responses are ignored.** | A slow answer to an old query must not overwrite the answer to the new one. | A `cancelled` flag in every fetch effect; `DeliveryDateField` keys results by date. |
-| **Load on demand.** Fetch a report only when it's opened, a calendar month only when it's shown, a day of activity only when it's expanded. | Most of what *could* be shown is never looked at; fetching it anyway wastes server and database time. | Reports home (no fetch), `ActivityFeedCard`, `DeliveryCalendar`, `StaffPicker`. |
+| **Load on demand.** Fetch a report only when it's opened, a calendar month only when it's shown, a day of activity only when it's expanded. | Most of what *could* be shown is never looked at; fetching it anyway wastes server and database time. | `/reports` (only the open tab loads -- its own code chunk and its own data), `ActivityFeedCard`, `DeliveryCalendar`, `StaffPicker`. |
 | **One API module per feature** (`ordersApi`, `reportsApi`, …); components never call `fetch` directly. | Every request for a feature is in one place: easy to find, change and mock. | `modules/*/api/*.ts` |
 
 ## 2. Rendering and bundle size

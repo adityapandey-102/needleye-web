@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency, formatDateOnly, getPaymentDue, paidFraction, type OrderListItem } from "../../../lib/domain";
 import { ordersApi } from "../api/ordersApi";
+import { PAYMENT_TABS, paymentTab, type PaymentTab } from "../buckets";
 import { CARD_GRID_CELL, Card, CardHeader } from "../../../components/ui/Card";
 import { ButtonLink } from "../../../components/ui/Button";
 import { Pager } from "../../../components/ui/Pager";
@@ -16,22 +17,27 @@ import { OrderSearchBar } from "./OrderSearchBar";
 
 const PAGE_SIZE = 20;
 
-const TABS = [
-  { bucket: "pending_payment", label: "All outstanding" },
-  { bucket: "payment_overdue", label: "Overdue" },
-  { bucket: "payment_upcoming", label: "Upcoming" },
-] as const;
+/** What each tab's count means, and what its empty list says. */
+const VIEW: Record<PaymentTab["bucket"], { counts: string; emptyTitle: string; emptyHint: string }> = {
+  pending_payment: { counts: "with money still to collect", emptyTitle: "Nothing to collect here", emptyHint: "No order has money outstanding." },
+  payment_due_today: { counts: "with a payment due today", emptyTitle: "Nothing due today", emptyHint: "No payment falls due today." },
+  payment_overdue: { counts: "past their payment date", emptyTitle: "Nothing overdue", emptyHint: "No payment is past its date." },
+  payment_upcoming: { counts: "with a payment due later", emptyTitle: "Nothing upcoming", emptyHint: "No payment is scheduled after today." },
+};
 
 /**
  * Dedicated pending-payments view: only orders with an outstanding balance,
- * with payment-focused columns and an Overdue / Upcoming filter (by the
- * order's next-payment date). No dashboard stats -- just the list + pager:
- * cards on phones and tablets (what's left to collect first), a table on
- * desktop. Each row opens the full order to record a payment.
+ * with payment-focused columns and All outstanding / Due today / Overdue /
+ * Upcoming tabs (by the order's next-payment date, the shop's day). The tab
+ * can come from the URL (`?tab=today|overdue|upcoming`), so the dashboard links
+ * straight to it, and choosing a tab writes it back there. No dashboard stats
+ * -- just the list + pager: cards on phones and tablets (what's left to
+ * collect first), a table on desktop. Each row opens the full order to record
+ * a payment.
  */
-export function PendingPaymentsClient() {
+export function PendingPaymentsClient({ initialTab }: { initialTab?: string }) {
   const router = useRouter();
-  const [bucket, setBucket] = useState<string>("pending_payment");
+  const [bucket, setBucket] = useState<PaymentTab["bucket"]>(() => paymentTab(initialTab).bucket);
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -41,9 +47,12 @@ export function PendingPaymentsClient() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
 
-  function changeTab(next: string) {
-    setBucket(next);
+  function changeTab(next: PaymentTab) {
+    setBucket(next.bucket);
     setPage(0);
+    // Keep the tab in the address, so a refresh or a shared link opens the same view.
+    // (The browser history API, not router.replace: that would re-render the page on the server for nothing.)
+    window.history.replaceState(null, "", next.tab ? `?tab=${next.tab}` : window.location.pathname);
   }
 
   /** A new search starts again from page 1 (only the typing is debounced). */
@@ -80,21 +89,23 @@ export function PendingPaymentsClient() {
       <CardHeader
         icon={<Icon name="wallet" size={17} />}
         title="Orders needing collection"
-        subtitle={loading && orders.length === 0 ? "Loading…" : `${total.toLocaleString("en-IN")} ${total === 1 ? "order" : "orders"} with money still to collect`}
+        subtitle={loading && orders.length === 0 ? "Loading…" : `${total.toLocaleString("en-IN")} ${total === 1 ? "order" : "orders"} ${VIEW[bucket].counts}`}
         wideAction
         action={
           <div role="group" aria-label="Show" className="flex rounded-app border border-border bg-app-bg/70 p-0.5 sm:inline-flex">
-            {TABS.map((t) => (
+            {PAYMENT_TABS.map((t) => (
               <button
                 key={t.bucket}
                 type="button"
                 aria-pressed={bucket === t.bucket}
-                onClick={() => changeTab(t.bucket)}
-                className={`flex-auto rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 sm:flex-none sm:px-3 ${
+                onClick={() => changeTab(t)}
+                className={`flex-auto rounded-md px-2 py-1.5 text-xs font-semibold whitespace-nowrap transition-all duration-200 sm:flex-none sm:px-3 ${
                   bucket === t.bucket ? "bg-card text-primary shadow-app" : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                {t.label}
+                {/* Four tabs share a phone's width, so "All outstanding" says just "All" there. */}
+                <span className="sm:hidden">{t.short}</span>
+                <span className="max-sm:hidden">{t.label}</span>
               </button>
             ))}
           </div>
@@ -115,7 +126,7 @@ export function PendingPaymentsClient() {
         debouncedSearch ? (
           <OrdersEmpty title="No orders match" hint="Try another name, bill number or order ID." />
         ) : (
-          <OrdersEmpty title="Nothing to collect here" hint="No order in this view has money outstanding." />
+          <OrdersEmpty title={VIEW[bucket].emptyTitle} hint={VIEW[bucket].emptyHint} />
         )
       ) : (
         <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { apiFetchServer } from "../../../../../lib/api/server";
 import { ButtonLink } from "../../../../../components/ui/Button";
 import { BucketOrdersClient } from "../../../../../modules/orders/components/BucketOrdersClient";
-import { BUCKET_META, bucketMeta } from "../../../../../modules/orders/buckets";
+import { BUCKET_META, PAYMENT_TABS, bucketMeta, pendingPaymentsHref } from "../../../../../modules/orders/buckets";
 import { Icon } from "../../../../../components/ui/Icon";
 
 /**
@@ -13,8 +13,9 @@ import { Icon } from "../../../../../components/ui/Icon";
  */
 export default async function OrderBucketPage({ params }: { params: Promise<{ bucket: string }> }) {
   const { bucket } = await params;
-  if (["pending_payment", "payment_overdue", "payment_upcoming"].includes(bucket)) {
-    redirect("/orders/pending-payments");
+  // Payment buckets open Pending payments on the tab that shows the same orders.
+  if (PAYMENT_TABS.some((t) => t.bucket === bucket)) {
+    redirect(pendingPaymentsHref(bucket));
   }
   // Unknown buckets fall back to the full orders list rather than an empty page.
   if (!BUCKET_META[bucket]) redirect("/orders");

@@ -1,14 +1,9 @@
-import { requireReportsAccess } from "../../../../modules/reports/requireReportsAccess";
-import { ReportPageHeader } from "../../../../modules/reports/components/ReportPageHeader";
-import { TeamStatusCard } from "../../../../modules/reports/components/TeamStatusCard";
+import { redirect } from "next/navigation";
 
-/** Owner-only: who is Working vs Idle (searched and paged by the API). */
-export default async function TeamStatusPage() {
-  await requireReportsAccess();
-  return (
-    <div>
-      <ReportPageHeader title="Team status" description="Who is working and who is idle right now." />
-      <TeamStatusCard />
-    </div>
-  );
+/**
+ * Team status is now a section of the one Reports page -- this address is kept so
+ * old links and bookmarks still land on it. (/reports checks access.)
+ */
+export default function OldTeamReportPage() {
+  redirect("/reports?view=team");
 }
