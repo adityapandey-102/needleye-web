@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LEAD_SOURCE_LABELS,
@@ -37,6 +38,7 @@ type StageFilter = LeadStatus | "open" | "";
  * Filters, search (debounced) and paging all run in the API.
  */
 export function LeadsDashboard({ isOwner }: { isOwner: boolean }) {
+  const router = useRouter();
   const [summary, setSummary] = useState<LeadSummary | null>(null);
   const [data, setData] = useState<LeadListResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -255,10 +257,17 @@ export function LeadsDashboard({ isOwner }: { isOwner: boolean }) {
                   {data.leads.map((l) => (
                     <tr
                       key={l.id}
-                      className={`${CARD_GRID_CELL} relative flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors hover:bg-primary-bg/30 lg:table-row lg:p-0 lg:odd:border-r-0 lg:nth-2:border-t`}
+                      // Desktop: the row itself opens the lead, as in the orders table. (Safari doesn't
+                      // position inside a table row, so the stretched link below would cover the whole table.)
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest("a")) return;
+                        router.push(`/leads/${l.id}`);
+                      }}
+                      className={`${CARD_GRID_CELL} relative flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors hover:bg-primary-bg/30 lg:table-row lg:cursor-pointer lg:p-0 lg:odd:border-r-0 lg:nth-2:border-t`}
                     >
                       <td className="order-1 lg:px-4 lg:py-3 lg:whitespace-nowrap">
-                        <Link href={`/leads/${l.id}`} className="font-semibold text-primary after:absolute after:inset-0 hover:underline">
+                        {/* Phones and tablets: the link stretches over its card, so the whole card opens the lead. */}
+                        <Link href={`/leads/${l.id}`} className="font-semibold text-primary after:absolute after:inset-0 hover:underline lg:after:hidden">
                           {l.leadNumber}
                         </Link>
                         {l.urgent && (
