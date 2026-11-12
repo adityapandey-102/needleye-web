@@ -5,30 +5,60 @@ import { QRCodeSVG } from "qrcode.react";
 import { formatDateOnly, productCategoryDisplayName, type Order } from "../../../lib/domain";
 import { Button, ButtonLink } from "../../../components/ui/Button";
 
-/** Physical sticker dimensions -- printed, then stuck on the order's processing box. */
-const LABEL_W = "8.5in";
-const LABEL_H = "2.75in";
+/**
+ * The sticker stock the shop's label printer takes -- all 100mm wide (the
+ * team's sizes, 2026-11). Each has its own layout: one wide strip can't be
+ * squeezed into a square or a tall label and still read well.
+ */
+export const LABEL_SIZES = [
+  { id: "100x50", width: 100, height: 50, name: "100 × 50 mm" },
+  { id: "100x100", width: 100, height: 100, name: "100 × 100 mm" },
+  { id: "100x150", width: 100, height: 150, name: "100 × 150 mm" },
+] as const;
+
+type LabelSize = (typeof LABEL_SIZES)[number];
+type LabelSizeId = LabelSize["id"];
+
+/** The last size printed on this device -- one shop, one printer, so it's remembered. */
+const SIZE_STORAGE_KEY = "ne-label-size";
+
+function savedSize(): LabelSizeId | null {
+  try {
+    const v = window.localStorage.getItem(SIZE_STORAGE_KEY);
+    return LABEL_SIZES.some((s) => s.id === v) ? (v as LabelSizeId) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSize(id: LabelSizeId) {
+  try {
+    window.localStorage.setItem(SIZE_STORAGE_KEY, id);
+  } catch {
+    /* private window / blocked storage: the choice just isn't remembered */
+  }
+}
 
 /**
- * The order's package label, laid out to match the boutique's existing printed
- * sticker: an antique-gold band framing a white field, the Needleye monogram and
- * wordmark at the left, labelled rule-underlined fields across the middle, and a
- * large scannable QR at the right. Order details sit in an open block (no rule)
- * set apart below the fields, taking whatever vertical space is left, so a long
- * description wraps over several lines instead of being cut to one.
+ * The order's package label, in the boutique's sticker idiom: an antique-gold
+ * band framing a white field, the Needleye monogram and wordmark, labelled
+ * rule-underlined fields, ticked boxes for hand/machine/purchase, the order
+ * details, and a scannable QR.
  *
- * Sized to the real sticker stock (8.5in x 2.75in) and driven by an
- * `@page { size: 8.5in 2.75in; margin: 0 }` rule, so Print emits exactly one
- * sticker with no browser margin. `print-color-adjust: exact` keeps the gold
- * band from being dropped by the browser's "background graphics" default.
+ * Three sticker sizes (LABEL_SIZES), chosen above the label. The chosen size
+ * drives an `@page { size: <w>mm <h>mm; margin: 0 }` rule, so Print emits
+ * exactly one sticker with no browser margin. `print-color-adjust: exact` keeps
+ * the gold band from being dropped by the browser's "background graphics"
+ * default.
  *
  * The customer phone is intentionally NOT on the label (it's a workshop/package
  * tag, not a contact card). Rendered on its own route so window.print() emits
  * just this sticker -- the app chrome (sidebar/header) is already `print:hidden`.
  */
 export function CustomerLabel({ order }: { order: Order }) {
-  // "Shirt (Mens Wear)" for labels that repeat across collections.
-  const categoryName = productCategoryDisplayName(order.productCategory);
+  const [sizeId, setSizeId] = useState<LabelSizeId>(LABEL_SIZES[0].id);
+  const size = LABEL_SIZES.find((s) => s.id === sizeId) ?? LABEL_SIZES[0];
+
   // Encode an absolute URL from the origin the label is printed from (LAN IP,
   // localhost, or prod domain) so the printed QR resolves for staff scanning on
   // that same network -- not a fixed env host. Computed after mount (client-only).
@@ -37,15 +67,40 @@ export function CustomerLabel({ order }: { order: Order }) {
   const [qrUrl, setQrUrl] = useState("");
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_WEB_APP_URL || window.location.origin;
-    // ?scan=1 -> scanning this printed label opens the order with the
-    // "product received / advance stage" popup (same as scanning the on-screen QR).
-    queueMicrotask(() => setQrUrl(`${base}/orders/${order.id}?scan=1`));
+    const remembered = savedSize();
+    queueMicrotask(() => {
+      // ?scan=1 -> scanning this printed label opens the order with the
+      // "product received / advance stage" popup (same as scanning the on-screen QR).
+      setQrUrl(`${base}/orders/${order.id}?scan=1`);
+      if (remembered) setSizeId(remembered);
+    });
   }, [order.id]);
+
+  function chooseSize(id: LabelSizeId) {
+    setSizeId(id);
+    saveSize(id);
+  }
+
+  const data: LabelData = {
+    orderNumber: order.orderNumber,
+    customerName: order.customerName,
+    billNumber: order.billNumber,
+    dueDate: formatDateOnly(order.dueDate),
+    designer: order.designerName ?? "—",
+    masterTailor: order.masterTailorName ?? "—",
+    // "Shirt (Mens Wear)" for labels that repeat across collections.
+    category: productCategoryDisplayName(order.productCategory),
+    details: order.orderDetails || "—",
+    handWork: order.handWork,
+    machineWork: order.machineWork,
+    purchase: order.purchaseRequired,
+    qrUrl,
+  };
 
   return (
     <div className="mx-auto w-fit">
       <style>{`
-        @page { size: ${LABEL_W} ${LABEL_H}; margin: 0; }
+        @page { size: ${size.width}mm ${size.height}mm; margin: 0; }
         @media print {
           html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
           /* The band and rules are backgrounds/borders -- force them to print even
@@ -55,120 +110,200 @@ export function CustomerLabel({ order }: { order: Order }) {
         }
       `}</style>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <ButtonLink href={`/orders/${order.id}`} variant="outline">
           ← Back to Order
         </ButtonLink>
-        <Button onClick={() => window.print()}>🖨️ Print Label</Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div role="group" aria-label="Sticker size" className="inline-flex rounded-app border border-border bg-app-bg/70 p-0.5">
+            {LABEL_SIZES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                aria-pressed={size.id === s.id}
+                onClick={() => chooseSize(s.id)}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
+                  size.id === s.id ? "bg-card text-primary shadow-app" : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+          <Button onClick={() => window.print()}>🖨️ Print Label</Button>
+        </div>
       </div>
 
       {/* The sticker itself -- fixed physical size, on screen and on paper alike. */}
       <div
-        className="ne-label flex shrink-0 overflow-hidden bg-gold p-[0.09in] text-black shadow-app print:shadow-none"
-        style={{ width: LABEL_W, height: LABEL_H }}
+        data-label-size={size.id}
+        className="ne-label flex shrink-0 overflow-hidden bg-gold p-[1.4mm] text-black shadow-app print:shadow-none"
+        style={{ width: `${size.width}mm`, height: `${size.height}mm` }}
       >
-        <div className="flex w-full gap-[0.16in] bg-white px-[0.17in] py-[0.13in]">
-          {/* Brand block */}
-          <div className="flex w-[1.5in] shrink-0 flex-col items-center justify-center gap-[0.13in] border-r border-gold/45 pr-[0.15in]">
-            <div className="text-center">
-              <Monogram />
-              <div className="mt-[0.03in] font-serif text-[11.5pt] leading-none font-bold text-primary">Needleye</div>
-              <div className="mt-[0.03in] text-[4.8pt] tracking-[0.16em] text-neutral-500 uppercase">
-                Luxury Tailoring
-              </div>
-            </div>
-            <div className="w-full border-t border-gold/35 pt-[0.09in] text-center">
-              <div className="text-[5pt] tracking-[0.14em] text-gold uppercase">Order Number</div>
-              <div className="font-mono text-[13pt] leading-tight font-bold">{order.orderNumber}</div>
-            </div>
-          </div>
-
-          {/* Fields -- labelled, rule-underlined, in the sticker's own idiom */}
-          <div className="flex min-w-0 flex-1 flex-col gap-[0.12in]">
-            <Row>
-              <Field label="Customer" value={order.customerName} grow big />
-              {/* Bill numbers run long -- given a wide column and a condensed mono
-                  face so the whole value shows instead of truncating. */}
-              <Field label="Bill Number" value={order.billNumber} className="w-[1.75in]" mono />
-            </Row>
-            <Row>
-              <Field label="Due Date" value={formatDateOnly(order.dueDate)} className="w-[1in]" />
-              <Field label="Designer" value={order.designerName ?? "—"} grow />
-              <Field label="Master Tailor" value={order.masterTailorName ?? "—"} grow />
-            </Row>
-            <Row>
-              <Field label="Product Category" value={categoryName} grow />
-              <div className="flex shrink-0 items-end gap-[0.12in] pb-px">
-                <Check label="Hand Work" on={order.handWork} />
-                <Check label="Machine Work" on={order.machineWork} />
-                <Check label="Purchase" on={order.purchaseRequired} />
-              </div>
-            </Row>
-
-            {/* Order details -- open block, no rule, set apart from the field rows and
-                taking all remaining height so a long description wraps freely. */}
-            <div className="mt-[0.05in] flex min-h-0 flex-1 flex-col">
-              <div className="text-[5pt] tracking-[0.14em] text-gold uppercase">Order Details</div>
-              <p className="mt-[0.02in] min-h-0 flex-1 overflow-hidden text-[7.8pt] leading-[1.35] wrap-anywhere whitespace-pre-wrap">
-                {order.orderDetails || "—"}
-              </p>
-            </div>
-          </div>
-
-          {/* QR */}
-          <div className="flex w-[1.75in] shrink-0 flex-col items-center justify-center border-l border-gold/45 pl-[0.15in]">
-            <div className="h-[1.6in] w-[1.6in] border border-gold/60 p-[0.04in]">
-              {qrUrl ? (
-                <QRCodeSVG value={qrUrl} size={512} level="M" className="h-full w-full" />
-              ) : (
-                <div className="h-full w-full" />
-              )}
-            </div>
-            <p className="mt-[0.05in] text-center text-[4.6pt] leading-[1.35] text-neutral-500">
-              Scan to open this order (staff login required).
-            </p>
-          </div>
-        </div>
+        {size.id === "100x50" ? <StripLayout d={data} /> : size.id === "100x100" ? <SquareLayout d={data} /> : <TallLayout d={data} />}
       </div>
 
-      <p className="mt-3 max-w-[8.5in] text-xs text-text-muted print:hidden">
-        Sticker size is {LABEL_W} × {LABEL_H}. In the print dialog choose that paper size (or a custom size with
-        those dimensions), set margins to <strong>None</strong>, scale to <strong>100%</strong>, and tick{" "}
+      <p className="mt-3 max-w-[100mm] text-xs text-text-muted print:hidden">
+        Sticker size is {size.name} (width × height). In the print dialog choose that paper size (or a custom size
+        with those dimensions), set margins to <strong>None</strong>, scale to <strong>100%</strong>, and tick{" "}
         <strong>Background graphics</strong> if the gold border doesn&apos;t appear.
       </p>
     </div>
   );
 }
 
+type LabelData = {
+  orderNumber: string;
+  customerName: string;
+  billNumber: string;
+  dueDate: string;
+  designer: string;
+  masterTailor: string;
+  category: string;
+  details: string;
+  handWork: boolean;
+  machineWork: boolean;
+  purchase: boolean;
+  qrUrl: string;
+};
+
+/** 100 x 50 mm: fields on the left under a slim brand line, the QR and the ticks on the right. */
+function StripLayout({ d }: { d: LabelData }) {
+  return (
+    <div className="flex w-full gap-[2.5mm] bg-white px-[2.5mm] py-[2mm]">
+      <div className="flex min-w-0 flex-1 flex-col gap-[1.3mm]">
+        <div className="flex shrink-0 items-center justify-between gap-[2mm] border-b border-gold/45 pb-[1mm]">
+          <div className="flex items-center gap-[1.5mm]">
+            <Monogram className="w-[9mm]" />
+            <span className="font-serif text-[8pt] leading-none font-bold text-primary">Needleye</span>
+          </div>
+          <OrderNumber value={d.orderNumber} className="text-right" valueClass="text-[9.5pt]" />
+        </div>
+        {/* Fields paired up, so the order details keep a couple of lines on this short sticker. */}
+        <Row>
+          <Field label="Customer" value={d.customerName} size="lg" grow />
+          <Field label="Bill Number" value={d.billNumber} className="max-w-[24mm]" mono />
+        </Row>
+        <Row>
+          <Field label="Due Date" value={d.dueDate} className="w-[17mm]" />
+          <Field label="Product Category" value={d.category} grow />
+        </Row>
+        <Row>
+          <Field label="Designer" value={d.designer} grow />
+          <Field label="Master Tailor" value={d.masterTailor} grow />
+        </Row>
+        <Details value={d.details} textClass="text-[6pt] leading-[1.3]" />
+      </div>
+      <div className="flex w-[27mm] shrink-0 flex-col items-center justify-center gap-[1.5mm] border-l border-gold/45 pl-[2.5mm]">
+        <Qr url={d.qrUrl} className="h-[25mm] w-[25mm]" />
+        <div className="flex flex-col gap-[0.8mm] self-stretch">
+          <Check label="Hand Work" on={d.handWork} />
+          <Check label="Machine Work" on={d.machineWork} />
+          <Check label="Purchase" on={d.purchase} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 100 x 100 mm: brand and order number across the top, fields beside the QR, then the order details. */
+function SquareLayout({ d }: { d: LabelData }) {
+  return (
+    <div className="flex w-full flex-col gap-[2mm] bg-white px-[3mm] py-[2.5mm]">
+      <div className="flex shrink-0 items-center justify-between gap-[3mm] border-b border-gold/45 pb-[1.8mm]">
+        <Brand monogramClass="w-[15mm]" wordmarkClass="text-[10pt]" />
+        <OrderNumber value={d.orderNumber} className="text-right" valueClass="text-[13pt]" />
+      </div>
+      <div className="flex shrink-0 gap-[3mm]">
+        <div className="flex min-w-0 flex-1 flex-col gap-[1.6mm]">
+          <Field label="Customer" value={d.customerName} size="lg" />
+          <Field label="Bill Number" value={d.billNumber} mono />
+          <Field label="Due Date" value={d.dueDate} />
+          <Field label="Designer" value={d.designer} />
+          <Field label="Master Tailor" value={d.masterTailor} />
+        </div>
+        <div className="flex w-[34mm] shrink-0 flex-col items-center justify-center">
+          <Qr url={d.qrUrl} className="h-[34mm] w-[34mm]" />
+          <ScanHint className="mt-[1mm]" />
+        </div>
+      </div>
+      <Field label="Product Category" value={d.category} />
+      <div className="flex shrink-0 items-center gap-[3mm]">
+        <Check label="Hand Work" on={d.handWork} />
+        <Check label="Machine Work" on={d.machineWork} />
+        <Check label="Purchase" on={d.purchase} />
+      </div>
+      <Details value={d.details} textClass="text-[7.5pt] leading-[1.35]" />
+    </div>
+  );
+}
+
+/** 100 x 150 mm: the brand on top, fields in two columns, the order details, and a large QR with the order number at the foot. */
+function TallLayout({ d }: { d: LabelData }) {
+  return (
+    <div className="flex w-full flex-col gap-[2.2mm] bg-white px-[3.5mm] py-[3mm]">
+      <div className="flex shrink-0 justify-center border-b border-gold/45 pb-[2mm]">
+        <Brand monogramClass="w-[22mm]" wordmarkClass="text-[13pt]" centered />
+      </div>
+      <Field label="Customer" value={d.customerName} size="xl" />
+      <Row>
+        <Field label="Bill Number" value={d.billNumber} grow mono />
+        <Field label="Due Date" value={d.dueDate} className="w-[26mm]" />
+      </Row>
+      <Row>
+        <Field label="Designer" value={d.designer} grow />
+        <Field label="Master Tailor" value={d.masterTailor} grow />
+      </Row>
+      <Field label="Product Category" value={d.category} />
+      <div className="flex shrink-0 items-center gap-[4mm]">
+        <Check label="Hand Work" on={d.handWork} />
+        <Check label="Machine Work" on={d.machineWork} />
+        <Check label="Purchase" on={d.purchase} />
+      </div>
+      <Details value={d.details} textClass="text-[8pt] leading-[1.4]" />
+      <div className="flex shrink-0 items-center gap-[4mm] border-t border-gold/45 pt-[2.5mm]">
+        <Qr url={d.qrUrl} className="h-[40mm] w-[40mm]" />
+        <div className="min-w-0 flex-1">
+          <OrderNumber value={d.orderNumber} valueClass="text-[16pt]" />
+          <ScanHint className="mt-[2mm] text-left" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Row({ children }: { children: React.ReactNode }) {
-  return <div className="flex shrink-0 items-end gap-[0.16in]">{children}</div>;
+  return <div className="flex shrink-0 items-end gap-[2.5mm]">{children}</div>;
 }
 
 /** One labelled value sitting on a rule, mirroring the printed sticker's "NAME ______" fields. */
 function Field({
   label,
   value,
-  big,
+  size = "md",
   grow,
   mono,
   className = "",
 }: {
   label: string;
   value: string;
-  big?: boolean;
+  size?: "md" | "lg" | "xl";
   grow?: boolean;
   mono?: boolean;
   className?: string;
 }) {
-  const valueSize = big
-    ? "text-[13pt] leading-tight"
-    : mono
-      ? "font-mono text-[8.5pt] leading-tight"
-      : "text-[9.5pt] leading-tight";
+  const valueSize =
+    size === "xl"
+      ? "text-[14pt] leading-tight"
+      : size === "lg"
+        ? "text-[10.5pt] leading-tight"
+        : mono
+          ? "font-mono text-[7.5pt] leading-tight"
+          : "text-[8pt] leading-tight";
 
   return (
-    <div className={`${grow ? "min-w-0 flex-1" : "shrink-0"} ${className}`}>
-      <div className="text-[5pt] tracking-[0.14em] text-gold uppercase">{label}</div>
+    <div className={`${grow ? "min-w-0 flex-1" : "min-w-0 shrink-0"} ${className}`}>
+      <FieldLabel>{label}</FieldLabel>
       <div className={`truncate border-b border-neutral-400 pb-px font-semibold ${valueSize}`} title={value}>
         {value}
       </div>
@@ -176,14 +311,61 @@ function Field({
   );
 }
 
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <div className="text-[4.8pt] tracking-[0.14em] text-gold uppercase">{children}</div>;
+}
+
+function OrderNumber({ value, className = "", valueClass }: { value: string; className?: string; valueClass: string }) {
+  return (
+    <div className={`shrink-0 ${className}`}>
+      <FieldLabel>Order Number</FieldLabel>
+      <div className={`font-mono leading-tight font-bold ${valueClass}`}>{value}</div>
+    </div>
+  );
+}
+
+/** Order details -- an open block (no rule) taking the space left, so a long description wraps instead of being cut to one line. */
+function Details({ value, textClass }: { value: string; textClass: string }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <FieldLabel>Order Details</FieldLabel>
+      <p className={`mt-[0.4mm] min-h-0 flex-1 overflow-hidden wrap-anywhere whitespace-pre-wrap ${textClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function Brand({ monogramClass, wordmarkClass, centered }: { monogramClass: string; wordmarkClass: string; centered?: boolean }) {
+  return (
+    <div className={`flex items-center gap-[2mm] ${centered ? "flex-col gap-[1mm] text-center" : ""}`}>
+      <Monogram className={monogramClass} />
+      <div>
+        <div className={`font-serif leading-none font-bold text-primary ${wordmarkClass}`}>Needleye</div>
+        <div className="mt-[0.6mm] text-[4.8pt] tracking-[0.16em] text-neutral-500 uppercase">Luxury Tailoring</div>
+      </div>
+    </div>
+  );
+}
+
+function Qr({ url, className }: { url: string; className: string }) {
+  return (
+    <div className={`shrink-0 border border-gold/60 p-[0.8mm] ${className}`}>
+      {url ? <QRCodeSVG value={url} size={512} level="M" className="h-full w-full" /> : <div className="h-full w-full" />}
+    </div>
+  );
+}
+
+function ScanHint({ className = "" }: { className?: string }) {
+  return <p className={`text-center text-[4.6pt] leading-[1.35] text-neutral-500 ${className}`}>Scan to open this order (staff login required).</p>;
+}
+
 /** A ticked/blank box, the sticker's own way of showing a yes/no attribute. */
 function Check({ label, on }: { label: string; on: boolean }) {
   return (
-    <div className="flex shrink-0 items-center gap-[0.04in]">
-      <span className="flex h-[0.14in] w-[0.14in] items-center justify-center border border-neutral-500 text-[7.5pt] leading-none font-bold text-primary">
+    <div className="flex shrink-0 items-center gap-[1mm]">
+      <span className="flex h-[3.4mm] w-[3.4mm] shrink-0 items-center justify-center border border-neutral-500 text-[7pt] leading-none font-bold text-primary">
         {on ? "✓" : ""}
       </span>
-      <span className="text-[5pt] tracking-[0.08em] text-neutral-600 uppercase">{label}</span>
+      <span className="text-[4.8pt] tracking-[0.08em] whitespace-nowrap text-neutral-600 uppercase">{label}</span>
     </div>
   );
 }
@@ -192,11 +374,11 @@ function Check({ label, on }: { label: string; on: boolean }) {
  * The brand monogram -- the ornate "N" crossed by two needles.
  * `public/needleye-monogram.png` is already trimmed to the artwork (770x451,
  * transparent background), so it just needs a width; the height follows the
- * aspect ratio. At 1.32in wide the 770px source prints at ~580dpi, well past
+ * aspect ratio. Even at 22mm wide the 770px source prints at ~890dpi, well past
  * anything a label printer resolves. Degrades to a burgundy serif "N" if the
  * asset is missing.
  */
-function Monogram() {
+function Monogram({ className }: { className: string }) {
   const [failed, setFailed] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -208,7 +390,7 @@ function Monogram() {
 
   if (failed) {
     return (
-      <span className="mx-auto flex h-[0.77in] w-[1.32in] items-center justify-center font-serif text-[30pt] leading-none font-bold text-primary">
+      <span className={`flex aspect-770/451 shrink-0 items-center justify-center font-serif text-[16pt] leading-none font-bold text-primary ${className}`}>
         N
       </span>
     );
@@ -221,7 +403,7 @@ function Monogram() {
       src="/needleye-monogram.png"
       alt="Needleye"
       onError={() => setFailed(true)}
-      className="mx-auto block h-auto w-[1.32in]"
+      className={`block h-auto shrink-0 ${className}`}
     />
   );
 }
