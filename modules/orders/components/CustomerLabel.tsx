@@ -40,16 +40,17 @@ function saveSize(id: LabelSizeId) {
 }
 
 /**
- * The order's package label, in the boutique's sticker idiom: an antique-gold
- * band framing a white field, the Needleye monogram and wordmark, labelled
+ * The order's package label, printed in pure black on white (the shop's label
+ * printer, 2026-11): a thin black frame round a white field, the Needleye
+ * monogram (rendered solid black) and wordmark, labelled
  * rule-underlined fields, ticked boxes for hand/machine/purchase, the order
  * details, and a scannable QR.
  *
  * Three sticker sizes (LABEL_SIZES), chosen above the label. The chosen size
  * drives an `@page { size: <w>mm <h>mm; margin: 0 }` rule, so Print emits
- * exactly one sticker with no browser margin. `print-color-adjust: exact` keeps
- * the gold band from being dropped by the browser's "background graphics"
- * default.
+ * exactly one sticker with no browser margin. There are no background fills or
+ * greys -- every line, box, letter and the QR is solid black, everything else
+ * plain white -- so it prints crisply on a thermal/mono printer.
  *
  * The customer phone is intentionally NOT on the label (it's a workshop/package
  * tag, not a contact card). Rendered on its own route so window.print() emits
@@ -103,8 +104,6 @@ export function CustomerLabel({ order }: { order: Order }) {
         @page { size: ${size.width}mm ${size.height}mm; margin: 0; }
         @media print {
           html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-          /* The band and rules are backgrounds/borders -- force them to print even
-             when the user leaves "Background graphics" unticked. */
           .ne-label, .ne-label * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .ne-label { box-shadow: none !important; }
         }
@@ -137,7 +136,7 @@ export function CustomerLabel({ order }: { order: Order }) {
       {/* The sticker itself -- fixed physical size, on screen and on paper alike. */}
       <div
         data-label-size={size.id}
-        className="ne-label flex shrink-0 overflow-hidden bg-gold p-[1.4mm] text-black shadow-app print:shadow-none"
+        className="ne-label flex shrink-0 overflow-hidden border-[0.5mm] border-black bg-white p-[0.9mm] text-black shadow-app print:shadow-none"
         style={{ width: `${size.width}mm`, height: `${size.height}mm` }}
       >
         {size.id === "100x50" ? <StripLayout d={data} /> : size.id === "100x100" ? <SquareLayout d={data} /> : <TallLayout d={data} />}
@@ -145,8 +144,7 @@ export function CustomerLabel({ order }: { order: Order }) {
 
       <p className="mt-3 max-w-[100mm] text-xs text-text-muted print:hidden">
         Sticker size is {size.name} (width × height). In the print dialog choose that paper size (or a custom size
-        with those dimensions), set margins to <strong>None</strong>, scale to <strong>100%</strong>, and tick{" "}
-        <strong>Background graphics</strong> if the gold border doesn&apos;t appear.
+        with those dimensions), set margins to <strong>None</strong> and scale to <strong>100%</strong>. It prints in black and white only.
       </p>
     </div>
   );
@@ -172,10 +170,10 @@ function StripLayout({ d }: { d: LabelData }) {
   return (
     <div className="flex w-full gap-[2.5mm] bg-white px-[2.5mm] py-[2mm]">
       <div className="flex min-w-0 flex-1 flex-col gap-[1.3mm]">
-        <div className="flex shrink-0 items-center justify-between gap-[2mm] border-b border-gold/45 pb-[1mm]">
+        <div className="flex shrink-0 items-center justify-between gap-[2mm] border-b border-black pb-[1mm]">
           <div className="flex items-center gap-[1.5mm]">
             <Monogram className="w-[9mm]" />
-            <span className="font-serif text-[8pt] leading-none font-bold text-primary">Needleye</span>
+            <span className="font-serif text-[8pt] leading-none font-bold text-black">Needleye</span>
           </div>
           <OrderNumber value={d.orderNumber} className="text-right" valueClass="text-[9.5pt]" />
         </div>
@@ -194,9 +192,10 @@ function StripLayout({ d }: { d: LabelData }) {
         </Row>
         <Details value={d.details} textClass="text-[6pt] leading-[1.3]" />
       </div>
-      <div className="flex w-[27mm] shrink-0 flex-col items-center justify-center gap-[1.5mm] border-l border-gold/45 pl-[2.5mm]">
-        <Qr url={d.qrUrl} className="h-[25mm] w-[25mm]" />
-        <div className="flex flex-col gap-[0.8mm] self-stretch">
+      {/* The QR as large as the strip allows (~30mm), unframed so the white round it is a clean quiet zone for phone cameras. */}
+      <div className="flex w-[31mm] shrink-0 flex-col items-center justify-center gap-[1mm] border-l border-black pl-[2mm]">
+        <Qr url={d.qrUrl} className="h-[30mm] w-[30mm]" frameless />
+        <div className="flex flex-col gap-[0.5mm] self-stretch">
           <Check label="Hand Work" on={d.handWork} />
           <Check label="Machine Work" on={d.machineWork} />
           <Check label="Purchase" on={d.purchase} />
@@ -210,7 +209,7 @@ function StripLayout({ d }: { d: LabelData }) {
 function SquareLayout({ d }: { d: LabelData }) {
   return (
     <div className="flex w-full flex-col gap-[2mm] bg-white px-[3mm] py-[2.5mm]">
-      <div className="flex shrink-0 items-center justify-between gap-[3mm] border-b border-gold/45 pb-[1.8mm]">
+      <div className="flex shrink-0 items-center justify-between gap-[3mm] border-b border-black pb-[1.8mm]">
         <Brand monogramClass="w-[15mm]" wordmarkClass="text-[10pt]" />
         <OrderNumber value={d.orderNumber} className="text-right" valueClass="text-[13pt]" />
       </div>
@@ -242,7 +241,7 @@ function SquareLayout({ d }: { d: LabelData }) {
 function TallLayout({ d }: { d: LabelData }) {
   return (
     <div className="flex w-full flex-col gap-[2.2mm] bg-white px-[3.5mm] py-[3mm]">
-      <div className="flex shrink-0 justify-center border-b border-gold/45 pb-[2mm]">
+      <div className="flex shrink-0 justify-center border-b border-black pb-[2mm]">
         <Brand monogramClass="w-[22mm]" wordmarkClass="text-[13pt]" centered />
       </div>
       <Field label="Customer" value={d.customerName} size="xl" />
@@ -261,7 +260,7 @@ function TallLayout({ d }: { d: LabelData }) {
         <Check label="Purchase" on={d.purchase} />
       </div>
       <Details value={d.details} textClass="text-[8pt] leading-[1.4]" />
-      <div className="flex shrink-0 items-center gap-[4mm] border-t border-gold/45 pt-[2.5mm]">
+      <div className="flex shrink-0 items-center gap-[4mm] border-t border-black pt-[2.5mm]">
         <Qr url={d.qrUrl} className="h-[40mm] w-[40mm]" />
         <div className="min-w-0 flex-1">
           <OrderNumber value={d.orderNumber} valueClass="text-[16pt]" />
@@ -304,7 +303,7 @@ function Field({
   return (
     <div className={`${grow ? "min-w-0 flex-1" : "min-w-0 shrink-0"} ${className}`}>
       <FieldLabel>{label}</FieldLabel>
-      <div className={`truncate border-b border-neutral-400 pb-px font-semibold ${valueSize}`} title={value}>
+      <div className={`truncate border-b border-black pb-px font-bold text-black ${valueSize}`} title={value}>
         {value}
       </div>
     </div>
@@ -312,7 +311,7 @@ function Field({
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <div className="text-[4.8pt] tracking-[0.14em] text-gold uppercase">{children}</div>;
+  return <div className="text-[5.2pt] font-semibold tracking-[0.12em] text-black uppercase">{children}</div>;
 }
 
 function OrderNumber({ value, className = "", valueClass }: { value: string; className?: string; valueClass: string }) {
@@ -329,7 +328,7 @@ function Details({ value, textClass }: { value: string; textClass: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <FieldLabel>Order Details</FieldLabel>
-      <p className={`mt-[0.4mm] min-h-0 flex-1 overflow-hidden wrap-anywhere whitespace-pre-wrap ${textClass}`}>{value}</p>
+      <p className={`mt-[0.4mm] min-h-0 flex-1 overflow-hidden font-medium wrap-anywhere whitespace-pre-wrap text-black ${textClass}`}>{value}</p>
     </div>
   );
 }
@@ -339,33 +338,33 @@ function Brand({ monogramClass, wordmarkClass, centered }: { monogramClass: stri
     <div className={`flex items-center gap-[2mm] ${centered ? "flex-col gap-[1mm] text-center" : ""}`}>
       <Monogram className={monogramClass} />
       <div>
-        <div className={`font-serif leading-none font-bold text-primary ${wordmarkClass}`}>Needleye</div>
-        <div className="mt-[0.6mm] text-[4.8pt] tracking-[0.16em] text-neutral-500 uppercase">Luxury Tailoring</div>
+        <div className={`font-serif leading-none font-bold text-black ${wordmarkClass}`}>Needleye</div>
+        <div className="mt-[0.6mm] text-[5pt] font-semibold tracking-[0.16em] text-black uppercase">Luxury Tailoring</div>
       </div>
     </div>
   );
 }
 
-function Qr({ url, className }: { url: string; className: string }) {
+function Qr({ url, className, frameless }: { url: string; className: string; frameless?: boolean }) {
   return (
-    <div className={`shrink-0 border border-gold/60 p-[0.8mm] ${className}`}>
-      {url ? <QRCodeSVG value={url} size={512} level="M" className="h-full w-full" /> : <div className="h-full w-full" />}
+    <div className={`shrink-0 bg-white ${frameless ? "" : "border border-black p-[0.8mm]"} ${className}`}>
+      {url ? <QRCodeSVG value={url} size={512} level="M" fgColor="#000000" bgColor="#ffffff" className="h-full w-full" /> : <div className="h-full w-full" />}
     </div>
   );
 }
 
 function ScanHint({ className = "" }: { className?: string }) {
-  return <p className={`text-center text-[4.6pt] leading-[1.35] text-neutral-500 ${className}`}>Scan to open this order (staff login required).</p>;
+  return <p className={`text-center text-[5pt] leading-[1.35] font-medium text-black ${className}`}>Scan to open this order (staff login required).</p>;
 }
 
 /** A ticked/blank box, the sticker's own way of showing a yes/no attribute. */
 function Check({ label, on }: { label: string; on: boolean }) {
   return (
     <div className="flex shrink-0 items-center gap-[1mm]">
-      <span className="flex h-[3.4mm] w-[3.4mm] shrink-0 items-center justify-center border border-neutral-500 text-[7pt] leading-none font-bold text-primary">
+      <span className="flex h-[3.4mm] w-[3.4mm] shrink-0 items-center justify-center border-[0.3mm] border-black text-[7pt] leading-none font-bold text-black">
         {on ? "✓" : ""}
       </span>
-      <span className="text-[4.8pt] tracking-[0.08em] whitespace-nowrap text-neutral-600 uppercase">{label}</span>
+      <span className="text-[5.2pt] font-semibold tracking-[0.06em] whitespace-nowrap text-black uppercase">{label}</span>
     </div>
   );
 }
@@ -390,7 +389,7 @@ function Monogram({ className }: { className: string }) {
 
   if (failed) {
     return (
-      <span className={`flex aspect-770/451 shrink-0 items-center justify-center font-serif text-[16pt] leading-none font-bold text-primary ${className}`}>
+      <span className={`flex aspect-770/451 shrink-0 items-center justify-center font-serif text-[16pt] leading-none font-bold text-black ${className}`}>
         N
       </span>
     );
@@ -403,7 +402,7 @@ function Monogram({ className }: { className: string }) {
       src="/needleye-monogram.png"
       alt="Needleye"
       onError={() => setFailed(true)}
-      className={`block h-auto shrink-0 ${className}`}
+      className={`block h-auto shrink-0 brightness-0 ${className}`}
     />
   );
 }

@@ -483,13 +483,14 @@ sticker** (`CustomerLabel.tsx`, `/orders/[orderId]/label`) -- printed
 at one of three sizes the shop's label printer takes, **100 x 50 mm, 100 x 100 mm
 or 100 x 150 mm** (chosen above the label, remembered per device; each size has
 its own layout), styled after the boutique's existing printed sticker
-(antique-gold band, brand monogram, rule-underlined fields, ticked boxes for
+(brand monogram, rule-underlined fields, ticked boxes for
 hand/machine/purchase), carrying a scannable QR plus customer/order-number/
 category/due-date/bill-number/order-details plus the assigned **designer and
 master tailor** names (the customer's phone is deliberately omitted from the
-package label). `@page { size: <width>mm <height>mm; margin: 0 }` (the chosen size) makes Print emit
-exactly one sticker, and `print-color-adjust: exact` keeps the gold band from
-being dropped when "Background graphics" is unticked. Both live on their own routes so printing emits just the
+package label). It prints in **pure black on white** (thin black frame, black
+lines, text, monogram and QR; no fills or greys) for the shop's label printer.
+`@page { size: <width>mm <height>mm; margin: 0 }` (the chosen size) makes Print emit
+exactly one sticker. Both live on their own routes so printing emits just the
 intended sheet.
 
 ### Reference images: client-side compression
