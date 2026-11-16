@@ -58,7 +58,7 @@ export function DashboardOverview({ role }: { role: Role }) {
   return (
     <div className="mb-6 space-y-5">
       <KpiStrip stats={stats} showAllOrders={role === "owner_manager"} />
-      <TodayBoard stats={stats} />
+      <TodayBoard stats={stats} canExportOverdue={hasCapability(role, "reports:financial")} />
       {(stats.pipeline || canSeeDeliveries) && (
         <div className={`grid gap-5 ${stats.pipeline && canSeeDeliveries ? "lg:grid-cols-12" : ""}`}>
           {stats.pipeline && <PipelineCard className={canSeeDeliveries ? "lg:col-span-7" : ""} pipeline={stats.pipeline} active={stats.active} />}

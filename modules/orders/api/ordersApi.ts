@@ -4,6 +4,7 @@ import type {
   GranularStatus,
   LedgerEventsResult,
   LedgerExportResult,
+  OverdueExportResult,
   Order,
   OrderListItem,
   OrderStats,
@@ -160,6 +161,10 @@ export const ordersApi = {
   },
 
   /** Every ledger event of one week / one month, unpaged -- for Export CSV (the API refuses > 31 days). */
+  /** Every order whose payment is overdue, unpaged -- the overdue-payments CSV. */
+  paymentOverdueExport(): Promise<OverdueExportResult> {
+    return apiFetch("/orders/payment-overdue/export");
+  },
   ledgerEventsExport(params: { from: string; to: string }): Promise<LedgerExportResult> {
     const query = new URLSearchParams({ from: params.from, to: params.to });
     return apiFetch(`/orders/ledger-events/export?${query.toString()}`);

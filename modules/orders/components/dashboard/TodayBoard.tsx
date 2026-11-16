@@ -1,6 +1,7 @@
 import type { OrderStats } from "../../../../lib/domain";
 import { pendingPaymentsHref } from "../../buckets";
 import { BoardCellLink, type BoardCell } from "./KpiStrip";
+import { OverdueExportButtons } from "../OverdueExportButtons";
 
 /**
  * Today's work, as a second board in the At a glance style: the orders booked
@@ -11,8 +12,11 @@ import { BoardCellLink, type BoardCell } from "./KpiStrip";
  *
  * The cells never leave a gap: four are 2 + 2 on phones and one row from
  * tablets up; two (no payments) always sit side by side.
+ *
+ * `canExportOverdue` (owner / accountant) adds the overdue-payments export
+ * beside the heading: every overdue order at once, as CSV or a printable PDF.
  */
-export function TodayBoard({ stats }: { stats: OrderStats }) {
+export function TodayBoard({ stats, canExportOverdue = false }: { stats: OrderStats; canExportOverdue?: boolean }) {
   const cells: BoardCell[] = [
     { href: "/orders/bucket/booked_today", icon: "sparkles", label: "Booked today", value: stats.bookedToday, caption: "New orders today", tone: "muted" },
     { href: "/orders/bucket/due_today", icon: "calendar-clock", label: "Deliver today", value: stats.dueToday, caption: "Due for delivery today", tone: "warning" },
@@ -26,9 +30,17 @@ export function TodayBoard({ stats }: { stats: OrderStats }) {
 
   return (
     <section aria-labelledby="today-heading">
-      <h2 id="today-heading" className="mb-2 text-sm font-semibold text-text-primary">
-        Today
-      </h2>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 id="today-heading" className="text-sm font-semibold text-text-primary">
+          Today
+        </h2>
+        {canExportOverdue && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-text-muted">Overdue payments</span>
+            <OverdueExportButtons />
+          </div>
+        )}
+      </div>
       <div className="card-accent-top rounded-app-lg bg-card shadow-app-md ring-1 ring-gold/30">
         <div className={`stagger-in grid grid-cols-2 gap-px bg-border-light ${cells.length === 4 ? "sm:grid-cols-4" : ""}`}>
           {cells.map((c) => (

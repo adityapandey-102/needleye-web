@@ -24,6 +24,7 @@ export * from "./utils/paymentDue";
 export * from "./utils/amountInWords";
 export * from "./utils/revenue";
 export * from "./utils/ledgerExport";
+export * from "./utils/overdueExport";
 export * from "./utils/orderStatusPermissions";
 export * from "./utils/productCategorySearch";
 export * from "./utils/deliveryCalendar";

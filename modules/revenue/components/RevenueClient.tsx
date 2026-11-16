@@ -6,6 +6,8 @@ import { BooksCheck } from "./BooksCheck";
 import { LedgerGuide } from "./LedgerGuide";
 import { MonthlyLedger } from "./MonthlyLedger";
 import { LedgerActivity } from "./LedgerActivity";
+import { Card, CardHeader } from "../../../components/ui/Card";
+import { OverdueExportButtons } from "../../orders/components/OverdueExportButtons";
 
 /**
  * Revenue & Ledger (owner_manager / accountant): this month's four numbers,
@@ -26,6 +28,17 @@ export function RevenueClient({ role }: { role: Role }) {
       <LedgerGuide />
       <BooksCheck />
       <ThisMonthCards />
+
+      {/* Every order whose payment date has passed -- all of them at once, as CSV or a printable PDF. */}
+      <Card className="mb-5">
+        <CardHeader
+          icon="⏰"
+          iconTone="amber"
+          title="Overdue payments"
+          subtitle="Every order past its payment date — all at once, not page by page"
+          action={<OverdueExportButtons />}
+        />
+      </Card>
       <MonthlyLedger canClose={hasCapability(role, "ledger:close")} canReopen={hasCapability(role, "ledger:reopen")} />
 
       {/* Payment audit trail — who recorded/edited/removed a payment, when, and what changed. */}

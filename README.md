@@ -475,6 +475,16 @@ in Year view). The CSV is built in the browser by `ledgerEventsToCsv`
 defused for Excel); the PDF is the print page `/revenue/ledger-print`. Times
 are printed in the shop's timezone, which the export response carries.
 
+**Overdue payments export** (owner / accountant): **Export CSV** / **Export PDF**
+beside the orders dashboard's *Today* heading and on an *Overdue payments* card
+on Revenue & Ledger (`OverdueExportButtons`). Both carry EVERY order whose
+next payment date has passed -- the whole list at once, not a page -- from
+`GET /orders/payment-overdue/export`: order ID, customer and phone, designer,
+stage, payment status, total / paid / outstanding, booked and due dates, last
+payment, expected next payment and days overdue. The CSV is built by
+`overdueOrdersToCsv` (`lib/domain/utils/overdueExport.ts`, unit-tested); the PDF
+is the print page `/revenue/overdue-print` (A4 landscape).
+
 ### Print: order sheet & customer label
 
 Two print paths off an order's detail page: the existing full-order print
