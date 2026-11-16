@@ -161,9 +161,9 @@ export const ordersApi = {
   },
 
   /** Every ledger event of one week / one month, unpaged -- for Export CSV (the API refuses > 31 days). */
-  /** Every order whose payment is overdue, unpaged -- the overdue-payments CSV. */
-  paymentOverdueExport(): Promise<OverdueExportResult> {
-    return apiFetch("/orders/payment-overdue/export");
+  /** Every order past its due date and not delivered (the Overdue list), unpaged -- the overdue-orders CSV. */
+  overdueOrdersExport(): Promise<OverdueExportResult> {
+    return apiFetch("/orders/overdue/export");
   },
   ledgerEventsExport(params: { from: string; to: string }): Promise<LedgerExportResult> {
     const query = new URLSearchParams({ from: params.from, to: params.to });

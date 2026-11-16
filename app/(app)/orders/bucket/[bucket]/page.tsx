@@ -4,6 +4,8 @@ import { ButtonLink } from "../../../../../components/ui/Button";
 import { BucketOrdersClient } from "../../../../../modules/orders/components/BucketOrdersClient";
 import { BUCKET_META, PAYMENT_TABS, bucketMeta, pendingPaymentsHref } from "../../../../../modules/orders/buckets";
 import { Icon } from "../../../../../components/ui/Icon";
+import { OverdueExportButtons } from "../../../../../modules/orders/components/OverdueExportButtons";
+import { hasCapability } from "../../../../../lib/domain";
 
 /**
  * A dedicated, focused view for one dashboard bucket -- just the filtered
@@ -30,10 +32,14 @@ export default async function OrderBucketPage({ params }: { params: Promise<{ bu
           <h1 className="page-title">{meta.title}</h1>
           <p className="text-sm text-text-muted">{meta.subtitle}</p>
         </div>
-        <ButtonLink href="/orders" variant="outline">
-          <Icon name="chevron-right" size={16} className="rotate-180" />
-          All Orders
-        </ButtonLink>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The Overdue list: owner / accountant can take ALL of it at once, with payment details. */}
+          {bucket === "overdue" && hasCapability(profile.role, "reports:financial") && <OverdueExportButtons />}
+          <ButtonLink href="/orders" variant="outline">
+            <Icon name="chevron-right" size={16} className="rotate-180" />
+            All Orders
+          </ButtonLink>
+        </div>
       </div>
       <BucketOrdersClient bucket={bucket} role={profile.role} />
     </div>

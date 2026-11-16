@@ -13,10 +13,10 @@ import { apiFetchServer, ApiError } from "../../../../lib/api/server";
 import { RevenuePrintTrigger } from "../../../../modules/revenue/components/RevenuePrintTrigger";
 
 /**
- * Printable overdue payments (owner_manager / accountant only) -- the "Export
- * PDF" of the overdue-payments export: EVERY order still owing whose next
- * payment date has passed, all on one page (no paging), oldest payment date
- * first, plus the total to collect. The browser's print dialog saves it as a
+ * Printable overdue orders (owner_manager / accountant only) -- the "Export
+ * PDF" of the overdue-orders export: EVERY order past its delivery due date and
+ * not delivered (the Overdue list), all on one page (no paging), most overdue
+ * first, with payment details and the total to collect. The browser's print dialog saves it as a
  * PDF. Landscape: fourteen columns don't fit a portrait sheet.
  */
 export default async function OverduePrintPage() {
@@ -27,7 +27,7 @@ export default async function OverduePrintPage() {
 
   let data: OverdueExportResult;
   try {
-    data = await apiFetchServer("/orders/payment-overdue/export");
+    data = await apiFetchServer("/orders/overdue/export");
   } catch (err) {
     if (err instanceof ApiError && err.status === 400) {
       return (
@@ -52,7 +52,7 @@ export default async function OverduePrintPage() {
         <div className="flex items-start justify-between border-b-2 border-black pb-4">
           <div>
             <div className="font-serif text-2xl leading-none font-bold">Needleye</div>
-            <div className="mt-1 text-xs tracking-wide text-neutral-600 uppercase">Overdue payments</div>
+            <div className="mt-1 text-xs tracking-wide text-neutral-600 uppercase">Overdue orders</div>
           </div>
           <div className="text-right text-xs text-neutral-600">
             <div>
@@ -67,7 +67,7 @@ export default async function OverduePrintPage() {
 
         {/* On screen a narrow window scrolls the table sideways; on paper (A4 landscape) it fits. */}
         <div className="mt-5 overflow-x-auto print:overflow-visible">
-          <table className="w-full min-w-[960px] text-[11px] print:min-w-0">
+          <table className="w-full min-w-240 text-[11px] print:min-w-0">
             <thead>
               <tr className="border-b border-black text-left text-[10px] text-neutral-700 uppercase">
                 <th className="py-2 pr-2 font-semibold">Order ID</th>
@@ -80,16 +80,16 @@ export default async function OverduePrintPage() {
                 <th className="py-2 pr-2 text-right font-semibold">Outstanding</th>
                 <th className="py-2 pr-2 font-semibold">Booked</th>
                 <th className="py-2 pr-2 font-semibold">Due</th>
+                <th className="py-2 pr-2 text-right font-semibold">Days late</th>
                 <th className="py-2 pr-2 font-semibold">Last paid</th>
-                <th className="py-2 pr-2 font-semibold">Next payment</th>
-                <th className="py-2 text-right font-semibold">Days late</th>
+                <th className="py-2 font-semibold">Next payment</th>
               </tr>
             </thead>
             <tbody>
               {data.orders.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="py-6 text-center text-neutral-600">
-                    No payment is overdue.
+                    No order is overdue.
                   </td>
                 </tr>
               ) : (
@@ -102,12 +102,14 @@ export default async function OverduePrintPage() {
                     <td className="py-1.5 pr-2">{granularLabel(o.productionStatus)}</td>
                     <td className="py-1.5 pr-2 whitespace-nowrap">{paymentStatusLabel(o.paymentStatus)}</td>
                     <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatCurrency(o.amountPaid)}</td>
-                    <td className="py-1.5 pr-2 text-right font-semibold whitespace-nowrap">{formatCurrency(o.outstanding)}</td>
+                    <td className="py-1.5 pr-2 text-right font-semibold whitespace-nowrap">
+                      {o.outstanding === null ? "Not priced" : formatCurrency(o.outstanding)}
+                    </td>
                     <td className="py-1.5 pr-2 whitespace-nowrap">{formatDateOnly(o.bookingDate)}</td>
                     <td className="py-1.5 pr-2 whitespace-nowrap">{formatDateOnly(o.dueDate)}</td>
+                    <td className="py-1.5 pr-2 text-right whitespace-nowrap">{daysOverdue(o.dueDate, data.asOf)}</td>
                     <td className="py-1.5 pr-2 whitespace-nowrap">{o.lastPaymentDate ? formatDateOnly(o.lastPaymentDate) : "—"}</td>
-                    <td className="py-1.5 pr-2 whitespace-nowrap">{formatDateOnly(o.nextPaymentDate)}</td>
-                    <td className="py-1.5 text-right whitespace-nowrap">{daysOverdue(o.nextPaymentDate, data.asOf)}</td>
+                    <td className="py-1.5 whitespace-nowrap">{o.nextPaymentDate ? formatDateOnly(o.nextPaymentDate) : "—"}</td>
                   </tr>
                 ))
               )}
@@ -125,7 +127,7 @@ export default async function OverduePrintPage() {
         </div>
 
         <p className="mt-6 text-[10px] text-neutral-500">
-          Needleye · by Sakina Ahmed · Every order still owing whose next payment date has passed, oldest first. Confidential.
+          Needleye · by Sakina Ahmed · Every order past its due date and not delivered, most overdue first. Confidential.
         </p>
       </div>
     </div>

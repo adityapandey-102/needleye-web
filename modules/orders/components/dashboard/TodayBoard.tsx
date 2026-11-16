@@ -13,8 +13,9 @@ import { OverdueExportButtons } from "../OverdueExportButtons";
  * The cells never leave a gap: four are 2 + 2 on phones and one row from
  * tablets up; two (no payments) always sit side by side.
  *
- * `canExportOverdue` (owner / accountant) adds the overdue-payments export
- * beside the heading: every overdue order at once, as CSV or a printable PDF.
+ * `canExportOverdue` (owner / accountant) adds the overdue-orders export
+ * beside the heading: every order past its due date and not delivered (the
+ * Overdue list), at once, as CSV or a printable PDF.
  */
 export function TodayBoard({ stats, canExportOverdue = false }: { stats: OrderStats; canExportOverdue?: boolean }) {
   const cells: BoardCell[] = [
@@ -36,7 +37,7 @@ export function TodayBoard({ stats, canExportOverdue = false }: { stats: OrderSt
         </h2>
         {canExportOverdue && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-text-muted">Overdue payments</span>
+            <span className="text-xs text-text-muted">Overdue orders</span>
             <OverdueExportButtons />
           </div>
         )}

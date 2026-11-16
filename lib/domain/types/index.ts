@@ -351,7 +351,7 @@ export interface LedgerExportResult extends LedgerEventsResult {
   timeZone: string;
 }
 
-/** One order in GET /orders/payment-overdue/export. Money as 2dp strings, dates YYYY-MM-DD. */
+/** One order in GET /orders/overdue/export. Money as 2dp strings, dates YYYY-MM-DD. */
 export interface OverdueExportOrder {
   id: string;
   orderNumber: string;
@@ -362,19 +362,22 @@ export interface OverdueExportOrder {
   paymentStatus: PaymentStatus;
   bookingDate: string;
   dueDate: string;
-  totalAmount: string;
+  /** Null while the order has no price yet. */
+  totalAmount: string | null;
   amountPaid: string;
-  outstanding: string;
+  /** Null while the order has no price yet. */
+  outstanding: string | null;
   /** The newest payment's date; null when nothing is paid yet. */
   lastPaymentDate: string | null;
-  nextPaymentDate: string;
+  /** The expected next payment, when one was scheduled. */
+  nextPaymentDate: string | null;
 }
 
-/** GET /orders/payment-overdue/export -- every order whose payment is overdue, at once. */
+/** GET /orders/overdue/export -- every order past its due date and not delivered (the Overdue list), at once. */
 export interface OverdueExportResult {
   orders: OverdueExportOrder[];
   total: number;
-  /** The shop's day the list was taken on; overdue = next payment before it. */
+  /** The shop's day the list was taken on. */
   asOf: string;
   timeZone: string;
 }

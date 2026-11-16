@@ -5,22 +5,24 @@ import { paymentStatusLabel } from "../constants/productCategories";
 import type { OverdueExportResult } from "../types";
 
 /**
- * The payment-overdue export (CSV + the printable PDF page): every order still
- * owing whose next payment date has passed, all at once. Pure -- unit-tested,
- * and shared by the CSV download and the print page so both always agree.
+ * The overdue-orders export (CSV + the printable PDF page): EVERY order past
+ * its delivery due date and not delivered -- the Overdue list
+ * (/orders/bucket/overdue), all at once -- with each order's payment details.
+ * Pure -- unit-tested, and shared by the CSV download and the print page so
+ * both always agree.
  */
 
-/** Sum of what's still to collect across the export. */
+/** Sum of what's still to collect across the export (orders with no price yet add nothing). */
 export function overdueOutstandingTotal(result: OverdueExportResult): string {
-  return result.orders.reduce((sum, o) => addMoney(sum, o.outstanding), "0.00");
+  return result.orders.reduce((sum, o) => addMoney(sum, o.outstanding ?? "0"), "0.00");
 }
 
-/** Whole days between the next payment date and the day the list was taken (both YYYY-MM-DD). */
-export function daysOverdue(nextPaymentDate: string, asOf: string): number {
-  return Math.round((Date.parse(`${asOf}T00:00:00Z`) - Date.parse(`${nextPaymentDate}T00:00:00Z`)) / 86_400_000);
+/** Whole days from a date (YYYY-MM-DD) to the day the list was taken -- how late the order is. */
+export function daysOverdue(date: string, asOf: string): number {
+  return Math.round((Date.parse(`${asOf}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000);
 }
 
-/** The CSV the "Overdue payments · Export CSV" button downloads. Dates stay YYYY-MM-DD so a spreadsheet sorts them. */
+/** The CSV the overdue-orders "Export CSV" button downloads. Dates stay YYYY-MM-DD so a spreadsheet sorts them. */
 export function overdueOrdersToCsv(result: OverdueExportResult): string {
   const header = [
     "Order ID",
@@ -34,9 +36,9 @@ export function overdueOrdersToCsv(result: OverdueExportResult): string {
     "Outstanding",
     "Booked on",
     "Due date",
+    "Days overdue",
     "Last payment",
     "Next payment (expected)",
-    "Days overdue",
   ];
   const lines: string[] = [header.map((h) => ledgerCsvCell(h)).join(",")];
 
@@ -48,14 +50,14 @@ export function overdueOrdersToCsv(result: OverdueExportResult): string {
       [o.designerName ?? "", false],
       [granularLabel(o.productionStatus), false],
       [paymentStatusLabel(o.paymentStatus), false],
-      [o.totalAmount, true],
+      [o.totalAmount ?? "Not priced", o.totalAmount !== null],
       [o.amountPaid, true],
-      [o.outstanding, true],
+      [o.outstanding ?? "", true],
       [o.bookingDate, false],
       [o.dueDate, false],
+      [daysOverdue(o.dueDate, result.asOf), true],
       [o.lastPaymentDate ?? "No payment yet", false],
-      [o.nextPaymentDate, false],
-      [daysOverdue(o.nextPaymentDate, result.asOf), true],
+      [o.nextPaymentDate ?? "Not scheduled", false],
     ];
     lines.push(cells.map(([v, isMoney]) => ledgerCsvCell(v, { isMoney })).join(","));
   }

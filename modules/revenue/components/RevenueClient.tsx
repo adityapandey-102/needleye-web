@@ -29,13 +29,13 @@ export function RevenueClient({ role }: { role: Role }) {
       <BooksCheck />
       <ThisMonthCards />
 
-      {/* Every order whose payment date has passed -- all of them at once, as CSV or a printable PDF. */}
+      {/* Every order past its due date and not delivered (the Overdue list) -- all at once, as CSV or a printable PDF. */}
       <Card className="mb-5">
         <CardHeader
           icon="⏰"
           iconTone="amber"
-          title="Overdue payments"
-          subtitle="Every order past its payment date — all at once, not page by page"
+          title="Overdue orders"
+          subtitle="Every order past its due date and not delivered, with its payments — all at once"
           action={<OverdueExportButtons />}
         />
       </Card>
